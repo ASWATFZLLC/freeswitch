@@ -104,7 +104,9 @@ typedef enum {
 	CC_AGENT_STATUS_LOGGED_OUT = 1,
 	CC_AGENT_STATUS_AVAILABLE = 2,
 	CC_AGENT_STATUS_AVAILABLE_ON_DEMAND = 3,
-	CC_AGENT_STATUS_ON_BREAK = 4
+	CC_AGENT_STATUS_ON_BREAK = 4,
+	CC_AGENT_STATUS_OUTGOING = 5,
+    CC_AGENT_STATUS_MEETING = 6
 } cc_agent_status_t;
 
 static struct cc_status_table AGENT_STATUS_CHART[] = {
@@ -113,6 +115,8 @@ static struct cc_status_table AGENT_STATUS_CHART[] = {
 	{"Available", CC_AGENT_STATUS_AVAILABLE},
 	{"Available (On Demand)", CC_AGENT_STATUS_AVAILABLE_ON_DEMAND},
 	{"On Break", CC_AGENT_STATUS_ON_BREAK},
+	{"Outgoing", CC_AGENT_STATUS_OUTGOING},
+    {"Meeting", CC_AGENT_STATUS_MEETING},
 	{NULL, 0}
 
 };
@@ -2261,6 +2265,13 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK)))) {
 		contact_agent = SWITCH_FALSE;
 	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_OUTGOING)))) {
+		contact_agent = SWITCH_FALSE;
+	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_MEETING)))) {
+		contact_agent = SWITCH_FALSE;
+	}
+
 	/* XXX callcenter_track app can update this counter after we selected this agent on database */
 	if (cbt->skip_agents_with_external_calls && atoi(agent_external_calls_count) > 0) {
 		contact_agent = SWITCH_FALSE;
