@@ -2820,6 +2820,9 @@ SWITCH_STANDARD_APP(callcenter_function)
 				char buf[2] = { ht.dtmf, 0 };
 				switch_channel_set_variable(member_channel, "cc_exit_key", buf);
 				break;
+			} else if (status == SWITCH_STATUS_NOTFOUND) {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_ERROR, "Music on hold file not found '%s', continuing wait with no audio\n", cur_moh);
+				moh_valid = SWITCH_FALSE;
 			} else if (!SWITCH_READ_ACCEPTABLE(status)) {
 				break;
 			}
