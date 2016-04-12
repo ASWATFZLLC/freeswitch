@@ -3148,6 +3148,9 @@ SWITCH_STANDARD_APP(callcenter_function)
 				switch_channel_set_variable(member_channel, "cc_exit_key", buf);
 				h->member_cancel_reason = CC_MEMBER_CANCEL_REASON_EXIT_WITH_KEY;
 				break;
+			} else if (status == SWITCH_STATUS_NOTFOUND) {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_ERROR, "Music on hold file not found '%s', continuing wait with no audio\n", cur_moh);
+				moh_valid = SWITCH_FALSE;
 			} else if (!SWITCH_READ_ACCEPTABLE(status)) {
 				break;
 			}
