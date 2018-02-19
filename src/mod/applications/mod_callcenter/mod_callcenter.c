@@ -103,7 +103,9 @@ typedef enum {
 	CC_AGENT_STATUS_LOGGED_OUT = 1,
 	CC_AGENT_STATUS_AVAILABLE = 2,
 	CC_AGENT_STATUS_AVAILABLE_ON_DEMAND = 3,
-	CC_AGENT_STATUS_ON_BREAK = 4
+	CC_AGENT_STATUS_ON_BREAK = 4,
+	CC_AGENT_STATUS_OUTGOING = 5,
+    CC_AGENT_STATUS_MEETING = 6
 } cc_agent_status_t;
 
 static struct cc_status_table AGENT_STATUS_CHART[] = {
@@ -112,6 +114,8 @@ static struct cc_status_table AGENT_STATUS_CHART[] = {
 	{"Available", CC_AGENT_STATUS_AVAILABLE},
 	{"Available (On Demand)", CC_AGENT_STATUS_AVAILABLE_ON_DEMAND},
 	{"On Break", CC_AGENT_STATUS_ON_BREAK},
+	{"Outgoing", CC_AGENT_STATUS_OUTGOING},
+    {"Meeting", CC_AGENT_STATUS_MEETING},
 	{NULL, 0}
 
 };
@@ -2124,6 +2128,12 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK)))) {
 		contact_agent = SWITCH_FALSE;
 	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_OUTGOING)))) {
+        contact_agent = SWITCH_FALSE;
+    }
+    if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_MEETING)))) {
+        contact_agent = SWITCH_FALSE;
+    }
 
 	if (contact_agent == SWITCH_FALSE) {
 		return 0; /* Continue to next Agent */
@@ -2960,6 +2970,9 @@ SWITCH_STANDARD_APP(callcenter_function)
 				char buf[2] = { ht.dtmf, 0 };
 				switch_channel_set_variable(member_channel, "cc_exit_key", buf);
 				break;
+			} else if (status == SWITCH_STATUS_NOTFOUND) {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_ERROR, "Music on hold file not found '%s', continuing wait with no audio\n", cur_moh);
+				moh_valid = SWITCH_FALSE;
 			} else if (!SWITCH_READ_ACCEPTABLE(status)) {
 				break;
 			}
