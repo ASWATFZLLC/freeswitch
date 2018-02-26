@@ -4141,13 +4141,16 @@ static int start_jsock(verto_profile_t *profile, ws_socket_t sock, int family)
 
 
 #if defined(SO_KEEPALIVE)
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Hu ha, setting SO_KEEPALIVE(%d) with flag: %d.", SO_KEEPALIVE, flag);
 	setsockopt(jsock->client_socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&flag, sizeof(flag));
 #endif
 	flag = 30;
 #if defined(TCP_KEEPIDLE)
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Hu ha, setting TCP_KEEPIDLE(%d) with flag: %d.", TCP_KEEPIDLE, flag);
 	setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&flag, sizeof(flag));
 #endif
 #if defined(TCP_KEEPINTVL)
+        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Hu ha, setting TCP_KEEPINTVL(%d) with flag: %d.", TCP_KEEPINTVL, flag);
 	setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&flag, sizeof(flag));
 #endif
 
