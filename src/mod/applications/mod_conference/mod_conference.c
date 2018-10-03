@@ -2439,7 +2439,7 @@ conference_obj_t *conference_new(char *name, conference_xml_cfg_t cfg, switch_co
 	char *video_mute_banner = NULL;
 	conference_video_mode_t conference_video_mode = CONF_VIDEO_MODE_PASSTHROUGH;
 	int conference_video_quality = 1;
-	int auto_kps_debounce = 30000;
+	int auto_kps_debounce = 5000;
 	float fps = 30.0f;
 	uint32_t max_members = 0;
 	uint32_t announce_count = 0;
@@ -2623,7 +2623,7 @@ conference_obj_t *conference_new(char *name, conference_xml_cfg_t cfg, switch_co
 				video_super_canvas_bgcolor= val;
 			} else if (!strcasecmp(var, "video-letterbox-bgcolor") && !zstr(val)) {
 				video_letterbox_bgcolor= val;
-			} else if (!strcasecmp(var, "video-canvas-size") && !zstr(val)) {
+			} else if (!video_canvas_size && !strcasecmp(var, "video-canvas-size") && !zstr(val)) {
 				video_canvas_size = val;
 			} else if (!strcasecmp(var, "video-fps") && !zstr(val)) {
 				fps = (float)atof(val);
@@ -2909,6 +2909,14 @@ conference_obj_t *conference_new(char *name, conference_xml_cfg_t cfg, switch_co
 					}
 				}
 			}
+		}
+
+		if ((canvas_w % 2) != 0) {
+			canvas_w++;
+		}
+
+		if ((canvas_h % 2) != 0) {
+			canvas_h++;
 		}
 
 		if (canvas_w < 320 || canvas_h < 180) {

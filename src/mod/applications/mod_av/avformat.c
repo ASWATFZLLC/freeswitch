@@ -373,7 +373,7 @@ static switch_status_t add_stream(MediaStream *mst, AVFormatContext *fc, AVCodec
 {
 	AVCodecContext *c;
 	switch_status_t status = SWITCH_STATUS_FALSE;
-	int threads = switch_core_cpu_count();
+	//int threads = switch_core_cpu_count();
 	int buffer_bytes = 2097152; /* 2 mb */
 	int fps = 15;
 
@@ -402,9 +402,9 @@ GCC_DIAG_OFF(deprecated-declarations)
 GCC_DIAG_ON(deprecated-declarations)
 	//switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "id:%d den:%d num:%d\n", mst->st->id, mst->st->time_base.den, mst->st->time_base.num);
 
-	if (threads > 4) {
-		threads = 4;
-	}
+	//if (threads > 4) {
+	//	threads = 4;
+	//	}
 
 	switch ((*codec)->type) {
 	case AVMEDIA_TYPE_AUDIO:
@@ -454,14 +454,14 @@ GCC_DIAG_ON(deprecated-declarations)
 		/* Resolution must be a multiple of two. */
 		c->width    = mst->width;
 		c->height   = mst->height;
-		c->bit_rate = mm->vb;
+		c->bit_rate = mm->vb * 1024;
 		mst->st->time_base.den = 90000;
 		mst->st->time_base.num = 1;
 		c->time_base.den = 90000;
 		c->time_base.num = 1;
 		c->gop_size      = 25; /* emit one intra frame every x frames at mmst */
 		c->pix_fmt       = AV_PIX_FMT_YUV420P;
-		c->thread_count  = threads;
+		//c->thread_count  = threads;
 		c->rc_initial_buffer_occupancy = buffer_bytes * 8;
 
 		if (codec_id == AV_CODEC_ID_H264) {
@@ -585,6 +585,10 @@ GCC_DIAG_OFF(deprecated-declarations)
 	AVCodecContext *c = mst->st->codec;
 GCC_DIAG_ON(deprecated-declarations)
 	switch_status_t status = SWITCH_STATUS_FALSE;
+//int threads = switch_core_cpu_count();
+ 
+//	if (threads > 4) threads = 4;
+//	c->thread_count = threads;
 
 	/* open the codec */
 	ret = avcodec_open2(c, codec, NULL);
