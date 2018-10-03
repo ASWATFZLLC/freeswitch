@@ -930,7 +930,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
 			av_opt_set_int(context->encoder_ctx->priv_data, "2pass", 1, 0);
 		} else {
 			av_opt_set_int(context->encoder_ctx->priv_data, "intra-refresh", 1, 0);
-			av_opt_set(context->encoder_ctx->priv_data, "preset", "fast", 0);
+			av_opt_set(context->encoder_ctx->priv_data, "preset", "veryfast", 0);
 			av_opt_set(context->encoder_ctx->priv_data, "tune", "animation+zerolatency", 0);
 			av_opt_set(context->encoder_ctx->priv_data, "profile", "baseline", 0);
 			av_opt_set_int(context->encoder_ctx->priv_data, "slice-max-size", SLICE_SIZE, 0);
@@ -1163,7 +1163,9 @@ static switch_status_t switch_h264_encode(switch_codec_t *codec, switch_frame_t 
 	/* encode the image */
 	memset(context->nalus, 0, sizeof(context->nalus));
 	context->nalu_current_index = 0;
+GCC_DIAG_OFF(deprecated-declarations)
 	ret = avcodec_encode_video2(avctx, pkt, avframe, got_output);
+GCC_DIAG_ON(deprecated-declarations)
 
 	if (ret < 0) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Encoding Error %d\n", ret);
@@ -1288,7 +1290,9 @@ static switch_status_t switch_h264_decode(switch_codec_t *codec, switch_frame_t 
 			if (!context->decoder_avframe) context->decoder_avframe = av_frame_alloc();
 			picture = context->decoder_avframe;
 			switch_assert(picture);
+GCC_DIAG_OFF(deprecated-declarations)
 			decoded_len = avcodec_decode_video2(avctx, picture, &got_picture, &pkt);
+GCC_DIAG_ON(deprecated-declarations)
 
 			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "buffer: %d got pic: %d len: %d [%dx%d]\n", size, got_picture, decoded_len, picture->width, picture->height);
 

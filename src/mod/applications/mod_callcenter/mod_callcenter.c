@@ -207,7 +207,7 @@ static char agents_sql[] =
 "   system    VARCHAR(255),\n"
 "   uuid      VARCHAR(255),\n"
 "   type      VARCHAR(255),\n" /* Callback , Dial in...*/
-"   contact   VARCHAR(255),\n"
+"   contact   VARCHAR(1024),\n"
 "   status    VARCHAR(255),\n"
 /*User Personal Status
   Available
@@ -591,6 +591,8 @@ char *cc_execute_sql2str(cc_queue_t *queue, switch_mutex_t *mutex, char *sql, ch
 
 	if (mutex) {
 		switch_mutex_lock(mutex);
+	} else {
+		switch_mutex_lock(globals.mutex);
 	}
 
 	if (!(dbh = cc_get_db_handle())) {
@@ -605,6 +607,8 @@ end:
 
 	if (mutex) {
 		switch_mutex_unlock(mutex);
+	} else {
+		switch_mutex_unlock(globals.mutex);
 	}
 
 	return ret;
@@ -617,6 +621,8 @@ static switch_status_t cc_execute_sql(cc_queue_t *queue, char *sql, switch_mutex
 
 	if (mutex) {
 		switch_mutex_lock(mutex);
+	} else {
+		switch_mutex_lock(globals.mutex);
 	}
 
 	if (!(dbh = cc_get_db_handle())) {
@@ -632,6 +638,8 @@ end:
 
 	if (mutex) {
 		switch_mutex_unlock(mutex);
+	} else {
+		switch_mutex_unlock(globals.mutex);
 	}
 
 	return status;
@@ -645,6 +653,8 @@ static switch_bool_t cc_execute_sql_callback(cc_queue_t *queue, switch_mutex_t *
 
 	if (mutex) {
 		switch_mutex_lock(mutex);
+	} else {
+		switch_mutex_lock(globals.mutex);
 	}
 
 	if (!(dbh = cc_get_db_handle())) {
@@ -665,6 +675,8 @@ end:
 
 	if (mutex) {
 		switch_mutex_unlock(mutex);
+	} else {
+		switch_mutex_unlock(globals.mutex);
 	}
 
 	return ret;

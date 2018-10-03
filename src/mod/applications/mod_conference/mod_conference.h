@@ -194,6 +194,8 @@ typedef enum {
 	MFLAG_MOD,
 	MFLAG_INDICATE_MUTE,
 	MFLAG_INDICATE_UNMUTE,
+	MFLAG_INDICATE_BLIND,
+	MFLAG_INDICATE_UNBLIND,
 	MFLAG_NOMOH,
 	MFLAG_VIDEO_BRIDGE,
 	MFLAG_INDICATE_MUTE_DETECT,
@@ -205,6 +207,7 @@ typedef enum {
 	MFLAG_NO_POSITIONAL,
 	MFLAG_JOIN_VID_FLOOR,
 	MFLAG_RECEIVING_VIDEO,
+	MFLAG_CAN_SEE,
 	MFLAG_CAN_BE_SEEN,
 	MFLAG_SECOND_SCREEN,
 	MFLAG_SILENT,
@@ -323,9 +326,9 @@ typedef enum {
 	EFLAG_STOP_TALKING = (1 << 6),
 	EFLAG_START_TALKING = (1 << 7),
 	EFLAG_MUTE_MEMBER = (1 << 8),
-	EFLAG_UNMUTE_MEMBER = (1 << 9),
+	EFLAG_BLIND_MEMBER = (1 << 9),
 	EFLAG_DEAF_MEMBER = (1 << 10),
-	EFLAG_UNDEAF_MEMBER = (1 << 11),
+	EFLAG_UNUSED1 = (1 << 11),
 	EFLAG_KICK_MEMBER = (1 << 12),
 	EFLAG_DTMF_MEMBER = (1 << 13),
 	EFLAG_ENERGY_LEVEL_MEMBER = (1 << 14),
@@ -552,6 +555,8 @@ typedef struct conference_obj {
 	char *unmuted_sound;
 	char *deaf_sound;
 	char *undeaf_sound;
+	char *blind_sound;
+	char *unblind_sound;
 	char *locked_sound;
 	char *is_locked_sound;
 	char *is_unlocked_sound;
@@ -1073,6 +1078,9 @@ switch_status_t conference_api_sub_unmute(conference_member_t *member, switch_st
 switch_status_t conference_api_sub_vmute(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_tvmute(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_unvmute(conference_member_t *member, switch_stream_handle_t *stream, void *data);
+switch_status_t conference_api_sub_vblind(conference_member_t *member, switch_stream_handle_t *stream, void *data);
+switch_status_t conference_api_sub_tvblind(conference_member_t *member, switch_stream_handle_t *stream, void *data);
+switch_status_t conference_api_sub_unvblind(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_deaf(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_undeaf(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_floor(conference_member_t *member, switch_stream_handle_t *stream, void *data);

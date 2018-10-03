@@ -971,11 +971,10 @@ static void handle_ice(switch_rtp_t *rtp_session, switch_rtp_ice_t *ice, void *d
 				switch_stun_error_code_t *err = (switch_stun_error_code_t *) attr->value;
 				uint32_t code = (err->code * 100) + err->number;
 
-				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_WARNING, "%s got %s stun binding response %u %s\n",
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_WARNING, "%s got %s stun binding response %u\n",
 								  rtp_session_name(rtp_session),
 								  rtp_type(rtp_session),
-								  code,
-								  err->reason
+								  code
 								  );
 
 				if ((ice->type & ICE_VANILLA) && code == 487) {
@@ -3974,8 +3973,12 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_change_interval(switch_rtp_t *rtp_ses
 
 		if (rtp_session->timer.timer_interface) {
 			switch_core_timer_destroy(&rtp_session->timer);
+		}
+
+		if (rtp_session->write_timer.timer_interface) {
 			switch_core_timer_destroy(&rtp_session->write_timer);
 		}
+
 		if ((status = switch_core_timer_init(&rtp_session->timer,
 											 rtp_session->timer_name, ms_per_packet / 1000,
 											 samples_per_interval, rtp_session->pool)) == SWITCH_STATUS_SUCCESS) {
@@ -4667,6 +4670,7 @@ SWITCH_DECLARE(void) switch_rtp_video_refresh(switch_rtp_t *rtp_session)
 
 SWITCH_DECLARE(void) switch_rtp_video_loss(switch_rtp_t *rtp_session)
 {
+
 	if (!rtp_write_ready(rtp_session, 0, __LINE__)) {
 		return;
 	}
@@ -4913,6 +4917,9 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 #endif
 	if ((*rtp_session)->timer.timer_interface) {
 		switch_core_timer_destroy(&(*rtp_session)->timer);
+	}
+
+	if ((*rtp_session)->write_timer.timer_interface) {
 		switch_core_timer_destroy(&(*rtp_session)->write_timer);
 	}
 
@@ -6169,7 +6176,8 @@ static void handle_nack(switch_rtp_t *rtp_session, uint32_t nack)
 		my_host = switch_get_addr(bufc, sizeof(bufc), rtp_session->local_addr);
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "Got NACK [%u][0x%x] for seq %u\n", nack, nack, ntohs(seq));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "%s Got NACK [%u][0x%x] for seq %u\n", 
+					  switch_core_session_get_name(rtp_session->session), nack, nack, ntohs(seq));
 
 	if (switch_jb_get_packet_by_seq(rtp_session->vbw, seq, (switch_rtp_packet_t *) send_msg, &bytes) == SWITCH_STATUS_SUCCESS) {
 
@@ -6193,9 +6201,10 @@ static void handle_nack(switch_rtp_t *rtp_session, uint32_t nack)
 	blp = ntohs(blp);
 	for (i = 0; i < 16; i++) {
 		if (blp & (1 << i)) {
-			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "Also Got NACK for seq %u\n", ntohs(seq) + i + 1);
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "%s Also Got NACK for seq %u\n", 
+							  switch_core_session_get_name(rtp_session->session), ntohs(seq) + i + 1);
 			/* If they are missing more than one, may as well gen a key frame for good measure */
-			switch_core_media_gen_key_frame(rtp_session->session);
+			//switch_core_media_gen_key_frame(rtp_session->session);
 			if (switch_jb_get_packet_by_seq(rtp_session->vbw, htons(ntohs(seq) + i + 1), (switch_rtp_packet_t *) &send_msg, &bytes) == SWITCH_STATUS_SUCCESS) {
 				if (rtp_session->flags[SWITCH_RTP_FLAG_DEBUG_RTP_WRITE]) {
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG_CLEAN(rtp_session->session), SWITCH_LOG_CONSOLE,
@@ -6231,8 +6240,8 @@ static switch_status_t process_rtcp_report(switch_rtp_t *rtp_session, rtcp_msg_t
 		rtcp_ext_msg_t *extp = (rtcp_ext_msg_t *) msg;
 
 		if (extp->header.fmt != 15) { // <---- REMOVE WHEN BRIA STOPS SENDING UNSOLICITED REMB
-			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "PICKED UP %s XRTCP type: %d fmt: %d\n",
-							  rtp_type(rtp_session), msg->header.type, extp->header.fmt);
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "%s PICKED UP %s XRTCP type: %d fmt: %d\n",
+							  switch_core_session_get_name(rtp_session->session), rtp_type(rtp_session), msg->header.type, extp->header.fmt);
 		}
 
 		if (msg->header.type == _RTCP_PT_FIR ||
@@ -6247,19 +6256,27 @@ static switch_status_t process_rtcp_report(switch_rtp_t *rtp_session, rtcp_msg_t
 				}
 			}
 #endif
-			switch_core_media_gen_key_frame(rtp_session->session);
-			if (rtp_session->vbw) {
-				switch_jb_reset(rtp_session->vbw);
+			
+			if (switch_core_session_media_flow(rtp_session->session, SWITCH_MEDIA_TYPE_VIDEO) == SWITCH_MEDIA_FLOW_RECVONLY) {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "%s Ignoring FIR/PLI from a sendonly stream.\n", 
+								  switch_core_session_get_name(rtp_session->session));
+			} else {
+				switch_core_media_gen_key_frame(rtp_session->session);
+				if (rtp_session->vbw) {
+					switch_jb_reset(rtp_session->vbw);
+				}
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "%s Got FIR/PLI\n", 
+								  switch_core_session_get_name(rtp_session->session));
+				switch_channel_set_flag(switch_core_session_get_channel(rtp_session->session), CF_VIDEO_REFRESH_REQ);
 			}
-
-			switch_channel_set_flag(switch_core_session_get_channel(rtp_session->session), CF_VIDEO_REFRESH_REQ);
 		}
 
 		if (msg->header.type == _RTCP_PT_RTPFB && extp->header.fmt == _RTCP_RTPFB_NACK) {
 			uint32_t *nack = (uint32_t *) extp->body;
 			int i;
 
-			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "Got NACK count %d\n", ntohs(extp->header.length) - 2);
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG1, "%s Got NACK count %d\n", 
+							  switch_core_session_get_name(rtp_session->session), ntohs(extp->header.length) - 2);
 
 
 			for (i = 0; i < ntohs(extp->header.length) - 2; i++) {
@@ -6267,7 +6284,7 @@ static switch_status_t process_rtcp_report(switch_rtp_t *rtp_session, rtcp_msg_t
 				nack++;
 			}
 
-			switch_core_media_gen_key_frame(rtp_session->session);
+			//switch_core_media_gen_key_frame(rtp_session->session);
 		}
 		
 	} else {
@@ -7718,13 +7735,13 @@ static int rtp_write_ready(switch_rtp_t *rtp_session, uint32_t bytes, int line)
 	if (!rtp_session) return 0;
 
 	if (rtp_session->ice.ice_user && !(rtp_session->ice.rready || rtp_session->ice.ready)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG3, "Skip sending %s packet %ld bytes (ice not ready @ line %d!)\n",
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG3, "Skip sending %s packet %ld bytes (ice not ready @ line %d!)\n",
 						  rtp_type(rtp_session), (long)bytes, line);
 		return 0;
 	}
 
 	if (rtp_session->dtls && rtp_session->dtls->state != DS_READY) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG3, "Skip sending %s packet %ld bytes (dtls not ready @ line %d!)\n",
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(rtp_session->session), SWITCH_LOG_DEBUG3, "Skip sending %s packet %ld bytes (dtls not ready @ line %d!)\n",
 						  rtp_type(rtp_session), (long)bytes, line);
 		return 0;
 	}
