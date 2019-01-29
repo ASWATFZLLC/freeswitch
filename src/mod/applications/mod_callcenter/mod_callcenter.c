@@ -915,6 +915,16 @@ cc_status_t cc_agent_del(const char *agent)
 
 	char *sql;
 
+  char res[256];
+
+  /* Used to stop any active callback */
+  sql = switch_mprintf("SELECT uuid FROM members WHERE serving_agent = '%q' AND serving_system = 'single_box' AND NOT state = 'Answered'", agent);
+  cc_execute_sql2str(NULL, NULL, sql, res, sizeof(res));
+  switch_safe_free(sql);
+  if (!switch_strlen_zero(res)) {
+    switch_core_session_hupall_matching_var("cc_member_pre_answer_uuid", res, SWITCH_CAUSE_ORIGINATOR_CANCEL);
+  }
+
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Deleted Agent %s\n", agent);
 	sql = switch_mprintf("DELETE FROM agents WHERE name = '%q';"
 			"DELETE FROM tiers WHERE agent = '%q';",
