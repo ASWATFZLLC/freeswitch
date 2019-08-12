@@ -894,10 +894,13 @@ static switch_bool_t client_exists(const char *name)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			if (!zstr(jsock->id) && !strcmp(jsock->id, name)) {
+			char *tmpname = switch_mprintf("%s@%s", jsock->id, jsock->domain);
+			if (!zstr(tmpname) && !strcmp(tmpname, name)) {
 				r = SWITCH_TRUE;
+				switch_safe_free(tmpname);
 				break;
 			}
+			switch_safe_free(tmpname);
 		}
 		switch_mutex_unlock(profile->mutex);
 	}
