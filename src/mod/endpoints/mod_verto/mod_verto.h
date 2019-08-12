@@ -307,7 +307,7 @@ struct globals_s {
 	int enable_presence;
 	int enable_fs_events;
 
-  switch_bool_t disable_multiple_sessions;
+	switch_bool_t disable_multiple_sessions;
 
 	switch_hash_t *jsock_hash;
 	switch_mutex_t *jsock_mutex;
