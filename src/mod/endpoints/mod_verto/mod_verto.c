@@ -894,7 +894,7 @@ static switch_bool_t client_exists(const char *name)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			if (!strncmp(jsock->id, name)) {
+			if (jsock->id != NULL && !strcmp(jsock->id, name)) {
 				r = SWITCH_TRUE;
 				break;
 			}
