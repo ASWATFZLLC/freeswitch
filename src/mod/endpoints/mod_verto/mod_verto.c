@@ -937,12 +937,14 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		goto end;
 	}
 
+
 	if (!strcmp(login, "root")) {
 		if (!(r = !strcmp(passwd, jsock->profile->root_passwd))) {
 			*code = CODE_AUTH_FAILED;
 			switch_snprintf(message, mlen, "Authentication Failure");
 			login_fire_custom_event(jsock, params, 0, "Authentication Failure");
 		}
+
 	} else if (!zstr(jsock->profile->userauth)) {
 		switch_xml_t x_user = NULL;
 		char *id = NULL, *domain = NULL;
