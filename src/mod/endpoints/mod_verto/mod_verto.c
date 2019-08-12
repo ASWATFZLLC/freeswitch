@@ -914,6 +914,13 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		goto end;
 	}
 
+	if (verto_globals.disable_multiple_sessions && client_exists(login)) {
+		*code = CODE_DUPLICATE_SESSION;
+		switch_snprintf(message, mlen, "Duplicate Session");
+		login_fire_custom_event(jsock, params, 0, "Duplicate Session");
+		goto end;
+	}
+
 
 	if (!strcmp(login, "root")) {
 		if (!(r = !strcmp(passwd, jsock->profile->root_passwd))) {
@@ -4610,6 +4617,27 @@ static void parse_ip(char *host, switch_size_t host_len, uint16_t *port, char *i
 #endif
 }
 
+static switch_bool_t client_exists(const char *name)
+{
+	switch_bool_t r = SWITCH_FALSE;
+	verto_profile_t *profile;
+	jsock_t *jsock;
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!strcmp(jsock->id, name)) {
+				r = SWITCH_TRUE;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	return r;
+}
 
 static verto_profile_t *find_profile(const char *name)
 {
@@ -4966,6 +4994,8 @@ static switch_status_t parse_config(const char *cf)
 				if (val) {
 					verto_globals.debug = atoi(val);
 				}
+			} else if (!strcasecmp(var, "disable-multiple-sessions")) {
+				verto_globals.disable_multiple_sessions = switch_true(val);
 			} else if (!strcasecmp(var, "enable-presence") && val) {
 				verto_globals.enable_presence = switch_true(val);
 			} else if (!strcasecmp(var, "enable-fs-events") && val) {
