@@ -894,7 +894,7 @@ static switch_bool_t client_exists(const char *id)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s checking if exists with %s.\n", jsock->id, id);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Dupliacte session check %s == %s.\n", jsock->id, id);
 			if (!zstr(jsock->id) && !strcmp(jsock->id, id)) {
 				r = SWITCH_TRUE;
 				break;
@@ -943,7 +943,6 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 			switch_snprintf(message, mlen, "Authentication Failure");
 			login_fire_custom_event(jsock, params, 0, "Authentication Failure");
 		}
-
 	} else if (!zstr(jsock->profile->userauth)) {
 		switch_xml_t x_user = NULL;
 		char *id = NULL, *domain = NULL;
