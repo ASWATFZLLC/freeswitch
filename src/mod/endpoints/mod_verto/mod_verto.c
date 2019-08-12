@@ -895,6 +895,7 @@ static switch_bool_t client_exists(const char *name)
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 			char *tmpname = switch_mprintf("%s@%s", jsock->id, jsock->domain);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s checking if exists with %s.\n", tmpname, name);
 			if (!zstr(tmpname) && !strcmp(tmpname, name)) {
 				r = SWITCH_TRUE;
 				switch_safe_free(tmpname);
