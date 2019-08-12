@@ -884,7 +884,7 @@ static void login_fire_custom_event(jsock_t *jsock, cJSON *params, int success, 
 	}
 }
 
-static switch_bool_t client_exists(const char *name)
+static switch_bool_t client_exists(const char *id)
 {
 	switch_bool_t r = SWITCH_FALSE;
 	verto_profile_t *profile;
@@ -894,14 +894,11 @@ static switch_bool_t client_exists(const char *name)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			char *tmpname = switch_mprintf("%s@%s", jsock->id, jsock->domain);
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s checking if exists with %s.\n", tmpname, name);
-			if (!zstr(tmpname) && !strcmp(tmpname, name)) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s checking if exists with %s.\n", jsock->id, id);
+			if (!zstr(jsock->id) && !strcmp(jsock->id, id)) {
 				r = SWITCH_TRUE;
-				switch_safe_free(tmpname);
 				break;
 			}
-			switch_safe_free(tmpname);
 		}
 		switch_mutex_unlock(profile->mutex);
 	}
@@ -940,13 +937,6 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		goto end;
 	}
 
-	if (verto_globals.disable_multiple_sessions && client_exists(login)) {
-		*code = CODE_DUPLICATE_SESSION;
-		switch_snprintf(message, mlen, "Duplicate Session");
-		login_fire_custom_event(jsock, params, 0, "Duplicate Session");
-		goto end;
-	}
-
 	if (!strcmp(login, "root")) {
 		if (!(r = !strcmp(passwd, jsock->profile->root_passwd))) {
 			*code = CODE_AUTH_FAILED;
@@ -973,6 +963,13 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 
 		if (jsock->profile->register_domain) {
 			domain = jsock->profile->register_domain;
+		}
+
+		if (verto_globals.disable_multiple_sessions && client_exists(id)) {
+			*code = CODE_DUPLICATE_SESSION;
+			switch_snprintf(message, mlen, "Duplicate Session");
+			login_fire_custom_event(jsock, params, 0, "Duplicate Session");
+			goto end;
 		}
 
 		if (!(id && domain)) {
