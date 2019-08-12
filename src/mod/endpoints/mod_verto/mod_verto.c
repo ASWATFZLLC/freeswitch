@@ -966,16 +966,16 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 			domain = jsock->profile->register_domain;
 		}
 
+		if (!(id && domain)) {
+			*code = CODE_AUTH_FAILED;
+			switch_snprintf(message, mlen, "Missing or improper credentials");
+			goto end;
+		}
+
 		if (verto_globals.disable_multiple_sessions && client_exists(id)) {
 			*code = CODE_DUPLICATE_SESSION;
 			switch_snprintf(message, mlen, "Duplicate Session");
 			login_fire_custom_event(jsock, params, 0, "Duplicate Session");
-			goto end;
-		}
-
-		if (!(id && domain)) {
-			*code = CODE_AUTH_FAILED;
-			switch_snprintf(message, mlen, "Missing or improper credentials");
 			goto end;
 		}
 
