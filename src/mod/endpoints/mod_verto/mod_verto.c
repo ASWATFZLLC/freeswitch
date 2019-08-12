@@ -884,6 +884,28 @@ static void login_fire_custom_event(jsock_t *jsock, cJSON *params, int success, 
 	}
 }
 
+static switch_bool_t client_exists(const char *name)
+{
+	switch_bool_t r = SWITCH_FALSE;
+	verto_profile_t *profile;
+	jsock_t *jsock;
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!strcmp(jsock->id, name)) {
+				r = SWITCH_TRUE;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	return r;
+}
+
 static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *message, switch_size_t mlen)
 {
 	switch_bool_t r = SWITCH_FALSE;
@@ -920,7 +942,6 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		login_fire_custom_event(jsock, params, 0, "Duplicate Session");
 		goto end;
 	}
-
 
 	if (!strcmp(login, "root")) {
 		if (!(r = !strcmp(passwd, jsock->profile->root_passwd))) {
@@ -4615,28 +4636,6 @@ static void parse_ip(char *host, switch_size_t host_len, uint16_t *port, char *i
 		*addr = inet_addr(host);
 	}
 #endif
-}
-
-static switch_bool_t client_exists(const char *name)
-{
-	switch_bool_t r = SWITCH_FALSE;
-	verto_profile_t *profile;
-	jsock_t *jsock;
-
-	switch_mutex_lock(verto_globals.mutex);
-	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
-		switch_mutex_lock(profile->mutex);
-		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			if (!strcmp(jsock->id, name)) {
-				r = SWITCH_TRUE;
-				break;
-			}
-		}
-		switch_mutex_unlock(profile->mutex);
-	}
-	switch_mutex_unlock(verto_globals.mutex);
-
-	return r;
 }
 
 static verto_profile_t *find_profile(const char *name)
