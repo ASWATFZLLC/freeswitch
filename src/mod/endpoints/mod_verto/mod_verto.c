@@ -5463,7 +5463,6 @@ SWITCH_STANDARD_API(verto_pickup_function)
 
 		if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
 			jmsg = jrpc_new_req("verto.pickup", tech_pvt->call_id, &params);
-			set_call_params(params, tech_pvt);
 			jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 
 			switch_thread_rwlock_unlock(jsock->rwlock);
