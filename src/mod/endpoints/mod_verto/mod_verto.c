@@ -5452,6 +5452,7 @@ SWITCH_STANDARD_API(verto_contact_function)
 
 SWITCH_STANDARD_API(verto_pickup_function)
 {
+	int success = 0;
 	char *uuid = (char *) cmd;
 	switch_core_session_t *lsession = NULL;
 
@@ -5465,13 +5466,15 @@ SWITCH_STANDARD_API(verto_pickup_function)
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 
 				switch_thread_rwlock_unlock(jsock->rwlock);
-			}
 
-			stream->write_function(stream, "+OK\n");
+				success = 1;
+			}
 		}
 		switch_core_session_rwunlock(lsession);
+	}
 
-		stream->write_function(stream, "-ERROR\n");
+	if (success) {
+		stream->write_function(stream, "+OK\n");
 	} else {
 		stream->write_function(stream, "-ERROR\n");
 	}
