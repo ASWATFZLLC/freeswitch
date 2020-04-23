@@ -5469,6 +5469,8 @@ SWITCH_STANDARD_API(verto_pickup_function)
 		}
 
 		stream->write_function(stream, "+OK\n");
+
+		switch_core_session_rwunlock(lsession);
 	} else {
 		stream->write_function(stream, "-ERROR\n");
 	}
