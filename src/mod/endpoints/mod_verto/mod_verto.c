@@ -5486,8 +5486,8 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
   switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 0");
 
 	if (!switch_stristr("u:", dest)) {
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1");
 		char *dial_str = verto_get_dial_string(dest, NULL);
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1");
 
 		switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, "verto_orig_dest", dest);
 		if (zstr(switch_event_get_header(var_event, "origination_callee_id_number"))) {
@@ -5524,9 +5524,9 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 
 		return cause;
 	} else {
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 2");
 		const char *dialed_user = switch_event_get_header(var_event, "dialed_user");
 		const char *dialed_domain = switch_event_get_header(var_event, "dialed_domain");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 2");
 
 		if (dialed_user) {
 			if (dialed_domain) {
