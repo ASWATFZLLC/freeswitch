@@ -2380,7 +2380,18 @@ static switch_status_t verto_on_init(switch_core_session_t *session)
 	}
 
 	if (switch_channel_direction(tech_pvt->channel) == SWITCH_CALL_DIRECTION_OUTBOUND) {
-		if ((status = verto_connect(tech_pvt->session, "verto.invite")) != SWITCH_STATUS_SUCCESS) {
+		tries = 100;
+		while(--tries > 0) {
+			status = verto_connect(tech_pvt->session, "verto.invite");
+			if (status != SWITCH_STATUS_SUCCESS) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Verto invite failed, retring in 1 second, remaining attempts: %d.", tries);
+				switch_yield(1000000);
+				continue;
+			} else {
+				break;
+			}
+		}
+		if (status != SWITCH_STATUS_SUCCESS) {
 			switch_channel_hangup(tech_pvt->channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 		} else {
 			switch_channel_mark_ring_ready(tech_pvt->channel);
