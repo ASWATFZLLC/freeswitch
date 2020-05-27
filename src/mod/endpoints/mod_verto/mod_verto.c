@@ -5483,11 +5483,11 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 		goto end;
 	}
 
-  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 0");
+  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 0");
 
 	if (!switch_stristr("u:", dest)) {
 		char *dial_str = verto_get_dial_string(dest, NULL);
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 1");
 
 		switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, "verto_orig_dest", dest);
 		if (zstr(switch_event_get_header(var_event, "origination_callee_id_number"))) {
@@ -5498,7 +5498,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 			free(trimmed_dest);
 		}
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1.1");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 1.1");
 		cause = SWITCH_CAUSE_USER_NOT_REGISTERED;
 
 		if (dial_str) {
@@ -5512,12 +5512,12 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 				myflags |= SOF_NOBLOCK;
 			}
 
-      switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1.1.1");
+      switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 1.1.1");
 			if (switch_ivr_originate(session, new_session, &cause, dial_str, 0, NULL,
 									 NULL, NULL, outbound_profile, var_event, myflags, cancel_cause, NULL) == SWITCH_STATUS_SUCCESS) {
 				switch_core_session_rwunlock(*new_session);
 			}
-      switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1.1.2");
+      switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 1.1.2");
 
 			free(dial_str);
 		}
@@ -5526,7 +5526,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 	} else {
 		const char *dialed_user = switch_event_get_header(var_event, "dialed_user");
 		const char *dialed_domain = switch_event_get_header(var_event, "dialed_domain");
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 2");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 2");
 
 		if (dialed_user) {
 			if (dialed_domain) {
@@ -5541,7 +5541,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 		}
 	}
 
-  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 3");
+  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 3");
 
 	if ((cause = switch_core_session_outgoing_channel(session, var_event, "rtc",
 												  outbound_profile, new_session, NULL, SOF_NONE, cancel_cause)) == SWITCH_CAUSE_SUCCESS) {
@@ -5593,7 +5593,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
  end:
 
 	if (cause != SWITCH_CAUSE_SUCCESS) {
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 4");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Here 4");
 		UNPROTECT_INTERFACE(verto_endpoint_interface);
 	}
 
