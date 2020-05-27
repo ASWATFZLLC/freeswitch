@@ -2147,7 +2147,7 @@ static void untrack_pvt(verto_pvt_t *tech_pvt)
 {
 	verto_pvt_t *p, *last = NULL;
 	int wake = 0;
-	
+
 	switch_thread_rwlock_wrlock(verto_globals.tech_rwlock);
 
 	if (tech_pvt->detach_time) {
@@ -2171,7 +2171,7 @@ static void untrack_pvt(verto_pvt_t *tech_pvt)
 			last = p;
 		}
 	}
-		
+
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 
 	if (wake) attach_wake();
@@ -2403,7 +2403,7 @@ static switch_status_t verto_on_init(switch_core_session_t *session)
 	if (status == SWITCH_STATUS_SUCCESS) {
 		track_pvt(tech_pvt);
 	}
-	
+
 	return status;
 }
 
@@ -2864,7 +2864,7 @@ static switch_bool_t verto__bye_func(const char *method, cJSON *params, jsock_t 
 			cause = check;
 			got_cause = 1;
 		}
-	} 
+	}
 
 	if (!got_cause && (causeObj = cJSON_GetObjectItem(params, "causeCode"))) {
 		int check = 0;
@@ -3887,8 +3887,8 @@ static switch_bool_t event_channel_check_auth(jsock_t *jsock, const char *event_
 			}
 		}
 
-		if ((!verto_globals.enable_fs_events && (!strcasecmp(event_channel, "FSevent") || (main_event_channel && !strcasecmp(main_event_channel, "FSevent")))) || 
-			!(switch_event_get_header(jsock->allowed_event_channels, event_channel) || 
+		if ((!verto_globals.enable_fs_events && (!strcasecmp(event_channel, "FSevent") || (main_event_channel && !strcasecmp(main_event_channel, "FSevent")))) ||
+			!(switch_event_get_header(jsock->allowed_event_channels, event_channel) ||
 			  (main_event_channel && switch_event_get_header(jsock->allowed_event_channels, main_event_channel)))) {
 			ok = SWITCH_FALSE;
 		}
@@ -5125,7 +5125,7 @@ static switch_status_t cmd_xml_status(char **argv, int argc, switch_stream_handl
 	stream->write_function(stream, "<profiles>\n");
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
-		for (i = 0; i < profile->i; i++) { 
+		for (i = 0; i < profile->i; i++) {
 			char *tmpurl = switch_mprintf(strchr(profile->ip[i].local_ip, ':') ? "%s:[%s]:%d" : "%s:%s:%d",
 										  (profile->ip[i].secure == 1) ? "wss" : "ws", profile->ip[i].local_ip, profile->ip[i].local_port);
 			stream->write_function(stream, "<profile>\n<name>%s</name>\n<type>%s</type>\n<data>%s</data>\n<state>%s</state>\n</profile>\n", profile->name, "profile", tmpurl, (profile->running) ? "RUNNING" : "DOWN");
@@ -5483,7 +5483,10 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 		goto end;
 	}
 
+  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 0");
+
 	if (!switch_stristr("u:", dest)) {
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1");
 		char *dial_str = verto_get_dial_string(dest, NULL);
 
 		switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, "verto_orig_dest", dest);
@@ -5495,6 +5498,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 			free(trimmed_dest);
 		}
 
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1.1");
 		cause = SWITCH_CAUSE_USER_NOT_REGISTERED;
 
 		if (dial_str) {
@@ -5508,16 +5512,19 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 				myflags |= SOF_NOBLOCK;
 			}
 
+      switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1.1.1");
 			if (switch_ivr_originate(session, new_session, &cause, dial_str, 0, NULL,
 									 NULL, NULL, outbound_profile, var_event, myflags, cancel_cause, NULL) == SWITCH_STATUS_SUCCESS) {
 				switch_core_session_rwunlock(*new_session);
 			}
+      switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 1.1.2");
 
 			free(dial_str);
 		}
 
 		return cause;
 	} else {
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 2");
 		const char *dialed_user = switch_event_get_header(var_event, "dialed_user");
 		const char *dialed_domain = switch_event_get_header(var_event, "dialed_domain");
 
@@ -5533,6 +5540,8 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 			}
 		}
 	}
+
+  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 3");
 
 	if ((cause = switch_core_session_outgoing_channel(session, var_event, "rtc",
 												  outbound_profile, new_session, NULL, SOF_NONE, cancel_cause)) == SWITCH_CAUSE_SUCCESS) {
@@ -5584,6 +5593,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
  end:
 
 	if (cause != SWITCH_CAUSE_SUCCESS) {
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "Here 4");
 		UNPROTECT_INTERFACE(verto_endpoint_interface);
 	}
 
@@ -5641,7 +5651,7 @@ static int verto_send_chat(const char *uid, const char *call_id, cJSON *msg)
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
-	
+
 		switch_mutex_lock(profile->mutex);
 
 		for(jsock = profile->jsock_head; jsock; jsock = jsock->next) {
