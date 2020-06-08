@@ -77,6 +77,7 @@
 #define CODE_AUTH_REQUIRED -32000
 #define CODE_AUTH_FAILED -32001
 #define CODE_SESSION_ERROR -32002
+#define CODE_DUPLICATE_SESSION -32003
 
 #define MY_EVENT_CLIENT_CONNECT "verto::client_connect"
 #define MY_EVENT_CLIENT_DISCONNECT "verto::client_disconnect"
@@ -307,6 +308,8 @@ struct globals_s {
 	int profile_threads;
 	int enable_presence;
 	int enable_fs_events;
+
+	switch_bool_t disable_multiple_sessions;
 
 	switch_hash_t *jsock_hash;
 	switch_mutex_t *jsock_mutex;

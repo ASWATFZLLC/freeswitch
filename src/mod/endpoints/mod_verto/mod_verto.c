@@ -888,6 +888,29 @@ static void login_fire_custom_event(jsock_t *jsock, cJSON *params, int success, 
 	}
 }
 
+static switch_bool_t client_exists(const char *id)
+{
+	switch_bool_t r = SWITCH_FALSE;
+	verto_profile_t *profile;
+	jsock_t *jsock;
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Dupliacte session check %s == %s.\n", jsock->id, id);
+			if (!zstr(jsock->id) && !strcmp(jsock->id, id)) {
+				r = SWITCH_TRUE;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	return r;
+}
+
 static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *message, switch_size_t mlen)
 {
 	switch_bool_t r = SWITCH_FALSE;
@@ -950,6 +973,13 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		if (!(id && domain)) {
 			*code = CODE_AUTH_FAILED;
 			switch_snprintf(message, mlen, "Missing or improper credentials");
+			goto end;
+		}
+
+		if (verto_globals.disable_multiple_sessions && client_exists(id)) {
+			*code = CODE_DUPLICATE_SESSION;
+			switch_snprintf(message, mlen, "Duplicate Session");
+			login_fire_custom_event(jsock, params, 0, "Duplicate Session");
 			goto end;
 		}
 
@@ -4987,6 +5017,8 @@ static switch_status_t parse_config(const char *cf)
 				if (val) {
 					verto_globals.debug = atoi(val);
 				}
+			} else if (!strcasecmp(var, "disable-multiple-sessions")) {
+				verto_globals.disable_multiple_sessions = switch_true(val);
 			} else if (!strcasecmp(var, "enable-presence") && val) {
 				verto_globals.enable_presence = switch_true(val);
 			} else if (!strcasecmp(var, "enable-fs-events") && val) {

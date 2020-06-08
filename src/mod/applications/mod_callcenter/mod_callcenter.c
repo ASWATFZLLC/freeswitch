@@ -105,7 +105,9 @@ typedef enum {
 	CC_AGENT_STATUS_LOGGED_OUT = 1,
 	CC_AGENT_STATUS_AVAILABLE = 2,
 	CC_AGENT_STATUS_AVAILABLE_ON_DEMAND = 3,
-	CC_AGENT_STATUS_ON_BREAK = 4
+	CC_AGENT_STATUS_ON_BREAK = 4,
+	CC_AGENT_STATUS_OUTGOING = 5,
+    CC_AGENT_STATUS_MEETING = 6
 } cc_agent_status_t;
 
 static struct cc_status_table AGENT_STATUS_CHART[] = {
@@ -114,6 +116,8 @@ static struct cc_status_table AGENT_STATUS_CHART[] = {
 	{"Available", CC_AGENT_STATUS_AVAILABLE},
 	{"Available (On Demand)", CC_AGENT_STATUS_AVAILABLE_ON_DEMAND},
 	{"On Break", CC_AGENT_STATUS_ON_BREAK},
+	{"Outgoing", CC_AGENT_STATUS_OUTGOING},
+    {"Meeting", CC_AGENT_STATUS_MEETING},
 	{NULL, 0}
 
 };
@@ -477,6 +481,7 @@ struct cc_queue {
 	switch_time_t last_agent_exist_check;
 
 	switch_bool_t skip_agents_with_external_calls;
+	switch_bool_t max_wait_time_wait_inflight;
 
 	switch_xml_config_item_t config[CC_QUEUE_CONFIGITEM_COUNT];
 	switch_xml_config_string_options_t config_str_pool;
@@ -582,6 +587,7 @@ cc_queue_t *queue_set_config(cc_queue_t *queue)
 	SWITCH_CONFIG_SET_ITEM(queue->config[i++], "agent-no-answer-status", SWITCH_CONFIG_STRING, 0, &queue->agent_no_answer_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), &queue->config_str_pool, NULL, NULL);
 
 	SWITCH_CONFIG_SET_ITEM(queue->config[i++], "skip-agents-with-external-calls", SWITCH_CONFIG_BOOL, 0, &queue->skip_agents_with_external_calls, SWITCH_TRUE, NULL, NULL, NULL);
+	SWITCH_CONFIG_SET_ITEM(queue->config[i++], "max-wait-time-wait-inflight", SWITCH_CONFIG_BOOL, 0, &queue->max_wait_time_wait_inflight, SWITCH_TRUE, NULL, NULL, NULL);
 
 	switch_assert(i < CC_QUEUE_CONFIGITEM_COUNT);
 
@@ -932,6 +938,16 @@ cc_status_t cc_agent_del(const char *agent)
 	cc_status_t result = CC_STATUS_SUCCESS;
 
 	char *sql;
+
+  char res[256];
+
+  /* Used to stop any active callback */
+  sql = switch_mprintf("SELECT uuid FROM members WHERE serving_agent = '%q' AND serving_system = 'single_box' AND NOT state = 'Answered'", agent);
+  cc_execute_sql2str(NULL, NULL, sql, res, sizeof(res));
+  switch_safe_free(sql);
+  if (!switch_strlen_zero(res)) {
+    switch_core_session_hupall_matching_var("cc_member_pre_answer_uuid", res, SWITCH_CAUSE_ORIGINATOR_CANCEL);
+  }
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Deleted Agent %s\n", agent);
 	sql = switch_mprintf("DELETE FROM agents WHERE name = '%q';"
@@ -2325,6 +2341,13 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK)))) {
 		contact_agent = SWITCH_FALSE;
 	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_OUTGOING)))) {
+		contact_agent = SWITCH_FALSE;
+	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_MEETING)))) {
+		contact_agent = SWITCH_FALSE;
+	}
+
 	/* XXX callcenter_track app can update this counter after we selected this agent on database */
 	if (cbt->skip_agents_with_external_calls && atoi(agent_external_calls_count) > 0) {
 		contact_agent = SWITCH_FALSE;
@@ -2855,7 +2878,7 @@ void *SWITCH_THREAD_FUNC cc_member_thread_run(switch_thread_t *thread, void *obj
 		/* Make the Caller Leave if he went over his max wait time */
 		if (queue->max_wait_time > 0 && queue->max_wait_time <=  time_now - m->t_member_called) {
 			/* timeout reached, check if we're originating at this time and give caller a one more chance */
-			if (switch_channel_test_app_flag_key(CC_APP_KEY, member_channel, CC_APP_AGENT_CONNECTING)) {
+			if (queue->max_wait_time_wait_inflight && switch_channel_test_app_flag_key(CC_APP_KEY, member_channel, CC_APP_AGENT_CONNECTING)) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_DEBUG, "Member %s <%s> in queue '%s' reached max wait time and we're connecting, waiting for agent to be connected...\n", m->member_cid_name, m->member_cid_number, m->queue_name);
 				for (;;) {
 					if (!switch_channel_test_app_flag_key(CC_APP_KEY, member_channel, CC_APP_AGENT_CONNECTING)) {
@@ -3201,6 +3224,9 @@ SWITCH_STANDARD_APP(callcenter_function)
 				switch_channel_set_variable(member_channel, "cc_exit_key", buf);
 				h->member_cancel_reason = CC_MEMBER_CANCEL_REASON_EXIT_WITH_KEY;
 				break;
+			} else if (status == SWITCH_STATUS_NOTFOUND) {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_ERROR, "Music on hold file not found '%s', continuing wait with no audio\n", cur_moh);
+				moh_valid = SWITCH_FALSE;
 			} else if (!SWITCH_READ_ACCEPTABLE(status)) {
 				break;
 			}
