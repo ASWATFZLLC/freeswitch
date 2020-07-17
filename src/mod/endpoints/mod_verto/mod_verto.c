@@ -4301,6 +4301,10 @@ static int start_jsock(verto_profile_t *profile, ws_socket_t sock, int family)
 #if defined(TCP_KEEPINTVL)
 	setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&flag, sizeof(flag));
 #endif
+#if defined(TCP_KEEPCNT)
+        flag = 2;
+        setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&flag, sizeof(flag));
+#endif
 
 	td = switch_core_alloc(jsock->pool, sizeof(*td));
 
