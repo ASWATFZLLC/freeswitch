@@ -5471,6 +5471,38 @@ SWITCH_STANDARD_API(verto_contact_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+SWITCH_STANDARD_API(verto_pickup_function)
+{
+	int success = 0;
+	char *uuid = (char *) cmd;
+	switch_core_session_t *lsession = NULL;
+
+	if (uuid && (lsession = switch_core_session_locate(uuid))) {
+		verto_pvt_t *tech_pvt = NULL;
+		if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
+			cJSON *jmsg = NULL, *params = NULL;
+			jsock_t *jsock = NULL;
+			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
+				jmsg = jrpc_new_req("verto.pickup", tech_pvt->call_id, &params);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+
+				switch_thread_rwlock_unlock(jsock->rwlock);
+
+				success = 1;
+			}
+		}
+		switch_core_session_rwunlock(lsession);
+	}
+
+	if (success) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERROR\n");
+	}
+
+	return SWITCH_STATUS_SUCCESS;
+}
+
 
 static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session,
 												  switch_event_t *var_event,
@@ -6233,6 +6265,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 
 	SWITCH_ADD_API(api_interface, "verto", "Verto API", verto_function, "syntax");
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
+	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
