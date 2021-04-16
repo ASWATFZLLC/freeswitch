@@ -5512,7 +5512,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s ABCD SURYA\n", profile->name);
 		}
 
-	return "+OK\n";
+	return SWITCH_STATUS_SUCCESS;
 }
 
 
