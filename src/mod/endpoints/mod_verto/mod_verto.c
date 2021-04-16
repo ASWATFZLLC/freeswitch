@@ -5506,7 +5506,6 @@ SWITCH_STANDARD_API(verto_pickup_function)
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	verto_profile_t *profile = NULL;
-	jsock_t *jsock;
 
 		for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s ABCD SURYA\n", profile->name);
