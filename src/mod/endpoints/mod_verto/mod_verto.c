@@ -5508,7 +5508,20 @@ SWITCH_STANDARD_API(verto_dial_function)
 	verto_profile_t *profile = NULL;
 
 		for(profile = verto_globals.profile_head; profile; profile = profile->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s ABCD SURYA\n", profile->name);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "profile -> %s\n", profile->name);
+		}
+
+		for (vhost = profile->vhosts; vhost; vhost = vhost->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "vhost %s -> %s -> %s -> %s -> %s -> %s\n", vhost->name, vhost->domain, vhost->alias, vhost->root, vhost->auth_realm, vhost->auth_user);
+		}
+
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %s -> %s -> %s\n", jsock->name, jsock->uid, jsock->id, jsock->domain, jsock->uuid_str, jsock->profile);
+		
+			char *tmpname = switch_mprintf("%s::%s@%s", profile->name, jsock->id, jsock->domain);
+			stream->write_function(stream, "%25s\t%s\t  %40s\t%s (%s)\n", tmpname, "client", jsock->name, (!zstr(jsock->uid)));
+			cc++;
+			switch_safe_free(tmpname);
 		}
 
 	return SWITCH_STATUS_SUCCESS;
