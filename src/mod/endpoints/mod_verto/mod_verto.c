@@ -5512,9 +5512,15 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+
+		switch_mutex_lock(profile->mutex);
+
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s\n", jsock->uid);
-			if ((position_name = jsock->uid)) {
+
+			if (jsock->ready && zstr(jsock->uid) && zstr(position_name) && strcmp(position_name, jsock->uid)) {
+
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
 				jmsg = jrpc_new_req("verto.dial", jsock->uid, &params);
@@ -5525,9 +5531,12 @@ SWITCH_STANDARD_API(verto_dial_function)
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "not matched %s -> %s\n", position_name, jsock->uid);
 			}
 		}
+		switch_mutex_unlock(profile->mutex);
 	}
 
-		if (success) {
+	switch_mutex_unlock(verto_globals.mutex);
+
+	if (success) {
 		stream->write_function(stream, "+OK\n");
 	} else {
 		stream->write_function(stream, "-ERROR\n");
