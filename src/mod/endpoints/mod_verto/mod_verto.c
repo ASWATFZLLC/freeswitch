@@ -5506,10 +5506,12 @@ SWITCH_STANDARD_API(verto_pickup_function)
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
-	char *position_name = (char *) cmd;
+	char *argv[2] = { 0 };
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
-	cJSON *jmsg = NULL, *params = NULL;
+	cJSON *jmsg = NULL;
+	char *position_name = argv[0];
+	char *number_to_dial = argv[1];
 
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 
@@ -5517,13 +5519,13 @@ SWITCH_STANDARD_API(verto_dial_function)
 
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %d -> %d\n", jsock->uid, position_name, zstr(jsock->uid), jsock->ready);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %d -> %d\n", jsock->uid, position_name, number_to_dial, zstr(jsock->uid), jsock->ready);
 
 			if (jsock->ready && (position_name = jsock->uid)) {
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
-				jmsg = jrpc_new_req("verto.dial", jsock->uid, &params);
+				jmsg = jrpc_new_req("verto.dial", jsock->uid, &number_to_dial);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				switch_thread_rwlock_unlock(jsock->rwlock);
 				success = 1;
