@@ -5513,7 +5513,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s\n", jsock->uid);
-			if (position_name = jsock->uid) {
+			if ((position_name = jsock->uid)) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
 				cJSON *jmsg = NULL, *params = NULL;
