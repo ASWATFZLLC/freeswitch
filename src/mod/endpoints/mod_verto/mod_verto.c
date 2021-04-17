@@ -5517,7 +5517,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %d -> %d\n", jsock->uid, position_name, (position_name = jsock->uid), zstr(jsock->uid), jsock->ready);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %d -> %d\n", jsock->uid, position_name, zstr(jsock->uid), jsock->ready);
 
 			if (jsock->ready && (position_name = jsock->uid)) {
 
