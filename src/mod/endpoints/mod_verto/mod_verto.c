@@ -5515,6 +5515,8 @@ SWITCH_STANDARD_API(verto_dial_function)
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s\n", jsock->uid);
 			if (position_name = jsock->uid) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
+
+				cJSON *jmsg = NULL, *params = NULL;
 				
 				jmsg = jrpc_new_req("verto.dial", jsock->uid, &params);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
