@@ -5505,22 +5505,32 @@ SWITCH_STANDARD_API(verto_pickup_function)
 
 SWITCH_STANDARD_API(verto_dial_function)
 {
+	int success = 0;
+	char *position_name = (char *) cmd;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
-	verto_vhost_t *vhost;
 
-		for(profile = verto_globals.profile_head; profile; profile = profile->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "profile -> %s\n", profile->name);
-
-			for (vhost = profile->vhosts; vhost; vhost = vhost->next) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "vhost %s -> %s -> %s -> %s -> %s\n", vhost->domain, vhost->alias, vhost->root, vhost->auth_realm, vhost->auth_user);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s\n", jsock->uid);
+			if (position_name = jsock->uid) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
+				
+				jmsg = jrpc_new_req("verto.dial", jsock->uid, &params);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				switch_thread_rwlock_unlock(jsock->rwlock);
+				success = 1;
+			} else {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "not matched %s -> %s\n", position_name, jsock->uid);
 			}
-
-			for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %s -> %s\n", jsock->name, jsock->uid, jsock->id, jsock->domain, jsock->uuid_str);
-			}
-
 		}
+	}
+
+		if (success) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERROR\n");
+	}
 
 	return SWITCH_STATUS_SUCCESS;
 }
