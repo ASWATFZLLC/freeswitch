@@ -5509,19 +5509,19 @@ SWITCH_STANDARD_API(verto_dial_function)
 	int success = 0;
 	int argc;
 	char *mycmd = NULL;
-	char *argv[2];
+	char *argv[4];
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
 
-	if ((argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) < 2) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage -> %s -> %s ->\n", argv[0], argv[1]);
+	if ((argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) < 4) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage -> %s -> %s -> %s -> %s ->\n", argv[0], argv[1], argv[2], argv[3]);
 		goto done;
 	}
 
-	position_name = argv[0];
-	number_to_dial = argv[1];
+	position_name = argv[2];
+	number_to_dial = argv[3];
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "ARGV %s -> %s\n", position_name, number_to_dial);
 
