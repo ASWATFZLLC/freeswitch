@@ -5507,7 +5507,7 @@ SWITCH_STANDARD_API(verto_pickup_function)
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
-	int argc = 0;
+	int argc;
 	char *mycmd = NULL;
 	char *argv[2];
 	verto_profile_t *profile = NULL;
@@ -5515,7 +5515,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
 
-	if (!(argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) || !argv[0]) {
+	if ((argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) < 2) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage -> %s -> %s ->\n", argv[0], argv[1]);
 		goto done;
 	}
