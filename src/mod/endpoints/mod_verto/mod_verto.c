@@ -5503,6 +5503,7 @@ SWITCH_STANDARD_API(verto_pickup_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+#define VERTO_DIAL_SYNTAX "<position_name> <number_to_dial>"
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
@@ -5510,8 +5511,10 @@ SWITCH_STANDARD_API(verto_dial_function)
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
-	char *position_name = argv[0];
-	char *number_to_dial = argv[1];
+	char *position_name, *number_to_dial = NULL;
+
+	position_name = argv[0];
+	number_to_dial = argv[1];
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "ARGV %s -> %s\n", position_name, number_to_dial);
 
@@ -6312,7 +6315,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto", "Verto API", verto_function, "syntax");
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
-	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, "<position_name> <number_to_dial>");
+	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
