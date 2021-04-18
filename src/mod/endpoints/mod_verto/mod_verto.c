@@ -5514,31 +5514,32 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
 
-	stream->write_function(stream, "zstr(cmd) %s ->\n", zstr(cmd));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "zstr(cmd) %s ->\n", zstr(cmd));
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "sizeof(argv) %s ->\n", sizeof(argv));
 
 
-	stream->write_function(stream, "sizeof(argv) %s ->\n", sizeof(argv));
 
-	stream->write_function(stream, "sizeof(argv[0]) 2 %s ->\n", sizeof(argv[0]));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"sizeof(argv[0]) 2 %s ->\n", sizeof(argv[0]));
 
-	stream->write_function(stream, "divide 3 %s ->\n", (sizeof(argv) / sizeof(argv[0])));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "divide 3 %s ->\n", (sizeof(argv) / sizeof(argv[0])));
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 	}
 
-	stream->write_function(stream, "mycmd %s ->\n", mycmd);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"mycmd %s ->\n", mycmd);
 
 
-	stream->write_function(stream, "argc %s ->\n", argc);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"argc %s ->\n", argc);
 
 	if (!argc) {
-		stream->write_function(stream, "-ERR invalid args\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"-ERR invalid args\n");
 		goto end;
 	}
 
 	if (argc < 2) {
-		stream->write_function(stream, "-ERR invalid number of args\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"-ERR invalid number of args\n");
 		goto end;
 	}
 
