@@ -5190,6 +5190,7 @@ SWITCH_STANDARD_API(verto_function)
 	if (!strcasecmp(argv[0], "help")) {
 		stream->write_function(stream, "%s", usage_string);
 		goto done;
+		// do comparisoon this way later
 	} else if (!strcasecmp(argv[0], "status")) {
 		func = cmd_status;
 	} else if (!strcasecmp(argv[0], "xmlstatus")) {
@@ -5507,11 +5508,18 @@ SWITCH_STANDARD_API(verto_pickup_function)
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
+	int argc = 0;
+	char *mycmd = NULL;
 	char *argv[2] = { 0 };
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
+
+	if (!(argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) || !argv[0]) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage\n");
+		goto done;
+	}
 
 	position_name = argv[0];
 	number_to_dial = argv[1];
@@ -5549,6 +5557,8 @@ SWITCH_STANDARD_API(verto_dial_function)
 		stream->write_function(stream, "-ERROR\n");
 	}
 
+  done:
+	switch_safe_free(mycmd);
 	return SWITCH_STATUS_SUCCESS;
 }
 
