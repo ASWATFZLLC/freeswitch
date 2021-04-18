@@ -5190,7 +5190,6 @@ SWITCH_STANDARD_API(verto_function)
 	if (!strcasecmp(argv[0], "help")) {
 		stream->write_function(stream, "%s", usage_string);
 		goto done;
-		// do comparisoon this way later
 	} else if (!strcasecmp(argv[0], "status")) {
 		func = cmd_status;
 	} else if (!strcasecmp(argv[0], "xmlstatus")) {
