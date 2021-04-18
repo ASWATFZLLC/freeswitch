@@ -5514,6 +5514,8 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
 
+	stream->write_function(stream, "abcd inside");
+
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "zstr(cmd) %s ->\n", zstr(cmd));
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "sizeof(argv) %s ->\n", sizeof(argv));
