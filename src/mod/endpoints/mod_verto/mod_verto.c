@@ -5509,19 +5509,42 @@ SWITCH_STANDARD_API(verto_dial_function)
 	int success = 0;
 	int argc;
 	char *mycmd = NULL;
-	char *argv[4];
+	char *argv[2];
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
 
-	if ((argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) < 4) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage -> %s -> %s -> %s -> %s ->\n", argv[0], argv[1], argv[2], argv[3]);
-		goto done;
+	stream->write_function(stream, "zstr(cmd) %s ->\n", zstr(cmd));
+
+
+	stream->write_function(stream, "sizeof(argv) %s ->\n", sizeof(argv));
+
+	stream->write_function(stream, "sizeof(argv[0]) 2 %s ->\n", sizeof(argv[0]));
+
+	stream->write_function(stream, "divide 3 %s ->\n", (sizeof(argv) / sizeof(argv[0])));
+
+	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
+		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 	}
 
-	position_name = argv[2];
-	number_to_dial = argv[3];
+	stream->write_function(stream, "mycmd %s ->\n", mycmd);
+
+
+	stream->write_function(stream, "argc %s ->\n", argc);
+
+	if (!argc) {
+		stream->write_function(stream, "-ERR invalid args\n");
+		goto end;
+	}
+
+	if (argc < 2) {
+		stream->write_function(stream, "-ERR invalid number of args\n");
+		goto end;
+	}
+
+	position_name = argv[0];
+	number_to_dial = argv[1];
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "ARGV %s -> %s\n", position_name, number_to_dial);
 
@@ -5556,7 +5579,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 		stream->write_function(stream, "-ERROR\n");
 	}
 
-  done:
+  end:
 	switch_safe_free(mycmd);
 	return SWITCH_STATUS_SUCCESS;
 }
