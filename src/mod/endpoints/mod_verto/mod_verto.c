@@ -5507,7 +5507,7 @@ SWITCH_STANDARD_API(verto_pickup_function)
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
-	int argc;
+	int argc = 0;
 	char *mycmd = NULL;
 	char *argv[2];
 	verto_profile_t *profile = NULL;
