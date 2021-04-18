@@ -5516,15 +5516,15 @@ SWITCH_STANDARD_API(verto_dial_function)
 
 	stream->write_function(stream, "abcd inside");
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "zstr(cmd) %s ->\n", zstr(cmd));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "zstr(cmd) %d ->\n", zstr(cmd));
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "sizeof(argv) %s ->\n", sizeof(argv));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "sizeof(argv) %lu ->\n", sizeof(argv));
 
 
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"sizeof(argv[0]) 2 %s ->\n", sizeof(argv[0]));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"sizeof(argv[0]) 2 %lu ->\n", sizeof(argv[0]));
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "divide 3 %s ->\n", (sizeof(argv) / sizeof(argv[0])));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "divide 3 %lu ->\n", (sizeof(argv) / sizeof(argv[0])));
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
@@ -5533,7 +5533,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"mycmd %s ->\n", mycmd);
 
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"argc %s ->\n", argc);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"argc %d ->\n", argc);
 
 	if (!argc) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"-ERR invalid args\n");
