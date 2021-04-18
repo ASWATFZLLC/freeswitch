@@ -5562,9 +5562,9 @@ SWITCH_STANDARD_API(verto_dial_function)
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
-				if (number_to_dial) cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
+				if (number_to_dial) cJSON_AddItemToObject(params, "number", number_to_dial);
 
-				jmsg = jrpc_new_req("verto.dial", jsock->uid, &params);
+				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 			} else {
