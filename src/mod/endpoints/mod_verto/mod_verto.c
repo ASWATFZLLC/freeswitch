@@ -5504,13 +5504,13 @@ SWITCH_STANDARD_API(verto_pickup_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_DIAL_SYNTAX "<position_name> <number_to_dial>"
+#define VERTO_DIAL_SYNTAX "verto_dial <position_name> <number_to_dial>"
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
 	int argc = 0;
 	char *mycmd = NULL;
-	char *argv[2] = { 0 };
+	char *argv[2];
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
