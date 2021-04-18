@@ -5517,7 +5517,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	char *position_name, *number_to_dial = NULL;
 
 	if (!(argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])))) || !argv[0]) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid usage -> %s -> %s ->\n", argv[0], argv[1]);
 		goto done;
 	}
 
