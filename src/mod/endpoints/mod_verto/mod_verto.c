@@ -5562,7 +5562,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
-				if (number_to_dial) cJSON_AddItemToObject(params, "number", number_to_dial);
+				if (number_to_dial) cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
@@ -6349,7 +6349,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto", "Verto API", verto_function, "syntax");
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
-	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, "<position_name> <number_to_dial>");
+	SWITCH_ADD_API(api_interface, "verto dial", "Request client to dial the number", verto_dial_function, "<position_name> <number_to_dial>");
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
