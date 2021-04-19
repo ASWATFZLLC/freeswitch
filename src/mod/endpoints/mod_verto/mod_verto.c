@@ -5503,6 +5503,7 @@ SWITCH_STANDARD_API(verto_pickup_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+#define VERTO_DIAL_SYNTAX "<position_name> <number_to_dial>"
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
@@ -5514,57 +5515,33 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial = NULL;
 
-	stream->write_function(stream, "abcd inside");
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "zstr(cmd) %d ->\n", zstr(cmd));
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "sizeof(argv) %lu ->\n", sizeof(argv));
-
-
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"sizeof(argv[0]) 2 %lu ->\n", sizeof(argv[0]));
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "divide 3 %lu ->\n", (sizeof(argv) / sizeof(argv[0])));
-
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"mycmd %s ->\n", mycmd);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"argc %d ->\n", argc);
-
 	if (!argc) {
-		stream->write_function(stream, "-ERR invalid args\n");
+		stream->write_function(stream, "-ERR invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
 		goto end;
 	}
 
 	if (argc < 2) {
-		stream->write_function(stream, "-ERR invalid number of args\n");
+		stream->write_function(stream, "-ERR invalid number of args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
 		goto end;
 	}
 
 	position_name = argv[0];
 	number_to_dial = argv[1];
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "ARGV %s -> %s\n", position_name, number_to_dial);
-
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
-
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %s\n", jsock->uid, jsock->id, position_name, number_to_dial);
-
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
-
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
-			} else {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "not matched %s -> %s\n", position_name, jsock->uid);
+				break;
 			}
 		}
 		switch_mutex_unlock(profile->mutex);
@@ -5574,7 +5551,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	if (success) {
 		stream->write_function(stream, "+OK\n");
 	} else {
-		stream->write_function(stream, "-ERROR\n");
+		stream->write_function(stream, "-ERR\n");
 	}
 
   end:
@@ -6345,7 +6322,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto", "Verto API", verto_function, "syntax");
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
-	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, "<position_name> <number_to_dial>");
+	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
