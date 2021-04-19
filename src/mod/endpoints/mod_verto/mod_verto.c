@@ -5556,13 +5556,13 @@ SWITCH_STANDARD_API(verto_dial_function)
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %d -> %d\n", jsock->uid, position_name, number_to_dial, zstr(jsock->uid), jsock->ready);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %s -> %d -> %d -> %d\n", jsock->uid, jsock->id, position_name, number_to_dial, !zstr(jsock->id), !strcmp(jsock->id, position_name));
 
-			if (jsock->ready && (position_name = jsock->uid)) {
-
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
-				if (number_to_dial) cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
+				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
+				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
 
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
