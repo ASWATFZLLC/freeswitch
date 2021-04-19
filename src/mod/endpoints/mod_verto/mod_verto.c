@@ -5531,17 +5531,15 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"mycmd %s ->\n", mycmd);
-
-
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"argc %d ->\n", argc);
 
 	if (!argc) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"-ERR invalid args\n");
+		stream->write_function(stream, "-ERR invalid args\n");
 		goto end;
 	}
 
 	if (argc < 2) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"-ERR invalid number of args\n");
+		stream->write_function(stream, "-ERR invalid number of args\n");
 		goto end;
 	}
 
@@ -5561,10 +5559,8 @@ SWITCH_STANDARD_API(verto_dial_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
 
-				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
-				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
-
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
+				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 			} else {
