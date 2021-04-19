@@ -5556,7 +5556,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %s -> %s -> %s -> %s\n", jsock->uid, jsock->id, position_name, number_to_dial, !zstr(jsock->id), !strcmp(jsock->id, position_name));
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "JSOCK %s -> %s -> %s -> %s\n", jsock->uid, jsock->id, position_name, number_to_dial);
 
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "matched  %s -> %s\n", position_name, jsock->uid);
