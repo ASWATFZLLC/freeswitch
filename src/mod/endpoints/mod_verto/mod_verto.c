@@ -5531,7 +5531,6 @@ SWITCH_STANDARD_API(verto_dial_function)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "abcd %s ->\n", jsock->id);
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
