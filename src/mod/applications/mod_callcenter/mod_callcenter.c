@@ -2500,7 +2500,6 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 				}
 
 				if (!strcasecmp(cbt->strategy, "top-down")) {
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya762 ->\n");
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
 					if (member_session) {
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
@@ -2510,7 +2509,8 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 					}
 				}
 				cc_agent_update("state", cc_agent_state2str(CC_AGENT_STATE_RECEIVING), h->agent_name);
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya77 -> %s \n", h->agent_name);
+				
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya77 -> %s -> %s \n", cbt->strategy, h->agent_name);
 
 				sql = switch_mprintf(
 						"UPDATE tiers SET state = '%q' WHERE agent = '%q' AND queue = '%q';"
@@ -2719,15 +2719,17 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
 			if ((last_agent_tier_position = switch_channel_get_variable(member_channel, "cc_last_agent_tier_position"))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya451 -> %s \n", last_agent_tier_position);
 				position = atoi(last_agent_tier_position);
 			}
 			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya452 -> %s \n", last_agent_tier_level);
 				level = atoi(last_agent_tier_level);
 			}
 			switch_core_session_rwunlock(member_session);
 		}
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45 -> %s -> %s \n", last_agent_tier_position, last_agent_tier_level);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45 -> %d -> %d \n", position, level);
 
 		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call, 1 as dyn_order FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
