@@ -2897,7 +2897,7 @@ void *SWITCH_THREAD_FUNC cc_agent_dispatch_thread_run(switch_thread_t *thread, v
 				local_epoch_time_now(NULL),
 				cc_member_state2str(CC_MEMBER_STATE_WAITING), cc_member_state2str(CC_MEMBER_STATE_ABANDONED), cc_member_state2str(CC_MEMBER_STATE_TRYING), cc_member_state2str(CC_MEMBER_STATE_TRYING), globals.cc_instance_id);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya31 %d --> %s\n", globals.running, sql);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "surya31 %d --> %s\n", globals.running, sql);
 
 		cc_execute_sql_callback(NULL /* queue */, NULL /* mutex */, sql, members_callback, NULL /* Call back variables */);
 		switch_safe_free(sql);
