@@ -2449,7 +2449,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 		sql = switch_mprintf("SELECT count(*) FROM members WHERE serving_agent = '%q' AND serving_system = '%q' AND uuid = '%q' AND instance_id = '%q'",
 				agent_name, agent_system, cbt->member_uuid, globals.cc_instance_id);
 
-switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya76 -> %s \n", sql);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya76 -> %s \n", sql);
 
 		cc_execute_sql2str(NULL, NULL, sql, res, sizeof(res));
 		switch_safe_free(sql);
@@ -2489,8 +2489,6 @@ switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya76 -> %s \n", sq
 				h->busy_delay_time = atoi(agent_busy_delay_time);
 				h->no_answer_delay_time = atoi(agent_no_answer_delay_time);
 				h->agent_no_answer_status = cbt->agent_no_answer_status;
-
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya761 -> %s \n", h->queue_strategy);
 
 				if (!strcasecmp(cbt->strategy, "ring-progressively")) {
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
@@ -2715,7 +2713,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		int position = 0, level = 0;
 		const char *last_agent_tier_position, *last_agent_tier_level;
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45 -> %s -> %s \n", last_agent_tier_position, last_agent_tier_level);
 
 
 		if (member_session) {
@@ -2729,6 +2726,8 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 			}
 			switch_core_session_rwunlock(member_session);
 		}
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45 -> %s -> %s \n", last_agent_tier_position, last_agent_tier_level);
 
 		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call, 1 as dyn_order FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
