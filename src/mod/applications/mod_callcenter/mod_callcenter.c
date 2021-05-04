@@ -2490,7 +2490,7 @@ switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya76 -> %s \n", sq
 				h->no_answer_delay_time = atoi(agent_no_answer_delay_time);
 				h->agent_no_answer_status = cbt->agent_no_answer_status;
 
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya761 -> %s \n", cbt->strategy);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya761 -> %s \n", h->queue_strategy);
 
 				if (!strcasecmp(cbt->strategy, "ring-progressively")) {
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
@@ -2502,7 +2502,7 @@ switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya76 -> %s \n", sq
 				}
 
 				if (!strcasecmp(cbt->strategy, "top-down")) {
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya762 -> %s \n", cbt->strategy);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya762 ->\n");
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
 					if (member_session) {
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
@@ -2624,11 +2624,14 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
  switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya43 -->\n");
 	/* Checking for cleanup Abandonded calls from the db */
 	if (!strcasecmp(member_state, cc_member_state2str(CC_MEMBER_STATE_ABANDONED))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya44 -->\n");
 		switch_time_t abandoned_epoch = atoll(member_abandoned_epoch);
 		if (abandoned_epoch == 0) {
 			abandoned_epoch = atoll(cbt.member_joined_epoch);
 		}
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya44 -> %ld -->\n", abandoned_epoch);
+
+
 		/* Once we pass a certain point, we want to get rid of the abandoned call */
 		if (abandoned_epoch + discard_abandoned_after < local_epoch_time_now(NULL)) {
 			sql = switch_mprintf("DELETE FROM members WHERE uuid = '%q' AND instance_id = '%q' AND (abandoned_epoch = '%" SWITCH_TIME_T_FMT "' OR joined_epoch = '%q')", cbt.member_uuid, cbt.member_system, abandoned_epoch, cbt.member_joined_epoch);
@@ -2707,12 +2710,14 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	cbt.agent_found = SWITCH_FALSE;
 
 	if (!strcasecmp(queue->strategy, "top-down")) {
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45 \n");
-
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		int position = 0, level = 0;
 		const char *last_agent_tier_position, *last_agent_tier_level;
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45 -> %s -> %s \n", last_agent_tier_position, last_agent_tier_level);
+
+
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
