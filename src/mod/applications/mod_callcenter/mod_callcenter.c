@@ -40,6 +40,7 @@
 #define CC_SQLITE_DB_NAME "callcenter"
 #define CC_APP_KEY "mod_callcenter"
 
+#define CC_AGENT_OFFERED_SIZE 512
 
 /* Prototypes */
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_callcenter_shutdown);
