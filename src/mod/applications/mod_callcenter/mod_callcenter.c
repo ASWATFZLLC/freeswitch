@@ -2797,7 +2797,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				level = atoi(last_agent_tier_level);
 			}
 
-			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered")
+			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s \n", agent_already_offerd);
 
@@ -2927,6 +2927,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
+					switch_channel_set_variable(member_channel, "cc_agent_level_offered", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
 			}
