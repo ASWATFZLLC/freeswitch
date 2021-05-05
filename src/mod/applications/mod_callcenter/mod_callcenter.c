@@ -2787,7 +2787,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		int level = 0;
 		const char *last_agent_tier_level;
-		const char *agent_already_offerd = "";
+		const char *agent_already_offerd = ",";
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
