@@ -2522,7 +2522,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
 						if (cc_agent_level_offered) {
-							char dest[100000];
+							char dest[CC_AGENT_OFFERED_SIZE];
 							snprintf(dest, sizeof dest, "%s,%s", cc_agent_level_offered, h->agent_name);
 
 							switch_channel_set_variable(member_channel, "cc_agent_level_offered", dest);
@@ -2786,6 +2786,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		int level = 0;
 		const char *last_agent_tier_level;
+		const char *agent_already_offerd = "";
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
@@ -2794,6 +2795,11 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya852 -> %s \n", last_agent_tier_level);
 				level = atoi(last_agent_tier_level);
 			}
+
+			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered")
+
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s \n", agent_already_offerd);
+
 			switch_core_session_rwunlock(member_session);
 		}
 
@@ -2803,10 +2809,12 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
 				" AND tiers.level > %d"
+				" AND NOT (name = any (string_to_array(%s, ',')))"
 				" ORDER BY tiers_level asc, random(), agents_last_offered_call",
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
-				level
+				level,
+				agent_already_offerd
 				);
 
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya86 -> %s \n", sql);
