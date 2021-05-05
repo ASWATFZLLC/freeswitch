@@ -2501,9 +2501,21 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 				if (!strcasecmp(cbt->strategy, "top-down")) {
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya93 -> \n");
 					if (member_session) {
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_position", agent_tier_position);
+						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
+						switch_core_session_rwunlock(member_session);
+					}
+				}
+
+				if (!strcasecmp(cbt->strategy, "top-down-level")) {
+					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
+
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya94 -> \n");
+					if (member_session) {
+						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 						switch_core_session_rwunlock(member_session);
 					}
@@ -2753,7 +2765,35 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya46 -> %s \n", sql);
 
-		sql_order_by = switch_mprintf("position, random()");
+	} else	if (!strcasecmp(queue->strategy, "top-down-level")) {
+		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
+		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
+		int level = 0;
+		const char *last_agent_tier_level;
+
+		if (member_session) {
+			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
+
+			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya852 -> %s \n", last_agent_tier_level);
+				level = atoi(last_agent_tier_level);
+			}
+			switch_core_session_rwunlock(member_session);
+		}
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85 -> %d -> %d \n", level);
+
+		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call, 2 as dyn_order FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
+				" WHERE tiers.queue = '%q'"
+				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
+				" AND tiers.level > %d"
+				" ORDER BY tiers_level asc, agents_last_offered_call, random()",
+				queue_name,
+				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
+				level
+				);
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya86 -> %s \n", sql);
 
 	} else if (!strcasecmp(queue->strategy, "round-robin")) {
 		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call, 1 as dyn_order FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
@@ -2853,6 +2893,14 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_position", NULL);
+					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
+					switch_core_session_rwunlock(member_session);
+				}
+			} else if (!strcasecmp(queue->strategy, "top-down-level")) {
+				switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8411 -> \n");
+				if (member_session) {
+					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
