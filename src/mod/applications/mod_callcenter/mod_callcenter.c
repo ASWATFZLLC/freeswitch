@@ -2520,9 +2520,18 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 
 						cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
+
+						if (cc_agent_level_offered) {
+							switch_channel_set_variable(member_channel, "cc_agent_level_offered", h->agent_name);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s \n", cc_agent_level_offered);
+						} else {
+							switch_channel_set_variable(member_channel, "cc_agent_level_offered", h->agent_name);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45113 -> \n");
 						}
-						switch_core_session_rwunlock(member_session);
+
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4511 -> %s \n", cc_agent_level_offered);
 					}
+						switch_core_session_rwunlock(member_session);
 				}
 				cc_agent_update("state", cc_agent_state2str(CC_AGENT_STATE_RECEIVING), h->agent_name);
 				
