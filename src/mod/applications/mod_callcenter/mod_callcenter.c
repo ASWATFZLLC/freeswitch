@@ -2797,7 +2797,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				level = atoi(last_agent_tier_level);
 			}
 
-			if (!switch_channel_get_variable(member_channel, "cc_agent_level_offered")){
+			if (switch_true(switch_channel_get_variable(member_channel, "cc_agent_level_offered"))){
 				agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 			}
 
