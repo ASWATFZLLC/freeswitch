@@ -2519,23 +2519,24 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 							char *cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
-							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89891 -> %s \n", cc_agent_level_offered);
-							if(cc_agent_level_offered) {
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89891 -> %s -> %s \n", h->agent_name, cc_agent_level_offered);
+							// if(cc_agent_level_offered) {
 							
-								char cc_agent_level_offered_set[10000]
+							// 	char cc_agent_level_offered_set[10000]
 
-								strcat(cc_agent_level_offered_set, cc_agent_level_offered);
-								strcat(cc_agent_level_offered_set, ",");
-								strcat(cc_agent_level_offered_set, h->agent_name);
+							// 	strcat(cc_agent_level_offered_set, cc_agent_level_offered);
+							// 	strcat(cc_agent_level_offered_set, ",");
+							// 	strcat(cc_agent_level_offered_set, h->agent_name);
 
-								switch_channel_set_variable(member_channel, "cc_agent_level_offered", cc_agent_level_offered);
-								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89892 -> %s \n", cc_agent_level_offered);
-							} else {
+							// 	switch_channel_set_variable(member_channel, "cc_agent_level_offered", cc_agent_level_offered);
+							// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89892 -> %s \n", cc_agent_level_offered);
+							// } else {
 								
-								switch_channel_set_variable(member_channel, "cc_agent_level_offered", h->agent_name);
+							// 	switch_channel_set_variable(member_channel, "cc_agent_level_offered", h->agent_name);
 
-								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89893 -> %s \n", cc_agent_level_offered);
-							}
+							// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89893 -> %s \n", cc_agent_level_offered);
+							// }
+
 						}
 						switch_core_session_rwunlock(member_session);
 					}
