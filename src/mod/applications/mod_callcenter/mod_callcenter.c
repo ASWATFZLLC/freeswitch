@@ -2299,6 +2299,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	const char *agent_type = argv[16];
 	const char *agent_uuid = argv[17];
 	const char *agent_external_calls_count = argv[18];
+	const char *cc_agent_level_offered = NULL;
 
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
@@ -2517,12 +2518,8 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 					if (member_session) {
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
-							char *cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
-							if (cc_agent_level_offered) {
-								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "89891 -> %s -> %s \n", h->agent_name, cc_agent_level_offered);
-							} else {
-								switch_channel_set_variable(member_channel, "cc_agent_level_offered", h->agent_name);
-							}
+
+						cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 						}
 						switch_core_session_rwunlock(member_session);
 					}
