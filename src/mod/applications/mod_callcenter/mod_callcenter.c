@@ -2787,7 +2787,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
 				" AND tiers.level > %d"
-				" ORDER BY tiers_level asc, agents_last_offered_call, random()",
+				" ORDER BY tiers_level asc, random(), agents_last_offered_call",
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				level
