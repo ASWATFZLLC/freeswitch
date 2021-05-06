@@ -2524,7 +2524,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 						if (cc_agent_level_offered) {
 							char dest[CC_AGENT_OFFERED_SIZE];
-							snprintf(dest, sizeof dest, "%s,%s", cc_agent_level_offered, h->agent_name);
+							snprintf(dest, sizeof dest, "%s,'%s'", cc_agent_level_offered, h->agent_name);
 
 							switch_channel_set_variable(member_channel, "cc_agent_level_offered", dest);
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s -> %s \n", cc_agent_level_offered, dest);
