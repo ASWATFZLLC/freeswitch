@@ -2787,7 +2787,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		int level = 0;
 		const char *last_agent_tier_level;
-		const char *agent_already_offerd = ",";
+		const char *agent_already_offerd
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
@@ -2797,11 +2797,10 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				level = atoi(last_agent_tier_level);
 			}
 
-			if (switch_true(switch_channel_get_variable(member_channel, "cc_agent_level_offered"))){
-				agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
-			}
+			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s \n", agent_already_offerd);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85232 -> %s \n", switch_str_nil(agent_already_offerd));
 
 			switch_core_session_rwunlock(member_session);
 		}
@@ -2817,7 +2816,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				level,
-				agent_already_offerd
+				switch_str_nil(agent_already_offerd)
 				);
 
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya86 -> %s \n", sql);
