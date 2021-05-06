@@ -2520,18 +2520,18 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 
-						if ((cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered"))) {
+						if ((agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered"))) {
 							char dest[CC_AGENT_OFFERED_SIZE];
-							snprintf(dest, sizeof dest, "%s,'%s'", cc_agent_level_offered, h->agent_name);
+							snprintf(dest, sizeof dest, "%s,'%s'", agent_level_offered, h->agent_name);
 
 							switch_channel_set_variable(member_channel, "cc_agent_level_offered", dest);
-							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s -> %s \n", cc_agent_level_offered, dest);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s -> %s \n", agent_level_offered, dest);
 						} else {
 							switch_channel_set_variable(member_channel, "cc_agent_level_offered", h->agent_name);
-							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45113 -> \n");
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45113 -> %s -> %s \n", h->agent_name, agent_level_offered);
 						}
 
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4511 -> %s \n", cc_agent_level_offered);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4511 -> %s \n", agent_level_offered);
 					}
 						switch_core_session_rwunlock(member_session);
 				}
