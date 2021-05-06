@@ -2337,7 +2337,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 			/* Multiple the tier level by the tier wait time */
 		} else if (cbt->tier_rule_wait_multiply_level == SWITCH_TRUE && (long) local_epoch_time_now(NULL) - atol(cbt->member_joined_epoch) >= atoi(agent_tier_level) * (int)cbt->tier_rule_wait_second) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya63 -> %d -> %ld -> %ld -> %d -> %d \n", cbt->tier_rule_wait_multiply_level, local_epoch_time_now(NULL), atol(cbt->member_joined_epoch), atoi(agent_tier_level), cbt->tier_rule_wait_second);
-			
+   
 			cbt->tier = atoi(agent_tier_level);
 			cbt->tier_agent_available = 0;
 			/* Just check if joined is bigger than next tier wait time */
@@ -2538,7 +2538,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_core_session_rwunlock(member_session);
 				}
 				cc_agent_update("state", cc_agent_state2str(CC_AGENT_STATE_RECEIVING), h->agent_name);
-				
+    
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya77 -> %s -> %s \n", cbt->strategy, h->agent_name);
 
 				sql = switch_mprintf(
@@ -2816,9 +2816,8 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				level,
-				""
+				((agent_already_offerd != NULL) ? agent_already_offerd : "''")
 				);
-		}
 
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya86 -> %s \n", sql);
 
