@@ -2273,6 +2273,7 @@ struct agent_callback {
 
 	int tier;
 	int tier_agent_available;
+	int next_agent_level;
 };
 typedef struct agent_callback agent_callback_t;
 
@@ -2305,11 +2306,13 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
 	cbt->agent_found = SWITCH_TRUE;
+	cbt->next_agent_level = argv[20];
 
 	/* Check if we switch to a different tier, if so, check if we should continue further for that member */
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya601 -> %s \n", agent_name);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya602 -> %d \n", atoi(agent_tier_level));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya603 -> %d \n", cbt->next_agent_level);
 
 	if (cbt->tier_rules_apply == SWITCH_TRUE && atoi(agent_tier_level) > cbt->tier) {
 		/* Continue if no agent was logged in in the previous tier and noagent = true */
@@ -2502,7 +2505,6 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						char agent_list[CC_AGENT_OFFERED_SIZE];
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
-						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 
 						if ((agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered"))) {
 							snprintf(agent_list, sizeof agent_list, "%s,'%s'", agent_level_offered, h->agent_name);
@@ -2753,37 +2755,45 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	} else	if (!strcasecmp(queue->strategy, "top-down-level")) {
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
-		int level = 0;
-		const char *last_agent_tier_level;
 		const char *agent_already_offerd = NULL;
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya852 -> %s \n", last_agent_tier_level);
-				level = atoi(last_agent_tier_level);
-			}
-
 			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s \n", agent_already_offerd);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s -> %d \n", agent_already_offerd, cbt->tier_agent_available);
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85232 -> %s \n", switch_str_nil(agent_already_offerd));
 
 			switch_core_session_rwunlock(member_session);
 		}
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85 -> %d \n", level);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85 -> %d \n", cbt->next_agent_level);
 
-		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
+			sql = switch_mprintf("SELECT * FROM ("
+				" SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call"
+				" FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
 				" AND tiers.level > %d"
 				" AND name NOT IN (%s)"
-				" ORDER BY tiers_level asc, random(), agents_last_offered_call",
+				" ORDER BY tiers_level ASC, random(), agents_last_offered_call"
+				" ) a FULL JOIN ("
+				" SELECT tiers.level as next_agent_level, name  as next_agent_name"
+				" FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
+				" WHERE tiers.queue = '%q'"
+				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
+				" AND tiers.level > %d"
+				" AND name NOT IN (%s)"
+				" ORDER BY next_agent_level ASC OFFSET 1"
+				" ) b ON a.name = b.next_agent_name",
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
-				level,
+				((cbt->next_agent_level) ? cbt->next_agent_level : 0),
+				((agent_already_offerd != NULL) ? agent_already_offerd : "''"),
+				queue_name,
+				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
+				((cbt->next_agent_level) ? cbt->next_agent_level : 0),
 				((agent_already_offerd != NULL) ? agent_already_offerd : "''")
 				);
 
@@ -2895,7 +2905,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8411 -> \n");
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
-					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_channel_set_variable(member_channel, "cc_agent_level_offered", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
