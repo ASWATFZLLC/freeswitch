@@ -2816,7 +2816,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				level,
-				agent_already_offerd
+				""
 				);
 
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya86 -> %s \n", sql);
