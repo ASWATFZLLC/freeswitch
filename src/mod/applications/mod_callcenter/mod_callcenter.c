@@ -2520,9 +2520,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 
-						cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
-
-						if (cc_agent_level_offered) {
+						if ((cc_agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered"))) {
 							char dest[CC_AGENT_OFFERED_SIZE];
 							snprintf(dest, sizeof dest, "%s,'%s'", cc_agent_level_offered, h->agent_name);
 
