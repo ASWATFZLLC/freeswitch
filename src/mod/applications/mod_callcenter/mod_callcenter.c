@@ -2300,7 +2300,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	const char *agent_type = argv[16];
 	const char *agent_uuid = argv[17];
 	const char *agent_external_calls_count = argv[18];
-	const char *cc_agent_level_offered = NULL;
+	const char *agent_level_offered = NULL;
 
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
