@@ -2273,7 +2273,7 @@ struct agent_callback {
 
 	int tier;
 	int tier_agent_available;
-	int next_agent_level;
+	const char *next_agent_level;
 };
 typedef struct agent_callback agent_callback_t;
 
@@ -2312,7 +2312,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya601 -> %s \n", agent_name);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya602 -> %d \n", atoi(agent_tier_level));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya603 -> %d \n", cbt->next_agent_level);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya603 -> %s \n", cbt->next_agent_level);
 
 	if (cbt->tier_rules_apply == SWITCH_TRUE && atoi(agent_tier_level) > cbt->tier) {
 		/* Continue if no agent was logged in in the previous tier and noagent = true */
@@ -2756,19 +2756,25 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		const char *agent_already_offerd = NULL;
+		int level = 0;
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
+			if (cbt->next_agent_level) {
+				level = atoi(cbt->next_agent_level);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya451 -> %s -> %d \n", cbt->next_agent_level, level);
+			}
+
 			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s -> %d \n", agent_already_offerd, cbt->tier_agent_available);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s -> %d -> %d \n", agent_already_offerd, cbt->tier_agent_available, level);
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85232 -> %s \n", switch_str_nil(agent_already_offerd));
 
 			switch_core_session_rwunlock(member_session);
 		}
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85 -> %d \n", cbt->next_agent_level);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85 -> %s \n", cbt->next_agent_level);
 
 			sql = switch_mprintf("SELECT * FROM ("
 				" SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call"
@@ -2779,7 +2785,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" AND name NOT IN (%s)"
 				" ORDER BY tiers_level ASC, random(), agents_last_offered_call"
 				" ) a FULL JOIN ("
-				" SELECT tiers.level as next_agent_level, name  as next_agent_name"
+				" SELECT tiers.level AS next_agent_level, name AS next_agent_name"
 				" FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
@@ -2789,11 +2795,11 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" ) b ON a.name = b.next_agent_name",
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
-				((cbt->next_agent_level) ? cbt->next_agent_level : 0),
+				level,
 				((agent_already_offerd != NULL) ? agent_already_offerd : "''"),
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
-				((cbt->next_agent_level) ? cbt->next_agent_level : 0),
+				level,
 				((agent_already_offerd != NULL) ? agent_already_offerd : "''")
 				);
 
