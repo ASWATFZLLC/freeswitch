@@ -2784,7 +2784,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
-				" AND tiers.level > %d"
+				" AND tiers.level >= %d"
 				" AND name NOT IN (%s)"
 				" ORDER BY tiers_level ASC, random(), agents_last_offered_call"
 				" ) a FULL JOIN ("
@@ -2792,7 +2792,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
-				" AND tiers.level > %d"
+				" AND tiers.level >= %d"
 				" AND name NOT IN (%s)"
 				" ORDER BY next_agent_level ASC OFFSET 1"
 				" ) b ON a.name = b.next_agent_name",
