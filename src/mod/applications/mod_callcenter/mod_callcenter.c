@@ -2500,7 +2500,6 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 					if (member_session) {
 						char agent_list[CC_AGENT_OFFERED_SIZE];
-						int cc_next_agent_level;
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
@@ -2512,9 +2511,9 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45113 -> %s -> %s -> %s \n", agent_list, h->agent_name, agent_level_offered);
 						}
 
-						if ((cc_next_agent_level = atoi(next_agent_level))) {
-							switch_channel_set_variable(member_channel, "cc_next_agent_level", cc_next_agent_level);
-							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4512 -> %d \n", cc_next_agent_level);
+						if (next_agent_level) {
+							switch_channel_set_variable(member_channel, "cc_next_agent_level", next_agent_level);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4512 -> %d \n", next_agent_level);
 						}
 
 						switch_channel_set_variable(member_channel, "cc_agent_level_offered", agent_list);
