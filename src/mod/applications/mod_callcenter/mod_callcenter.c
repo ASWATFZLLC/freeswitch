@@ -2890,7 +2890,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8411 -> \n");
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
-					switch_channel_set_variable(member_channel, "cc_agent_level_offered", NULL);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
