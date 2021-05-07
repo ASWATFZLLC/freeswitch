@@ -2455,7 +2455,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 					}
 				}
 
-				if (!strcasecmp(cbt->strategy, "top-down-level")) {
+				if (!strcasecmp(cbt->strategy, "top-down-level-by-level")) {
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
 
 					if (member_session) {
@@ -2681,7 +2681,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				level
 				);
-	} else	if (!strcasecmp(queue->strategy, "top-down-level")) {
+	} else	if (!strcasecmp(queue->strategy, "top-down-level-by-level")) {
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		const char *agent_already_offerd = NULL;
@@ -2804,7 +2804,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
-			} else if (!strcasecmp(queue->strategy, "top-down-level")) {
+			} else if (!strcasecmp(queue->strategy, "top-down-level-by-level")) {
 				switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
