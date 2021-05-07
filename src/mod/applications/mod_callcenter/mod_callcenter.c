@@ -2301,6 +2301,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	const char *agent_uuid = argv[17];
 	const char *agent_external_calls_count = argv[18];
 	const char *agent_level_offered = NULL;
+	const char *next_agent_level = argv[20];
 
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
@@ -2499,7 +2500,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 					if (member_session) {
 						char agent_list[CC_AGENT_OFFERED_SIZE];
-						int next_agent_level = argv[20];
+						int cc_next_agent_level = atoi(next_agent_level)
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
@@ -2512,7 +2513,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						}
 
 						switch_channel_set_variable(member_channel, "cc_agent_level_offered", agent_list);
-						switch_channel_set_variable(member_channel, "cc_next_agent_level", next_agent_level)
+						switch_channel_set_variable(member_channel, "cc_next_agent_level", cc_next_agent_level)
 
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4511 -> %s \n", agent_level_offered);
 					}
@@ -2755,6 +2756,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		const char *agent_already_offerd = NULL;
+		const char *next_agent_level = NULL;
 		int level = 0;
 
 		if (member_session) {
