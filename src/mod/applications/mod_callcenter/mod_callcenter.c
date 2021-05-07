@@ -2513,7 +2513,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						}
 
 						if ((cc_next_agent_level = atoi(next_agent_level))) {
-							switch_channel_set_variable(member_channel, "cc_next_agent_level", cc_next_agent_level)
+							switch_channel_set_variable(member_channel, "cc_next_agent_level", cc_next_agent_level);
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya4512 -> %d \n", cc_next_agent_level);
 						}
 
