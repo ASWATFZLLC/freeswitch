@@ -2692,7 +2692,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
 			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya452 -> %s \n", last_agent_tier_level);
 				level = atoi(last_agent_tier_level);
 			}
 
