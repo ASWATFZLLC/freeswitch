@@ -2497,14 +2497,13 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 				if (!strcasecmp(cbt->strategy, "top-down-level")) {
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
 
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya94 -> %s \n", next_agent_level);
 					if (member_session) {
 						char agent_list[CC_AGENT_OFFERED_SIZE];
-						char next_agent_level = argv[20];
+						int next_agent_level = argv[20];
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-						if (agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered")) {
+						if ((agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered"))) {
 							snprintf(agent_list, sizeof agent_list, "%s,'%s'", agent_level_offered, h->agent_name);
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s -> %s -> %s \n", agent_list, h->agent_name, agent_level_offered);
 						} else {
