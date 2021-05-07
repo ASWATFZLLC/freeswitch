@@ -2301,17 +2301,16 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	const char *agent_uuid = argv[17];
 	const char *agent_external_calls_count = argv[18];
 	const char *agent_level_offered = NULL;
+	const char *next_agent_level = NULL;
 
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
 	cbt->agent_found = SWITCH_TRUE;
-	const char *next_agent_level = argv[20];
 
 	/* Check if we switch to a different tier, if so, check if we should continue further for that member */
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya601 -> %s \n", agent_name);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya602 -> %d \n", atoi(agent_tier_level));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya603 -> %s \n", next_agent_level);
 
 	if (cbt->tier_rules_apply == SWITCH_TRUE && atoi(agent_tier_level) > cbt->tier) {
 		/* Continue if no agent was logged in in the previous tier and noagent = true */
@@ -2497,17 +2496,20 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 				}
 
 				if (!strcasecmp(cbt->strategy, "top-down-level")) {
+					next_agent_level = argv[20];
 					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
 
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya94 -> \n");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya94 -> %s \n", next_agent_level);
 					if (member_session) {
 						char agent_list[CC_AGENT_OFFERED_SIZE];
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
+						switch_channel_set_variable(member_channel, "cc_next_agent_level", next_agent_level)
+
 						if ((agent_level_offered = switch_channel_get_variable(member_channel, "cc_agent_level_offered"))) {
 							snprintf(agent_list, sizeof agent_list, "%s,'%s'", agent_level_offered, h->agent_name);
-							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s -> %agent_callback_t -> %s \n", agent_list, h->agent_name, agent_level_offered);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45112 -> %s -> %s -> %s \n", agent_list, h->agent_name, agent_level_offered);
 						} else {
 							snprintf(agent_list, sizeof agent_list, "'%s'", h->agent_name);
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45113 -> %s -> %s -> %s \n", agent_list, h->agent_name, agent_level_offered);
@@ -2760,14 +2762,13 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-			if (next_agent_level) {
+			if ((next_agent_level = switch_channel_get_variable(member_channel, "cc_next_agent_level"))) {
 				level = atoi(next_agent_level);
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya451 -> %s -> %d \n", next_agent_level, level);
 			}
 
 			agent_already_offerd = switch_channel_get_variable(member_channel, "cc_agent_level_offered");
 
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya8523 -> %s -> %d -> %d \n", agent_already_offerd, cbt->tier_agent_available, level);
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya85232 -> %s \n", switch_str_nil(agent_already_offerd));
 
 			switch_core_session_rwunlock(member_session);
@@ -2824,7 +2825,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				);
 
 	} else {
-
 		if (!strcasecmp(queue->strategy, "longest-idle-agent")) {
 			sql_order_by = switch_mprintf("level, agents.last_bridge_end, position");
 		} else if (!strcasecmp(queue_strategy, "agent-with-least-talk-time")) {
@@ -2911,6 +2911,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_agent_level_offered", NULL);
+					switch_channel_set_variable(member_channel, "cc_next_agent_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
 			}
