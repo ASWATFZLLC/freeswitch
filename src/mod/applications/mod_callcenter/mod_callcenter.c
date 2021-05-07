@@ -2594,7 +2594,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		switch_safe_free(sql);
 		goto end;
 	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya42 -->\n");
 		queue_name = strdup(queue->name);
 		queue_strategy = strdup(queue->strategy);
 		tier_rules_apply = queue->tier_rules_apply;
@@ -2616,15 +2615,12 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		queue_rwunlock(queue);
 	}
 
- switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya43 -->\n");
 	/* Checking for cleanup Abandonded calls from the db */
 	if (!strcasecmp(member_state, cc_member_state2str(CC_MEMBER_STATE_ABANDONED))) {
 		switch_time_t abandoned_epoch = atoll(member_abandoned_epoch);
 		if (abandoned_epoch == 0) {
 			abandoned_epoch = atoll(cbt.member_joined_epoch);
 		}
-
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya44 -> %ld -->\n", abandoned_epoch);
 
 
 		/* Once we pass a certain point, we want to get rid of the abandoned call */
@@ -2775,7 +2771,6 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				" WHERE tiers.queue = '%q'"
 				" AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
 				" AND tiers.level >= %d"
-				" AND name NOT IN (%s)"
 				" ORDER BY tiers_level ASC, random(), agents_last_offered_call",
 				queue_name,
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
