@@ -40,7 +40,7 @@
 #define CC_SQLITE_DB_NAME "callcenter"
 #define CC_APP_KEY "mod_callcenter"
 
-#define CC_OFFERED_AGENT_LIST_SIZE 10000
+#define CC_OFFERED_AGENT_LIST_SIZE 2048
 
 /* Prototypes */
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_callcenter_shutdown);
@@ -2460,17 +2460,24 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 					if (member_session) {
 						char offered_agent_list[CC_OFFERED_AGENT_LIST_SIZE];
+						const char *last_agent_tier_level = NULL;
+						const char *current_agent_tier_level = agent_tier_level;
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-						if ((offered_level_agent = switch_channel_get_variable(member_channel, "cc_offered_level_agent"))) {
+						if ((offered_level_agent = switch_channel_get_variable(member_channel, "cc_offered_level_agent")) &&
+							(last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_current_agent_tier_level")) &&
+							(last_agent_tier_level != NULL) && 
+							(atoi(current_agent_tier_level) == atoi(last_agent_tier_level)))
+						{
 							snprintf(offered_agent_list, sizeof offered_agent_list, "%s,'%s'", offered_level_agent, h->agent_name);
 						} else {
 							snprintf(offered_agent_list, sizeof offered_agent_list, "'%s'", h->agent_name);
 						}
 
 						switch_channel_set_variable(member_channel, "cc_offered_level_agent", offered_agent_list);
-						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
+						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", current_agent_tier_level);
+						switch_channel_set_variable(member_channel, "cc_current_agent_tier_level", current_agent_tier_level);
 					}
 						switch_core_session_rwunlock(member_session);
 				}
@@ -2685,14 +2692,14 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		const char *agent_already_offered_list = NULL;
-		const char *last_agent_tier_level;
+		const char *current_agent_tier_level;
 		int level = 0;
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
-				level = atoi(last_agent_tier_level);
+			if ((current_agent_tier_level = switch_channel_get_variable(member_channel, "cc_current_agent_tier_level"))) {
+				level = atoi(current_agent_tier_level);
 			}
 
 			agent_already_offered_list = switch_channel_get_variable(member_channel, "cc_offered_level_agent");
@@ -2809,6 +2816,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_offered_level_agent", NULL);
+					switch_channel_set_variable(member_channel, "cc_current_agent_tier_level", NULL);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
