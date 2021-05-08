@@ -2511,7 +2511,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya45113 -> %s -> %s -> %s \n", agent_list, h->agent_name, agent_level_offered);
 						}
 
-						xyz_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level")
+						xyz_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level");
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "9999 -> %s -> %s \n", agent_tier_level, xyz_tier_level);
 
 						switch_channel_set_variable(member_channel, "cc_agent_level_offered", agent_list);
