@@ -2499,8 +2499,8 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 					if (member_session) {
 						char agent_list[CC_AGENT_OFFERED_SIZE];
-						char *last_agent_tier_level = NULL;
-						char *current_agent_tier_level = agent_tier_level;
+						const char *last_agent_tier_level = NULL;
+						const char *current_agent_tier_level = agent_tier_level;
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
