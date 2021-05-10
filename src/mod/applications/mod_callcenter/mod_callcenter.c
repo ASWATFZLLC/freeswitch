@@ -2300,7 +2300,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	const char *agent_type = argv[16];
 	const char *agent_uuid = argv[17];
 	const char *agent_external_calls_count = argv[18];
-	const char *offered_level_agent = NULL;
+	const char *current_level_offered_agents = NULL;
 
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
@@ -2461,25 +2461,23 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 					if (member_session) {
 						char offered_agent_list[CC_OFFERED_AGENT_LIST_SIZE];
 						const char *last_agent_tier_level = NULL;
-						const char *current_agent_tier_level = agent_tier_level;
 
 						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-						if ((offered_level_agent = switch_channel_get_variable(member_channel, "cc_offered_level_agent")) &&
-							(last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_current_agent_tier_level")) &&
+						if ((current_level_offered_agents = switch_channel_get_variable(member_channel, "cc_current_level_offered_agents")) &&
+							(last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level")) &&
 							(last_agent_tier_level != NULL) && 
-							(atoi(current_agent_tier_level) == atoi(last_agent_tier_level)))
+							(atoi(agent_tier_level) == atoi(last_agent_tier_level)))
 						{
-							snprintf(offered_agent_list, sizeof offered_agent_list, "%s,'%s'", offered_level_agent, h->agent_name);
+							snprintf(offered_agent_list, sizeof offered_agent_list, "%s,'%s'", current_level_offered_agents, h->agent_name);
 						} else {
 							snprintf(offered_agent_list, sizeof offered_agent_list, "'%s'", h->agent_name);
 						}
 
-						switch_channel_set_variable(member_channel, "cc_offered_level_agent", offered_agent_list);
-						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", current_agent_tier_level);
-						switch_channel_set_variable(member_channel, "cc_current_agent_tier_level", current_agent_tier_level);
-					}
+						switch_channel_set_variable(member_channel, "cc_current_level_offered_agents", offered_agent_list);
+						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 						switch_core_session_rwunlock(member_session);
+					}
 				}
 
 				cc_agent_update("state", cc_agent_state2str(CC_AGENT_STATE_RECEIVING), h->agent_name);
@@ -2691,18 +2689,18 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	} else	if (!strcasecmp(queue->strategy, "top-down-level-by-level")) {
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
-		const char *agent_already_offered_list = NULL;
-		const char *current_agent_tier_level;
+		const char *current_level_offered_agents = NULL;
+		const char *last_agent_tier_level;
 		int level = 0;
 
 		if (member_session) {
 			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 
-			if ((current_agent_tier_level = switch_channel_get_variable(member_channel, "cc_current_agent_tier_level"))) {
-				level = atoi(current_agent_tier_level);
+			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
+				level = atoi(last_agent_tier_level);
 			}
 
-			agent_already_offered_list = switch_channel_get_variable(member_channel, "cc_offered_level_agent");
+			current_level_offered_agents = switch_channel_get_variable(member_channel, "cc_current_level_offered_agents");
 			switch_core_session_rwunlock(member_session);
 		}
 
@@ -2716,7 +2714,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 			queue_name,
 			cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 			level,
-			((agent_already_offered_list != NULL) ? agent_already_offered_list : "''")
+			((current_level_offered_agents != NULL) ? current_level_offered_agents : "''")
 			);
 	} else if (!strcasecmp(queue->strategy, "round-robin")) {
 		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call, 1 as dyn_order FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
@@ -2815,8 +2813,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
-					switch_channel_set_variable(member_channel, "cc_offered_level_agent", NULL);
-					switch_channel_set_variable(member_channel, "cc_current_agent_tier_level", NULL);
+					switch_channel_set_variable(member_channel, "cc_current_level_offered_agents", NULL);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
