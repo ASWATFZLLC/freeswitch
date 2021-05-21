@@ -5515,7 +5515,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial, *uuid = NULL;
 	switch_core_session_t *lsession = NULL;
-	int tries = 200;
+	int tries = 20;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
@@ -5530,14 +5530,10 @@ SWITCH_STANDARD_API(verto_dial_function)
 	position_name = argv[1];
 	number_to_dial = argv[2];	
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya111 -> %s -> %s -> %s \n", uuid, position_name, number_to_dial);
-
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya121 -> \n");
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya122 -> \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
@@ -5551,19 +5547,17 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 	switch_mutex_unlock(verto_globals.mutex);
 
+	/*.wait till 20 seconds for call to start */
 	if (success == 1) {
 		while(--tries > 0) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
 			if ((lsession = switch_core_session_locate(uuid))) {
 				success = 2;
 				switch_core_session_rwunlock(lsession);
 				break;
 			}
-			switch_yield(500000);
+			switch_yield(500000); /* timeout for 500 milli seconds */
 		}
 	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 -> %d -> \n", success);
 
 	if (success == 1) {
 		stream->write_function(stream, "-ERR Time out.\n");
