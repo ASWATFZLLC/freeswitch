@@ -5513,9 +5513,10 @@ SWITCH_STANDARD_API(verto_dial_function)
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
-	char *position_name, *number_to_dial, uuid = NULL;
+	char *position_name, *number_to_dial, *uuid = NULL;
 	switch_core_session_t *lsession = NULL;
-	switch_status_t status, status2 = NULL;
+	switch_status_t status, status2 = SWITCH_STATUS_SUCCESS;
+	int tries = 20;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
@@ -5544,36 +5545,35 @@ SWITCH_STANDARD_API(verto_dial_function)
 				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya123 -> \n");
-
-
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
-				success = 1;
 
-				if (uuid && (lsession = switch_core_session_locate(uuid))) {
-					verto_pvt_t *tech_pvt = NULL;
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> \n");
-					if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
-						status = verto_connect(tech_pvt->session, "verto.invite");
-						status2 = verto_connect(tech_pvt->session, "verto.attach");
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 --> %d ---> %d \n",status, status2);
+					while(--tries > 0) {
+						if ((lsession = switch_core_session_locate(uuid))) {
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
+							success = 1;
+							break;
+						}
+						switch_yield(500);
 					}
+
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1261, %d -> \n", success);
+				if (success != 1) {
+					success = 2;
 				}
-
-
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> \n");
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1262, %d -> \n", success);
 				break;
-
-
 			}
 		}
 		switch_mutex_unlock(profile->mutex);
 	}
 	switch_mutex_unlock(verto_globals.mutex);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya127 -> \n");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya127 -> %d -> \n", success);
 
-	if (success) {
+	if (success == 1) {
 		stream->write_function(stream, "+OK\n");
+	} else if (success == 2) {
+		stream->write_function(stream, "-TIMEOUT\n");
 	} else {
 		stream->write_function(stream, "-ERR\n");
 	}
