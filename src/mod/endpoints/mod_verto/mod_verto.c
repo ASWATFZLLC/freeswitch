@@ -5544,7 +5544,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
-				message_sent = 1
+				message_sent = 1;
 				break;
 			}
 		}
