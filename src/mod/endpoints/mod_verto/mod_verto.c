@@ -5535,15 +5535,15 @@ SWITCH_STANDARD_API(verto_dial_function)
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya121 -> \n",);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya121 -> \n");
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya122 -> \n",);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya122 -> \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
 
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya123 -> \n",);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya123 -> \n");
 
 
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
@@ -5551,16 +5551,16 @@ SWITCH_STANDARD_API(verto_dial_function)
 
 				if (uuid && (lsession = switch_core_session_locate(uuid))) {
 					verto_pvt_t *tech_pvt = NULL;
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> \n",);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> \n");
 					if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
 						status = verto_connect(tech_pvt->session, "verto.invite")
 						status2 = verto_connect(session, "verto.attach");
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 %s ---> %s--> -> \n",status, statu2);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 %s ---> %s--> -> \n",status, status2);
 					}
 				}
 
 
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> \n",);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> \n");
 				break;
 
 
