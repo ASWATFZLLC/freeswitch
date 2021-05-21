@@ -5515,7 +5515,6 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial, *uuid = NULL;
 	switch_core_session_t *lsession = NULL;
-	switch_status_t status, status2 = SWITCH_STATUS_SUCCESS;
 	int tries = 20;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
