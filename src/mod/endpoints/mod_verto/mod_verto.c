@@ -5546,14 +5546,13 @@ SWITCH_STANDARD_API(verto_dial_function)
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya123 -> \n");
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 
-					while(tries > 0) {
-							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
+					while(--tries > 0) {
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
 						if ((lsession = switch_core_session_locate(uuid))) {
 							success = 1;
 							break;
 						}
-						switch_yield(500);
-						tries -= 1;
+						switch_yield(500000);
 					}
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1261, %d -> \n", success);
