@@ -5503,45 +5503,74 @@ SWITCH_STANDARD_API(verto_pickup_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_DIAL_SYNTAX "<position_name> <number_to_dial>"
+#define VERTO_DIAL_SYNTAX "<uuid> <position_name> <number_to_dial>"
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
 	int argc = 0;
 	char *mycmd = NULL;
-	char *argv[2];
+	char *argv[3];
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
-	char *position_name, *number_to_dial = NULL;
+	char *position_name, *number_to_dial, uuid = NULL;
+	switch_core_session_t *lsession = NULL;
+	switch_status_t status, status2 = NULL;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 	}
 
-	if (!argc || argc != 2) {
+	if (!argc || argc != 3) {
 		stream->write_function(stream, "-ERR invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
 		goto end;
 	}
 
-	position_name = argv[0];
-	number_to_dial = argv[1];
+	uuid = argv[0];
+	position_name = argv[1];
+	number_to_dial = argv[2];	
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya111 -> %s -> %s -> %s \n", uuid, position_name, number_to_dial);
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya121 -> \n",);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya122 -> \n",);
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
+				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
+
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya123 -> \n",);
+
+
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
+
+				if (uuid && (lsession = switch_core_session_locate(uuid))) {
+					verto_pvt_t *tech_pvt = NULL;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> \n",);
+					if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
+						status = verto_connect(tech_pvt->session, "verto.invite")
+						status2 = verto_connect(session, "verto.attach");
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 %s ---> %s--> -> \n",status, statu2);
+					}
+				}
+
+
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> \n",);
 				break;
+
+
 			}
 		}
 		switch_mutex_unlock(profile->mutex);
 	}
 	switch_mutex_unlock(verto_globals.mutex);
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya127 -> \n",);
 
 	if (success) {
 		stream->write_function(stream, "+OK\n");
