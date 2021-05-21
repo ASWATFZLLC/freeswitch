@@ -5515,7 +5515,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial, *uuid = NULL;
 	switch_core_session_t *lsession = NULL;
-	int tries = 20;
+	int tries = 200;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
@@ -5547,8 +5547,8 @@ SWITCH_STANDARD_API(verto_dial_function)
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 
 					while(--tries > 0) {
-						if ((lsession = switch_core_session_locate(uuid))) {
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
+						if ((lsession = switch_core_session_locate(uuid))) {
 							success = 1;
 							break;
 						}
@@ -5556,7 +5556,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 					}
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1261, %d -> \n", success);
-				if (success != 1) {
+				if (success && success != 1) {
 					success = 2;
 				}
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1262, %d -> \n", success);
