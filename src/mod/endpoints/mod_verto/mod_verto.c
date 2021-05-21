@@ -5542,24 +5542,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
-
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya123 -> \n");
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
-
-					while(--tries > 0) {
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
-						if ((lsession = switch_core_session_locate(uuid))) {
-							success = 1;
-							break;
-						}
-						switch_yield(500000);
-					}
-
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1261, %d -> \n", success);
-				if (success && success != 1) {
-					success = 2;
-				}
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1262, %d -> \n", success);
 				break;
 			}
 		}
@@ -5567,7 +5550,22 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 	switch_mutex_unlock(verto_globals.mutex);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya127 -> %d -> \n", success);
+	while(--tries > 0) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
+		if ((lsession = switch_core_session_locate(uuid))) {
+			success = 1;
+			break;
+		}
+		switch_yield(500000);
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 -> %d \n", success);
+	if (success && (success != 1)) {
+		success = 2;
+	}
+
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> %d -> \n", success);
 
 	if (success == 1) {
 		stream->write_function(stream, "+OK\n");
