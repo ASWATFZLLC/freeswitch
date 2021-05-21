@@ -5515,7 +5515,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	char *position_name, *number_to_dial, *uuid = NULL;
 	switch_core_session_t *lsession = NULL;
-	int tries = 20;
+	int tries = 40;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
@@ -5547,7 +5547,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 	switch_mutex_unlock(verto_globals.mutex);
 
-	/*.wait till 20 seconds for call to start */
+	/* wait till 20 seconds for call to start */
 	if (success == 1) {
 		while(--tries > 0) {
 			if ((lsession = switch_core_session_locate(uuid))) {
