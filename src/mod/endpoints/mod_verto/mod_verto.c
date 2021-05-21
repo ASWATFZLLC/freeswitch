@@ -5552,17 +5552,18 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 	switch_mutex_unlock(verto_globals.mutex);
 
-	while(--tries > 0) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
-		if ((lsession = switch_core_session_locate(uuid))) {
-			success = 1;
-			break;
+	if (message_sent) {
+		while(--tries > 0) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
+			if ((lsession = switch_core_session_locate(uuid))) {
+				success = 1;
+				break;
+			}
+			switch_yield(500000);
 		}
-		switch_yield(500000);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 -> %d, %d \n", success, message_sent);
+		if (!success) success = 2;
 	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 -> %d, %d \n", success, message_sent);
-	if (message_sent && !success) success = 2;
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> %d, %d -> \n", success, message_sent);
 
