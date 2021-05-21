@@ -5556,6 +5556,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> %d \n", tries);
 			if ((lsession = switch_core_session_locate(uuid))) {
 				success = 2;
+				switch_core_session_rwunlock(lsession);
 				break;
 			}
 			switch_yield(500000);
