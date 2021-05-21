@@ -5507,6 +5507,7 @@ SWITCH_STANDARD_API(verto_pickup_function)
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
+	int message_sent = 0;
 	int argc = 0;
 	char *mycmd = NULL;
 	char *argv[3];
@@ -5522,7 +5523,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 
 	if (!argc || argc != 3) {
-		stream->write_function(stream, "-ERR invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
+		stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
 		goto end;
 	}
 
@@ -5543,6 +5544,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
 				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				message_sent = 1
 				break;
 			}
 		}
@@ -5559,18 +5561,15 @@ SWITCH_STANDARD_API(verto_dial_function)
 		switch_yield(500000);
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 -> %d \n", success);
-	if (success && (success != 1)) {
-		success = 2;
-	}
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 -> %d, %d \n", success, message_sent);
+	if (message_sent && !success) success = 2;
 
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> %d -> \n", success);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya126 -> %d, %d -> \n", success, message_sent);
 
 	if (success == 1) {
 		stream->write_function(stream, "+OK\n");
 	} else if (success == 2) {
-		stream->write_function(stream, "-TIMEOUT\n");
+		stream->write_function(stream, "-ERR Time out.\n");
 	} else {
 		stream->write_function(stream, "-ERR\n");
 	}
