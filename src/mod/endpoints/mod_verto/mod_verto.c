@@ -5554,7 +5554,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya124 -> \n");
 					if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
 						status = verto_connect(tech_pvt->session, "verto.invite");
-						status2 = verto_connect(session, "verto.attach");
+						status2 = verto_connect(tech_pvt->session, "verto.attach");
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya125 %s ---> %s--> -> \n",status, status2);
 					}
 				}
