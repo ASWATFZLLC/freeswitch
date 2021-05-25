@@ -2306,7 +2306,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 	cbt->agent_found = SWITCH_TRUE;
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya115 -> agents_callback");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya115 -> agents_callback \n");
 
 	/* Check if we switch to a different tier, if so, check if we should continue further for that member */
 
@@ -2331,44 +2331,44 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 
 	/* If Agent is not in a acceptable tier state, continue */
 	if (! (!strcasecmp(agent_tier_state, cc_tier_state2str(CC_TIER_STATE_NO_ANSWER)) || !strcasecmp(agent_tier_state, cc_tier_state2str(CC_TIER_STATE_READY)))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1161 -> agents_callback -> %s", agent_tier_state);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1161 -> agents_callback -> %s \n", agent_tier_state);
 		contact_agent = SWITCH_FALSE;
 	}
 	if (! (!strcasecmp(agent_state, cc_agent_state2str(CC_AGENT_STATE_WAITING)))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1162 -> agents_callback -> %s", agent_state);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1162 -> agents_callback -> %s \n", agent_state);
 		contact_agent = SWITCH_FALSE;
 	}
 	if (! (atol(agent_last_bridge_end) < ((long) local_epoch_time_now(NULL) - atol(agent_wrap_up_time)))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1163 -> agents_callback -> %s -> %s", agent_last_bridge_end, agent_wrap_up_time);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1163 -> agents_callback -> %s -> %s \n", agent_last_bridge_end, agent_wrap_up_time);
 		contact_agent = SWITCH_FALSE;
 	}
 	if (! (atol(agent_ready_time) <= (long) local_epoch_time_now(NULL))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1164 -> agents_callback -> %s", agent_ready_time);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1164 -> agents_callback -> %s \n", agent_ready_time);
 		contact_agent = SWITCH_FALSE;
 	}
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK)))) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1165 -> agents_callback -> %s", agent_status);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1165 -> agents_callback -> %s \n", agent_status);
 		contact_agent = SWITCH_FALSE;
 	}
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_OUTGOING)))) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1166 -> agents_callback -> %s", agent_status);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1166 -> agents_callback -> %s \n", agent_status);
 		contact_agent = SWITCH_FALSE;
 	}
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_MEETING)))) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1167 -> agents_callback -> %s", agent_status);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1167 -> agents_callback -> %s \n", agent_status);
 		contact_agent = SWITCH_FALSE;
 	}
 
 	/* XXX callcenter_track app can update this counter after we selected this agent on database */
 	if (cbt->skip_agents_with_external_calls && atoi(agent_external_calls_count) > 0) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1168 -> agents_callback -> %s -> %s", cbt->skip_agents_with_external_calls, agent_external_calls_count);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya1168 -> agents_callback -> %d -> %s \n", cbt->skip_agents_with_external_calls, agent_external_calls_count);
 		contact_agent = SWITCH_FALSE;
 	}
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya11691 -> agents_callback -> %d", contact_agent);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya11691 -> agents_callback -> %d \n", contact_agent);
 
 	if (contact_agent == SWITCH_FALSE) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya11692 -> agents_callback -> %d", contact_agent);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya11692 -> agents_callback -> %d \n", contact_agent);
 		return 0; /* Continue to next Agent */
 	}
 
@@ -2415,7 +2415,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 		switch_safe_free(sql);
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya117 -> agents_callback -> %s", res);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya117 -> agents_callback -> %s \n", res);
 
 	switch (atoi(res)) {
 		case 0: /* Ok, someone else took it, or user hanged up already */
@@ -2452,7 +2452,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 				h->no_answer_delay_time = atoi(agent_no_answer_delay_time);
 				h->agent_no_answer_status = cbt->agent_no_answer_status;
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya118 -> agents_callback -> %s", bt->strategy);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya118 -> agents_callback -> %s \n", cbt->strategy);
 
 
 				if (!strcasecmp(cbt->strategy, "ring-progressively")) {
@@ -2496,8 +2496,8 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_channel_set_variable(member_channel, "cc_current_level_offered_agents", offered_agent_list);
 						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
 
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya118 -> -> %s", offered_agent_list);
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya119 -> -> %s", agent_tier_level);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya118 -> -> %s \n", offered_agent_list);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya119 -> -> %s \n", agent_tier_level);
 
 						switch_core_session_rwunlock(member_session);
 					}
@@ -2562,7 +2562,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	serving_agent = argv[9];
 	cbt.member_system = argv[10];
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya111 -> members_callback");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya111 -> members_callback \n");
 
 	if (!cbt.queue_name || !(queue = get_queue(cbt.queue_name))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Queue %s not found locally, delete this member\n", cbt.queue_name);
@@ -2791,7 +2791,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				sql_order_by);
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya112 -> %s -> %s",queue->strategy, sql);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya112 -> %s -> %s \n",queue->strategy, sql);
 
 		switch_safe_free(sql_order_by);
 
@@ -2827,7 +2827,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 		queue->last_agent_exist_check = local_epoch_time_now(NULL);
 		if (cbt.agent_found) {
 			queue->last_agent_exist = queue->last_agent_exist_check;
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya113 -> %s", queue->last_agent_exist);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya113 -> %ld \n", queue->last_agent_exist);
 		} else {
 			/* If no agent found in top-down mode, restart to the begining */
 			if (!strcasecmp(queue->strategy, "top-down")) {
@@ -2844,7 +2844,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_current_level_offered_agents", NULL);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya114 ->");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya114 -> \n");
 					switch_core_session_rwunlock(member_session);
 				}
 			}
