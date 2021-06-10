@@ -5503,29 +5503,32 @@ SWITCH_STANDARD_API(verto_pickup_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_DIAL_SYNTAX "<position_name> <number_to_dial>"
+#define VERTO_DIAL_SYNTAX "<uuid> <position_name> <number_to_dial>"
 SWITCH_STANDARD_API(verto_dial_function)
 {
 	int success = 0;
 	int argc = 0;
 	char *mycmd = NULL;
-	char *argv[2];
+	char *argv[3];
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	cJSON *jmsg = NULL, *params = NULL;
-	char *position_name, *number_to_dial = NULL;
+	char *position_name, *number_to_dial, *uuid = NULL;
+	switch_core_session_t *lsession = NULL;
+	int tries = 40;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 	}
 
-	if (!argc || argc != 2) {
-		stream->write_function(stream, "-ERR invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
+	if (!argc || argc != 3) {
+		stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
 		goto end;
 	}
 
-	position_name = argv[0];
-	number_to_dial = argv[1];
+	uuid = argv[0];
+	position_name = argv[1];
+	number_to_dial = argv[2];	
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
@@ -5534,6 +5537,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.dial", NULL, &params);
 				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
+				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 				break;
@@ -5543,7 +5547,21 @@ SWITCH_STANDARD_API(verto_dial_function)
 	}
 	switch_mutex_unlock(verto_globals.mutex);
 
-	if (success) {
+	/* wait till 20 seconds for call to start */
+	if (success == 1) {
+		while(--tries > 0) {
+			if ((lsession = switch_core_session_locate(uuid))) {
+				success = 2;
+				switch_core_session_rwunlock(lsession);
+				break;
+			}
+			switch_yield(500000); /* timeout for 500 milli seconds */
+		}
+	}
+
+	if (success == 1) {
+		stream->write_function(stream, "-ERR Time out.\n");
+	} else if (success == 2) {
 		stream->write_function(stream, "+OK\n");
 	} else {
 		stream->write_function(stream, "-ERR\n");
