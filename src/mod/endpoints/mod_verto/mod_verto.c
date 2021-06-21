@@ -2598,6 +2598,7 @@ static switch_status_t verto_send_media_indication(switch_core_session_t *sessio
 	return status;
 }
 
+// here verto.display
 static switch_status_t messagehook (switch_core_session_t *session, switch_core_session_message_t *msg)
 {
 	switch_status_t r = SWITCH_STATUS_SUCCESS;
@@ -5572,6 +5573,58 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+#define VERTO_SEND2_SYNTAX "<position_name> <message_data>"
+SWITCH_STANDARD_API(verto_send2_function)
+{
+	int success = 0;
+	int argc = 0;
+	char *mycmd = NULL;
+	char *argv[2];
+	verto_profile_t *profile = NULL;
+	jsock_t *jsock;
+	cJSON *jmsg = NULL, *params = NULL, *message_data = NULL;
+	char *position_name = NULL;
+
+	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
+		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
+	}
+
+	if (!argc || argc != 2) {
+		stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+		goto end;
+	}
+
+	position_name = argv[0];
+	message_data = argv[1];
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERR, "surya911 position_name %d\n", position_name);
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				jmsg = jrpc_new_req("verto.send2", NULL, &params);
+				cJSON_AddItemToObject(params, "message_data", message_data);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				success = 1;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	if (success == 1) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERR\n");
+	}
+
+  end:
+	switch_safe_free(mycmd);
+	return SWITCH_STATUS_SUCCESS;
+}
 
 static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session,
 												  switch_event_t *var_event,
@@ -6336,6 +6389,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send2", "Send json data to client", verto_send2_function, VERTO_SEND2_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
