@@ -5593,14 +5593,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// char *position_name = "agent-0001";
 
 	char *mycmd = strdup(cmd);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya900 mycmd -> %s\n", mycmd);
-
-
 	char *position_name = argv[0];
-	char *message_data = strndup(argv[1]);
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 position_name -> %s\n", position_name);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 message_data -> %s\n", message_data);
+	char *message_data = argv[1];
 
 
 	// cJSON_IsString
@@ -5612,6 +5606,10 @@ SWITCH_STANDARD_API(verto_send2_function)
 	jcmd = cJSON_Parse(message_data);
 
 	jdata = cJSON_GetObjectItem(jcmd, "message_data");
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya900 mycmd -> %s\n", mycmd);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 position_name -> %s\n", position_name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 message_data -> %s\n", message_data);
 
 	if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
 		response = cJSON_Print(jcmd);
