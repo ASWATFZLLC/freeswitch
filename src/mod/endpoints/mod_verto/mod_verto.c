@@ -5582,7 +5582,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 	char *argv[2];
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
-	cJSON *jmsg = NULL, *params = NULL, *message_data = NULL;
+	char *ebuf;
+	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
 	char *position_name = NULL;
 
 	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
@@ -5594,10 +5595,29 @@ SWITCH_STANDARD_API(verto_send2_function)
 		goto end;
 	}
 
-	position_name = argv[0];
-	message_data = argv[1];
+// error log
+// 	  CC       mod_verto_la-mod_verto.lo
+// mod_verto.c: In function ‘verto_send2_function’:
+// mod_verto.c:5598:15: error: assignment from incompatible pointer type [-Werror=incompatible-pointer-types]
+//   message_data = argv[1];
+//                ^
+// mod_verto.c:5600:40: error: ‘SWITCH_LOG_ERR’ undeclared (first use in this function)
+//   switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERR, "surya911 position_name %d\n", position_name);
+// const apiCmd = 'json {"command": "callcenter_config","data": {"arguments":"member list"}}'
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERR, "surya911 position_name %d\n", position_name);
+	position_name = argv[0];
+	// message_data = cJSON_Parse(argv[1]);
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %d\n", position_name);
+
+	ebuf = cJSON_Print(argv[1])
+	switch_assert(ebuf);
+	stream->write_function(stream, "-ERR SURYA791 JSON data: %s\n", ebuf);
+
+	if (!(jdata = cJSON_Parse(argv[1]))) {
+		stream->write_function(stream, "-ERR Parse error. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+		goto err;
+	}
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
@@ -5605,7 +5625,9 @@ SWITCH_STANDARD_API(verto_send2_function)
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
-				cJSON_AddItemToObject(params, "message_data", message_data);
+				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
+				cJSON_AddItemToObject(params, "pqrs1", ebuf);
+				cJSON_AddItemToObject(params, "pqrs2", jdata);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 				break;
@@ -5622,6 +5644,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	}
 
   end:
+	// cJSON_Delete(jdata);
 	switch_safe_free(mycmd);
 	return SWITCH_STATUS_SUCCESS;
 }
