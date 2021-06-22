@@ -5599,7 +5599,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 		response = cJSON_PrintUnformatted(jcmd);
 	}
 
-	stream->write_function(stream, "surya911 response %s\n", switch_str_nil(response));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya910 response %s --> %s\n", response, switch_str_nil(response));
+
 
 	// if (!zstr(cmd) && (mycmd = strdup(cmd))) {
 	// 	argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
