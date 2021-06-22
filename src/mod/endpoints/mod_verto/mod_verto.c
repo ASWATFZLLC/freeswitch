@@ -5608,15 +5608,15 @@ SWITCH_STANDARD_API(verto_send2_function)
 	position_name = argv[0];
 	// message_data = cJSON_Parse(argv[1]);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %d\n", position_name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %s\n", position_name);
 
-	ebuf = cJSON_Print(argv[1])
+	ebuf = cJSON_Print(*argv[1])
 	switch_assert(ebuf);
 	stream->write_function(stream, "-ERR SURYA791 JSON data: %s\n", ebuf);
 
 	if (!(jdata = cJSON_Parse(argv[1]))) {
 		stream->write_function(stream, "-ERR Parse error. USAGE: %s\n", VERTO_SEND2_SYNTAX);
-		goto err;
+		goto end;
 	}
 
 	switch_mutex_lock(verto_globals.mutex);
@@ -5626,7 +5626,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
-				cJSON_AddItemToObject(params, "pqrs1", ebuf);
+				cJSON_AddItemToObject(params, "pqrs1", cJSON_CreateString(ebuf));
+				// cJSON_AddItemToObject(params, "pqrs1", ebuf);
 				cJSON_AddItemToObject(params, "pqrs2", jdata);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
