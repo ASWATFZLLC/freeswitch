@@ -5577,16 +5577,17 @@ SWITCH_STANDARD_API(verto_dial_function)
 SWITCH_STANDARD_API(verto_send2_function)
 {
 	int success = 0;
-	int argc = 0;
+	// int argc = 0;
 	// store_cmd_t mycmd;
 	// char *mycmd = NULL;
 	// char *argv[2];
-	cJSON *jcmd = NULL;
+	cJSON *jcmd = NULL, *format = NULL;
+	// cJSON *jcmd = NULL;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	char *response = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
-	char *position_name = NULL;
+	char *position_name = cJSON_GetObjectItem(jcmd, "position_name");;
 
 	jcmd = cJSON_Parse(cmd);
 
@@ -5619,7 +5620,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 //   switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERR, "surya911 position_name %d\n", position_name);
 // const apiCmd = 'json {"command": "callcenter_config","data": {"arguments":"member list"}}'
 
-	position_name = argv[0];
+	// position_name = argv[0];
 	// message_data = cJSON_Parse(argv[1]);
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %s\n", position_name);
@@ -5640,8 +5641,9 @@ SWITCH_STANDARD_API(verto_send2_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
+				cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
 				cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
-				cJSON_AddItemToObject(params, "pqrs11", response);
+				// cJSON_AddItemToObject(params, "pqrs11", response);
 				cJSON_AddItemToObject(params, "pqrs2", jdata);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
@@ -6432,6 +6434,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
 
+	// SWITCH_ADD_JSON_API(json_api_interface, "verto_send2", "Send json data to client", verto_send2_function, VERTO_SEND2_SYNTAX);
 	SWITCH_ADD_JSON_API(json_api_interface, "store", "JSON store", json_store_function, "");
 
 	verto_endpoint_interface = (switch_endpoint_interface_t *) switch_loadable_module_create_interface(*module_interface, SWITCH_ENDPOINT_INTERFACE);
