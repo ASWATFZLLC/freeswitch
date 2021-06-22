@@ -5573,33 +5573,54 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-// #define VERTO_SEND2_SYNTAX "<position_name> <message_data>"
+#define VERTO_SEND2_SYNTAX "<position_name> <message_data>"
 SWITCH_STANDARD_API(verto_send2_function)
 {
+
+
+// argv[0]
 	int success = 0;
 	// int argc = 0;
 	// store_cmd_t mycmd;
 	// char *mycmd = NULL;
-	// char *argv[2];
+	char *argv[2];
 	cJSON *jcmd = NULL, *format = NULL;
 	// cJSON *jcmd = NULL;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	char *response = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
-	char *position_name = "agent-0001";
+	// char *position_name = "agent-0001";
 
-	jcmd = cJSON_Parse(cmd);
+	char *mycmd = strdup(cmd);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya900 mycmd -> %s\n", mycmd);
+
+
+	char *position_name = argv[0];
+	char *message_data = strndup(argv[1]);
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 position_name -> %s\n", position_name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 message_data -> %s\n", message_data);
+
+
+	// cJSON_IsString
+	// cJSON_IsArray
+	// cJSON_IsNull
+	// cJSON_IsInvalid
+	// cJSON_IsObject
+
+	jcmd = cJSON_Parse(message_data);
 
 	jdata = cJSON_GetObjectItem(jcmd, "message_data");
 
 	if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
 		response = cJSON_Print(jcmd);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
 	} else {
 		response = cJSON_PrintUnformatted(jcmd);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 response %s --> %s\n", response, switch_str_nil(response));
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya910 response %s --> %s\n", response, switch_str_nil(response));
 
 
 	// if (!zstr(cmd) && (mycmd = strdup(cmd))) {
@@ -5642,10 +5663,10 @@ SWITCH_STANDARD_API(verto_send2_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
-				cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
+				// cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
 				cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
 				// cJSON_AddItemToObject(params, "pqrs11", response);
-				cJSON_AddItemToObject(params, "pqrs2", jdata);
+				cJSON_AddItemToObject(params, "data", jdata);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 				break;
@@ -6430,7 +6451,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
-	SWITCH_ADD_API(api_interface, "verto_send2", "Send json data to client", verto_send2_function, "");
+	SWITCH_ADD_API(api_interface, "verto_send2", "Send json data to client", verto_send2_function, VERTO_SEND2_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
