@@ -5573,7 +5573,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_SEND2_SYNTAX "<position_name> <message_data>"
+// #define VERTO_SEND2_SYNTAX "<position_name> <message_data>"
 SWITCH_STANDARD_API(verto_send2_function)
 {
 	int success = 0;
@@ -5587,7 +5587,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	jsock_t *jsock;
 	char *response = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
-	char *position_name = cJSON_GetObjectItem(jcmd, "position_name");;
+	char *position_name = "agent-0001";
 
 	jcmd = cJSON_Parse(cmd);
 
@@ -5662,7 +5662,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 
   end:
 	// cJSON_Delete(jdata);
-	switch_safe_free(mycmd);
+	switch_safe_free(jcmd);
 	return SWITCH_STATUS_SUCCESS;
 }
 
@@ -6429,7 +6429,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
-	SWITCH_ADD_API(api_interface, "verto_send2", "Send json data to client", verto_send2_function, VERTO_SEND2_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send2", "Send json data to client", verto_send2_function, "");
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
