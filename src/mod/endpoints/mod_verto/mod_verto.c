@@ -5660,7 +5660,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 		stream->write_function(stream, "-ERR\n");
 	}
 
-  end:
+  // end:
 	// cJSON_Delete(jdata);
 	switch_safe_free(jcmd);
 	return SWITCH_STATUS_SUCCESS;
