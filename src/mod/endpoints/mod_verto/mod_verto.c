@@ -5578,22 +5578,36 @@ SWITCH_STANDARD_API(verto_send2_function)
 {
 	int success = 0;
 	int argc = 0;
-	char *mycmd = NULL;
-	char *argv[2];
+	// store_cmd_t mycmd;
+	// char *mycmd = NULL;
+	// char *argv[2];
+	cJSON *jcmd = NULL;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
-	char *ebuf;
+	char *response = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
 	char *position_name = NULL;
 
-	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
-		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
+	jcmd = cJSON_Parse(cmd);
+
+	jdata = cJSON_GetObjectItem(jcmd, "message_data");
+
+	if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
+		response = cJSON_Print(jcmd);
+	} else {
+		response = cJSON_PrintUnformatted(jcmd);
 	}
 
-	if (!argc || argc != 2) {
-		stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_SEND2_SYNTAX);
-		goto end;
-	}
+	stream->write_function(stream, "surya911 response %s\n", switch_str_nil(response));
+
+	// if (!zstr(cmd) && (mycmd = strdup(cmd))) {
+	// 	argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
+	// }
+
+	// if (!argc || argc != 2) {
+	// 	stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+	// 	goto end;
+	// }
 
 // error log
 // 	  CC       mod_verto_la-mod_verto.lo
@@ -5610,14 +5624,14 @@ SWITCH_STANDARD_API(verto_send2_function)
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %s\n", position_name);
 
-	ebuf = cJSON_Print(*argv[1])
-	switch_assert(ebuf);
-	stream->write_function(stream, "-ERR SURYA791 JSON data: %s\n", ebuf);
+	// ebuf = cJSON_Print(argv[1])
+	// switch_assert(ebuf);
+	// stream->write_function(stream, "-ERR SURYA791 JSON data: %s\n", ebuf);
 
-	if (!(jdata = cJSON_Parse(argv[1]))) {
-		stream->write_function(stream, "-ERR Parse error. USAGE: %s\n", VERTO_SEND2_SYNTAX);
-		goto end;
-	}
+	// if (!(jdata = cJSON_Parse(argv[1]))) {
+	// 	stream->write_function(stream, "-ERR Parse error. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+	// 	goto end;
+	// }
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
@@ -5626,8 +5640,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
-				cJSON_AddItemToObject(params, "pqrs1", cJSON_CreateString(ebuf));
-				// cJSON_AddItemToObject(params, "pqrs1", ebuf);
+				cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
+				cJSON_AddItemToObject(params, "pqrs11", response);
 				cJSON_AddItemToObject(params, "pqrs2", jdata);
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
