@@ -5608,7 +5608,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	jcmd = cJSON_Parse(cmd);
 	position_name = cJSON_GetObjectCstr(jcmd, "position_name");
 	jdata = cJSON_GetObjectItem(jcmd, "message_data");
-	params = cJSON_GetObjectItem(jcmd, "message_data");
+	// params = cJSON_GetObjectItem(jcmd, "message_data");
 
 	// if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
 	// 	response = cJSON_Print(jcmd);
@@ -5674,7 +5674,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 				// cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
 				// cJSON_AddItemToObject(params, "pqrs11", response);
 				// cJSON_AddItemToObject(params, "response", response);
-				cJSON_AddItemToObject(params, "jdata", jdata);
+				cJSON_AddItemToObject(params, "data", jdata);
 				// set_call_params(params, jdata);
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 \n");
