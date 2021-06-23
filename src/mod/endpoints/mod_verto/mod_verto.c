@@ -5584,7 +5584,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// cJSON *jcmd = NULL;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
-	char *response = NULL, *position_name = NULL;
+	const char *position_name = NULL;
+	char *response = NULL;
 	// char *position_name = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
 	// char *position_name = "agent-0001";
@@ -5668,7 +5669,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 				// cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
 				// cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
 				// cJSON_AddItemToObject(params, "pqrs11", response);
-				cJSON_AddItemToObject(params, "response", response);
+				// cJSON_AddItemToObject(params, "response", response);
 				cJSON_AddItemToObject(params, "jdata", jdata);
 				// set_call_params(params, jdata);
 
