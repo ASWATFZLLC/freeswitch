@@ -5608,7 +5608,6 @@ SWITCH_STANDARD_API(verto_send2_function)
 	jcmd = cJSON_Parse(cmd);
 	position_name = cJSON_GetObjectCstr(jcmd, "position_name");
 	jdata = cJSON_GetObjectItem(jcmd, "message_data");
-
 	params = cJSON_GetObjectItem(jcmd, "message_data");
 
 	// if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
@@ -5616,6 +5615,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
 	// } else {
 	response = cJSON_PrintUnformatted(jdata);
+	// params = response;
+
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> \n",  response);
 	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 jdata %s --> %s\n", jdata, switch_str_nil(jdata));
 	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9103 params %s --> %s\n", params, switch_str_nil(params));
@@ -5663,15 +5664,20 @@ SWITCH_STANDARD_API(verto_send2_function)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
+
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 				// cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
 				// cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
 				// cJSON_AddItemToObject(params, "pqrs11", response);
 				// cJSON_AddItemToObject(params, "response", response);
 				cJSON_AddItemToObject(params, "jdata", jdata);
 				// set_call_params(params, jdata);
+
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 \n");
 
 				// for (var = switch_channel_variable_first(jdata); var; var = var->next) {
 				// 	const char *name = (char *) var->name;
@@ -5683,6 +5689,9 @@ SWITCH_STANDARD_API(verto_send2_function)
 
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
+
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8103 \n");
+
 				break;
 			}
 		}
