@@ -5573,92 +5573,64 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_SEND2_SYNTAX "{position_name: <position_name>,message_data: <json_data>}"
+#define VERTO_SEND2_SYNTAX "{position_name: <position_name>, data: <json>}"
 SWITCH_STANDARD_API(verto_send2_function)
 {
-
 	int success = 0;
-	// char *argv[2];
-	// cJSON *jcmd = NULL, *format = NULL;
-	cJSON *jcmd = NULL;
-	// cJSON *jcmd = NULL;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	const char *position_name = NULL;
 	char *response = NULL;
-	// char *position_name = NULL;
-	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
-	// char *position_name = "agent-0001";
+	cJSON *jmsg = NULL, *params = NULL;
+	cJSON *jcmd = NULL, *jdata = NULL;
 
-	// char *mycmd = strdup(cmd);
-	// char *position_name = argv[0];
-	// char *message_data = argv[1];
+	if (!cmd) {
+		stream->write_function(stream, "-ERR parsing channel\n");
+		goto end;
+	}
 
-	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya900 mycmd -> %s\n", mycmd);
-	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 position_name -> %s\n", position_name);
-	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 message_data -> %s\n", message_data);
+	if (!(jcmd = cJSON_Parse(cmd))) {
+		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+	}
 
-
-	// cJSON_IsString
-	// cJSON_IsArray
-	// cJSON_IsNull
-	// cJSON_IsInvalid
-	// cJSON_IsObject
-
-	jcmd = cJSON_Parse(cmd);
-	position_name = cJSON_GetObjectCstr(jcmd, "position_name");
-	jdata = cJSON_GetObjectItem(jcmd, "message_data");
-	// params = cJSON_GetObjectItem(jcmd, "message_data");
-
-	// if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
-	// 	response = cJSON_Print(jcmd);
-	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
-	// } else {
-	response = cJSON_PrintUnformatted(jdata);
-	// params = response;
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> \n",  response);
-	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 jdata %s --> %s\n", jdata, switch_str_nil(jdata));
-	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9103 params %s --> %s\n", params, switch_str_nil(params));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
-
-
-	// }
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7100 - %d -> \n", (cJSON_IsObject(jcmd)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7101 - %d -> \n", (cJSON_Invalid(jcmd)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7102 - %d -> \n", (cJSON_False(jcmd)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7103 - %d -> \n", (cJSON_NULL(jcmd)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7104 - %d -> \n", (cJSON_String(jcmd)));
 
 
 
-	// if (!zstr(cmd) && (mycmd = strdup(cmd))) {
-	// 	argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
-	// }
-
-	// if (!argc || argc != 2) {
+	// if (!cJSON_IsObject(jcmd)) {
 	// 	stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_SEND2_SYNTAX);
 	// 	goto end;
 	// }
 
-// error log
-// 	  CC       mod_verto_la-mod_verto.lo
-// mod_verto.c: In function ‘verto_send2_function’:
-// mod_verto.c:5598:15: error: assignment from incompatible pointer type [-Werror=incompatible-pointer-types]
-//   message_data = argv[1];
-//                ^
-// mod_verto.c:5600:40: error: ‘SWITCH_LOG_ERR’ undeclared (first use in this function)
-//   switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERR, "surya911 position_name %d\n", position_name);
-// const apiCmd = 'json {"command": "callcenter_config","data": {"arguments":"member list"}}'
+	// position_name = cJSON_GetObjectCstr(jcmd, "position_name");
+	// jdata = cJSON_GetObjectItem(jcmd, "message_data");
 
-	// position_name = argv[0];
-	// message_data = cJSON_Parse(argv[1]);
+	if (!(position_name = cJSON_GetObjectCstr(jcmd, "position_name"))) {
+		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+		goto end;
+	}
 
-	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %s\n", position_name);
+	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
+		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+		goto end;
+	}
 
-	// ebuf = cJSON_Print(argv[1])
-	// switch_assert(ebuf);
-	// stream->write_function(stream, "-ERR SURYA791 JSON data: %s\n", ebuf);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6100 - %d -> \n", (cJSON_IsObject(jdata)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6101 - %d -> \n", (cJSON_Invalid(jdata)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6102 - %d -> \n", (cJSON_False(jdata)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6103 - %d -> \n", (cJSON_NULL(jdata)));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6104 - %d -> \n", (cJSON_String(jdata)));
 
-	// if (!(jdata = cJSON_Parse(argv[1]))) {
-	// 	stream->write_function(stream, "-ERR Parse error. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+	// if (!cJSON_IsObject(jdata)) {
+	// 	stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND2_SYNTAX);
 	// 	goto end;
 	// }
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
@@ -5667,26 +5639,9 @@ SWITCH_STANDARD_API(verto_send2_function)
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
-				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
-
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
-				// cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
-				// cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
-				// cJSON_AddItemToObject(params, "pqrs11", response);
-				// cJSON_AddItemToObject(params, "response", response);
 				cJSON_AddItemToObject(params, "data", jdata);
-				// set_call_params(params, jdata);
-
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 \n");
-
-				// for (var = switch_channel_variable_first(jdata); var; var = var->next) {
-				// 	const char *name = (char *) var->name;
-				// 	char *value = (char *) var->value;
-				// 	if (!strncasecmp(name, prefix, strlen(prefix))) {
-				// 		cJSON_AddItemToObject(params, name, cJSON_CreateString(value));
-				// 	}
-				// }
-
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 
@@ -5705,8 +5660,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 		stream->write_function(stream, "-ERR\n");
 	}
 
-  // end:
-	// cJSON_Delete(jdata);
+  end:
+	cJSON_Delete(jdata);
 	switch_safe_free(jcmd);
 	return SWITCH_STATUS_SUCCESS;
 }
