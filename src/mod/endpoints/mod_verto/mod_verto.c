@@ -5573,32 +5573,28 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_SEND2_SYNTAX "<position_name> <message_data>"
+#define VERTO_SEND2_SYNTAX '{"position_name": <position_name>,"message_data": <json_data>}'
 SWITCH_STANDARD_API(verto_send2_function)
 {
 
-
-// argv[0]
 	int success = 0;
-	// int argc = 0;
-	// store_cmd_t mycmd;
-	// char *mycmd = NULL;
-	char *argv[2];
-	cJSON *jcmd = NULL, *format = NULL;
+	// char *argv[2];
+	// cJSON *jcmd = NULL, *format = NULL;
+	cJSON *jcmd = NULL;
 	// cJSON *jcmd = NULL;
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
-	char *response = NULL;
+	char *response = NULL, *position_name = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
 	// char *position_name = "agent-0001";
 
-	char *mycmd = strdup(cmd);
-	char *position_name = argv[0];
-	char *message_data = argv[1];
+	// char *mycmd = strdup(cmd);
+	// char *position_name = argv[0];
+	// char *message_data = argv[1];
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya900 mycmd -> %s\n", mycmd);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 position_name -> %s\n", position_name);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 message_data -> %s\n", message_data);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya900 mycmd -> %s\n", mycmd);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 position_name -> %s\n", position_name);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya901 message_data -> %s\n", message_data);
 
 
 	// cJSON_IsString
@@ -5607,16 +5603,24 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// cJSON_IsInvalid
 	// cJSON_IsObject
 
-	jcmd = cJSON_Parse(message_data);
+	jcmd = cJSON_Parse(cmd);
+	position_name = cJSON_GetObjectItem(jcmd, "position_name");
 	jdata = cJSON_GetObjectItem(jcmd, "message_data");
 
-	if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
-		response = cJSON_Print(jcmd);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
-	} else {
-		response = cJSON_PrintUnformatted(jcmd);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 response %s --> %s\n", response, switch_str_nil(response));
-	}
+	params = cJSON_GetObjectItem(jcmd, "message_data");
+
+	// if (format && format->valuestring && !strcasecmp(format->valuestring, "pretty")) {
+	// 	response = cJSON_Print(jcmd);
+	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
+	// } else {
+	response = cJSON_PrintUnformatted(jcmd);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 jdata %s --> %s\n", jdata, switch_str_nil(jdata));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9103 params %s --> %s\n", params, switch_str_nil(params));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
+
+
+	// }
 
 
 
@@ -5642,7 +5646,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// position_name = argv[0];
 	// message_data = cJSON_Parse(argv[1]);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %s\n", position_name);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 position_name %s\n", position_name);
 
 	// ebuf = cJSON_Print(argv[1])
 	// switch_assert(ebuf);
@@ -5661,9 +5665,20 @@ SWITCH_STANDARD_API(verto_send2_function)
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
 				// cJSON_AddItemToObject(params, "position_name", cJSON_CreateString(position_name));
-				cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
+				// cJSON_AddItemToObject(params, "pqrs10", cJSON_CreateString(response));
 				// cJSON_AddItemToObject(params, "pqrs11", response);
-				cJSON_AddItemToObject(params, "data", jdata);
+				cJSON_AddItemToObject(params, "response", response);
+				cJSON_AddItemToObject(params, "jdata", jdata);
+				// set_call_params(params, jdata);
+
+				// for (var = switch_channel_variable_first(jdata); var; var = var->next) {
+				// 	const char *name = (char *) var->name;
+				// 	char *value = (char *) var->value;
+				// 	if (!strncasecmp(name, prefix, strlen(prefix))) {
+				// 		cJSON_AddItemToObject(params, name, cJSON_CreateString(value));
+				// 	}
+				// }
+
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 				break;
