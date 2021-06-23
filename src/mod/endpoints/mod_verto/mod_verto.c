@@ -5573,7 +5573,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_SEND2_SYNTAX "{position_name: <position_name>, data: <json>}"
+#define VERTO_SEND2_SYNTAX "{position_name: <position_name>, msg: <json>}"
 SWITCH_STANDARD_API(verto_send2_function)
 {
 	int success = 0;
@@ -5591,6 +5591,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 
 	if (!(jcmd = cJSON_Parse(cmd))) {
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+		goto end;
 	}
 
 	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7100 - %d -> \n", cJSON_IsObject(jcmd));
@@ -5614,8 +5615,8 @@ SWITCH_STANDARD_API(verto_send2_function)
 		goto end;
 	}
 
-	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
-		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+	if (!(jdata = cJSON_GetObjectItem(jcmd, "msg"))) {
+		stream->write_function(stream, "-ERR Missing json msg. USAGE: %s\n", VERTO_SEND2_SYNTAX);
 		goto end;
 	}
 
@@ -5640,7 +5641,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
-				cJSON_AddItemToObject(params, "data", jdata);
+				cJSON_AddItemToObject(params, "msg", jdata);
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 \n");
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
