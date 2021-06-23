@@ -5580,7 +5580,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	const char *position_name = NULL;
-	char *response = NULL;
+	// char *response = NULL;
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
 
