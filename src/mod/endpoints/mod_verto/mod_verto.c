@@ -5573,7 +5573,7 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_SEND2_SYNTAX '{"position_name": <position_name>,"message_data": <json_data>}'
+#define VERTO_SEND2_SYNTAX "{position_name: <position_name>,message_data: <json_data>}"
 SWITCH_STANDARD_API(verto_send2_function)
 {
 
@@ -5585,6 +5585,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	verto_profile_t *profile = NULL;
 	jsock_t *jsock;
 	char *response = NULL, *position_name = NULL;
+	// char *position_name = NULL;
 	cJSON *jmsg = NULL, *params = NULL, *jdata = NULL;
 	// char *position_name = "agent-0001";
 
@@ -5604,7 +5605,7 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// cJSON_IsObject
 
 	jcmd = cJSON_Parse(cmd);
-	position_name = cJSON_GetObjectItem(jcmd, "position_name");
+	position_name = cJSON_GetObjectCstr(jcmd, "position_name");
 	jdata = cJSON_GetObjectItem(jcmd, "message_data");
 
 	params = cJSON_GetObjectItem(jcmd, "message_data");
@@ -5613,10 +5614,10 @@ SWITCH_STANDARD_API(verto_send2_function)
 	// 	response = cJSON_Print(jcmd);
 	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
 	// } else {
-	response = cJSON_PrintUnformatted(jcmd);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> %s\n", response, switch_str_nil(response));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 jdata %s --> %s\n", jdata, switch_str_nil(jdata));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9103 params %s --> %s\n", params, switch_str_nil(params));
+	response = cJSON_PrintUnformatted(jdata);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> \n",  response);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9102 jdata %s --> %s\n", jdata, switch_str_nil(jdata));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9103 params %s --> %s\n", params, switch_str_nil(params));
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
 
 
