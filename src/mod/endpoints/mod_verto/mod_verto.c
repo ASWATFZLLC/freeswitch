@@ -5593,18 +5593,18 @@ SWITCH_STANDARD_API(verto_send2_function)
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND2_SYNTAX);
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7100 - %d -> \n", (cJSON_IsObject(jcmd)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7101 - %d -> \n", (cJSON_Invalid(jcmd)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7102 - %d -> \n", (cJSON_False(jcmd)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7103 - %d -> \n", (cJSON_NULL(jcmd)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7104 - %d -> \n", (cJSON_String(jcmd)));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7100 - %d -> \n", cJSON_IsObject(jcmd));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7101 - %d -> \n", cJSON_Invalid(jcmd));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7102 - %d -> \n", cJSON_False(jcmd));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7103 - %d -> \n", cJSON_NULL(jcmd));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7104 - %d -> \n", cJSON_String(jcmd));
 
 
 
-	// if (!cJSON_IsObject(jcmd)) {
-	// 	stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_SEND2_SYNTAX);
-	// 	goto end;
-	// }
+	if (!cJSON_IsObject(jcmd)) {
+		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND2_SYNTAX);
+		goto end;
+	}
 
 	// position_name = cJSON_GetObjectCstr(jcmd, "position_name");
 	// jdata = cJSON_GetObjectItem(jcmd, "message_data");
@@ -5619,11 +5619,11 @@ SWITCH_STANDARD_API(verto_send2_function)
 		goto end;
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6100 - %d -> \n", (cJSON_IsObject(jdata)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6101 - %d -> \n", (cJSON_Invalid(jdata)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6102 - %d -> \n", (cJSON_False(jdata)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6103 - %d -> \n", (cJSON_NULL(jdata)));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6104 - %d -> \n", (cJSON_String(jdata)));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6100 - %d -> \n", (cJSON_IsObject(jdata)));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6101 - %d -> \n", (cJSON_Invalid(jdata)));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6102 - %d -> \n", (cJSON_False(jdata)));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6103 - %d -> \n", (cJSON_NULL(jdata)));
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6104 - %d -> \n", (cJSON_String(jdata)));
 
 	// if (!cJSON_IsObject(jdata)) {
 	// 	stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND2_SYNTAX);
