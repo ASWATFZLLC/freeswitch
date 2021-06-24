@@ -5608,19 +5608,19 @@ SWITCH_STANDARD_API(verto_send_function)
 	}
 
 	if (cJSON_IsInvalid(jdata)) {
-		stream->write_function(stream, "-ERR cJSON_IsInvalid. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 cJSON_IsInvalid \n");
 	}
 
 	if (cJSON_IsFalse(jdata)) {
-		stream->write_function(stream, "-ERR cJSON_IsFalse. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 cJSON_IsFalse \n");
 	}
 
 	if (cJSON_IsTrue(jdata)) {
-		stream->write_function(stream, "-ERR cJSON_IsTrue . USAGE: %s\n", VERTO_SEND_SYNTAX);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 cJSON_IsTrue \n");
 	}
 
 	if (cJSON_IsNull(jdata)) {
-		stream->write_function(stream, "-ERR cJSON_IsNull . USAGE: %s\n", VERTO_SEND_SYNTAX);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 cJSON_IsNull \n");
 	}
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
