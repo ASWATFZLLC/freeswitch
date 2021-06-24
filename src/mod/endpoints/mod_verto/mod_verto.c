@@ -5607,22 +5607,6 @@ SWITCH_STANDARD_API(verto_send_function)
 		goto end;
 	}
 
-	if (cJSON_IsInvalid(jdata)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 cJSON_IsInvalid \n");
-	}
-
-	if (cJSON_IsFalse(jdata)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 cJSON_IsFalse \n");
-	}
-
-	if (cJSON_IsTrue(jdata)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 cJSON_IsTrue \n");
-	}
-
-	if (cJSON_IsNull(jdata)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 cJSON_IsNull \n");
-	}
-
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
 
 	switch_mutex_lock(verto_globals.mutex);
@@ -5651,9 +5635,6 @@ SWITCH_STANDARD_API(verto_send_function)
 	}
 
   end:
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya601 \n");
-	// cJSON_Delete(jdata);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya602 \n");
 	switch_safe_free(jcmd);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya603 \n");
 	return SWITCH_STATUS_SUCCESS;
