@@ -5584,18 +5584,8 @@ SWITCH_STANDARD_API(verto_send_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
 
-	if (!cmd) {
-		stream->write_function(stream, "-ERR parsing channel\n");
-		goto end;
-	}
-
 	if (!(jcmd = cJSON_Parse(cmd))) {
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_SYNTAX);
-		goto end;
-	}
-
-	if (!cJSON_IsObject(jcmd)) {
-		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto end;
 	}
 
