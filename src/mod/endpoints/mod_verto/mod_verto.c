@@ -5643,15 +5643,22 @@ SWITCH_STANDARD_API(verto_send2_function)
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
+				
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
+			
+
 				cJSON_AddItemToObject(params, "abcd", cJSON_CreateString("pqrs"));
-				// cJSON_AddItemToObject(params, "response", response);
+				// cJSON_AddItemToObject(params, "response", "response");
+			
+				// cJSON_AddItemToObject(msg, "params", params);
 				cJSON_AddItemToObject(params, "data", jdata);
+			
 				// cJSON_AddItemToObject(params, "data", jdata);
 				// cJSON_AddItemToObject(params, "msg", jdata);
 				// cJSON_AddItemToObject(params, "pqrs2", jdata);
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 \n");
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 -> params %s \n", cJSON_PrintUnformatted(params));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 
@@ -5672,9 +5679,9 @@ SWITCH_STANDARD_API(verto_send2_function)
 
   end:
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya601 \n");
-	cJSON_Delete(jdata);
+	// cJSON_Delete(jdata);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya602 \n");
-	switch_safe_free(jcmd);
+	// switch_safe_free(jcmd);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya603 \n");
 	return SWITCH_STATUS_SUCCESS;
 }
