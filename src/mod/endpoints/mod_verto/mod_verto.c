@@ -5645,8 +5645,10 @@ SWITCH_STANDARD_API(verto_send2_function)
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send2", NULL, &params);
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
-				cJSON_AddItemToObject(params, "response", response);
+				cJSON_AddItemToObject(msg, "abcd", cJSON_CreateString("pqrs"));
+				// cJSON_AddItemToObject(params, "response", response);
 				cJSON_AddItemToObject(params, "data", jdata);
+				// cJSON_AddItemToObject(params, "data", jdata);
 				// cJSON_AddItemToObject(params, "msg", jdata);
 				// cJSON_AddItemToObject(params, "pqrs2", jdata);
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 \n");
