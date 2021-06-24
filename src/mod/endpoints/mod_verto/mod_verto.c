@@ -5599,9 +5599,6 @@ SWITCH_STANDARD_API(verto_send_function)
 		goto end;
 	}
 
-	response = cJSON_PrintUnformatted(jdata);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9101 response %s --> \n", response);
-
 	if (!cJSON_IsObject(jdata)) {
 		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto end;
@@ -5616,7 +5613,6 @@ SWITCH_STANDARD_API(verto_send_function)
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send", NULL, &params);
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 				cJSON_AddItemToObject(params, "data", jdata);
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 -> params %s \n", cJSON_PrintUnformatted(params));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
