@@ -2598,7 +2598,6 @@ static switch_status_t verto_send_media_indication(switch_core_session_t *sessio
 	return status;
 }
 
-// here verto.display
 static switch_status_t messagehook (switch_core_session_t *session, switch_core_session_message_t *msg)
 {
 	switch_status_t r = SWITCH_STATUS_SUCCESS;
@@ -5610,11 +5609,9 @@ SWITCH_STANDARD_API(verto_send_function)
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send", NULL, &params);
 				cJSON_AddItemToObject(params, "data", jdata);
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 -> params %s \n", cJSON_PrintUnformatted(params));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 				break;
@@ -5632,7 +5629,6 @@ SWITCH_STANDARD_API(verto_send_function)
 
   end:
 	switch_safe_free(jcmd);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya603 \n");
 	return SWITCH_STATUS_SUCCESS;
 }
 
