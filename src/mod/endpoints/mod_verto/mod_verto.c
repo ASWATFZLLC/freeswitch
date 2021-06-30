@@ -3860,6 +3860,54 @@ static switch_bool_t verto__invite_func(const char *method, cJSON *params, jsock
 
 }
 
+static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
+{
+	cJSON *obj = cJSON_CreateObject();
+	switch_core_session_t *session;
+	cJSON *dialog = NULL;
+	const char *call_id = NULL, *action = NULL;
+	// const char *call_id = NULL, *destination = NULL, *action = NULL;
+	int success = 0;
+
+	*response = obj;
+
+	if (!params) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Params data missing"));
+		goto cleanup;
+	}
+
+	if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
+		goto cleanup;
+	}
+
+	if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
+		goto cleanup;
+	}
+
+	if (!(action = cJSON_GetObjectCstr(params, "action"))) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("action missing"));
+		goto cleanup;
+	}
+
+	cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
+	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
+
+
+	if ((session = switch_core_session_locate(call_id))) {
+		parse_user_vars(dialog, session);
+		// verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
+		success = 1; 
+		switch_core_session_rwunlock(session);
+	}
+
+ cleanup:
+	if (success) return SWITCH_TRUE;
+	cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
+	return SWITCH_FALSE;
+}
+
 static switch_bool_t event_channel_check_auth(jsock_t *jsock, const char *event_channel)
 {
 
@@ -4224,7 +4272,7 @@ static void jrpc_init(void)
 	jrpc_add_func("verto.unsubscribe", verto__unsubscribe_func);
 	jrpc_add_func("verto.broadcast", verto__broadcast_func);
 	jrpc_add_func("verto.modify", verto__modify_func);
-
+	jrpc_add_func("verto.send", verto__send_func);
 }
 
 
