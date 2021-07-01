@@ -3928,7 +3928,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 		}
 
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya881 Data Sent: \n");
-		switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "action", cJSON_CreateString(*action));
+		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "action", action);
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
 		switch_event_fire(&s_event);
 		success = 1; 
