@@ -3888,11 +3888,11 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 		goto cleanup;
 	}
 
-	if (!(data = cJSON_Parse(jdata))) {
-	// if (!cJSON_IsObject(jdata)) {
+	// if (!(data = cJSON_Parse(jdata))) {
+	if (!cJSON_IsObject(jdata)) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Json parsing failed"));
 		// stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
-		goto end;
+		goto cleanup;
 	}
 
 	json_text = cJSON_PrintUnformatted(params);
@@ -3929,7 +3929,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya885 \n");
 		}
 
-		switch_event_serialize_json_obj(s_event, &data);
+		switch_event_serialize_json_obj(s_event, &jdata);
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya886 Data Sent: \n");
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "action", action);
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
