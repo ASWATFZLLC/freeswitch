@@ -3866,7 +3866,8 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 	char *json_text = NULL; 
 	switch_core_session_t *session;
 	cJSON *dialog = NULL;
-	const char *call_id = NULL, *action = NULL;
+	const char *action = NULL;
+	// const char *call_id = NULL, *action = NULL;
 	// const char *call_id = NULL, *destination = NULL, *action = NULL;
 	int success = 0;
 	switch_event_t *s_event;
@@ -3878,15 +3879,15 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 		goto cleanup;
 	}
 
-	if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
-		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
-		goto cleanup;
-	}
+	// if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
+	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
+	// 	goto cleanup;
+	// }
 
-	if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
-		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
-		goto cleanup;
-	}
+	// if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
+	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
+	// 	goto cleanup;
+	// }
 
 	if (!(action = cJSON_GetObjectCstr(params, "action"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("action missing"));
@@ -3894,23 +3895,44 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 	}
 
 	json_text = cJSON_PrintUnformatted(params);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "MCAST surya881 Data Sent: %s\n",json_text);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya881 Data Sent: %s\n",json_text);
 
-
-	cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
 	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
 
-	if ((session = switch_core_session_locate(call_id))) {
-		switch_channel_t *channel = switch_core_session_get_channel(session);
-		if (switch_event_create_subclass(&s_event, SWITCH_EVENT_CUSTOM, MY_EVENT_SEND) == SWITCH_STATUS_SUCCESS) {
-			switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "abcd", "abcd2");
-			switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
+	if (switch_event_create_subclass(&s_event, SWITCH_EVENT_CUSTOM, MY_EVENT_SEND) == SWITCH_STATUS_SUCCESS) {
+		
+		if ((dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
+			const char *call_id = NULL;
+			if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
+				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya882 \n");
+				goto cleanup;
+			}
+
+			if (!(session = switch_core_session_locate(call_id))) {
+				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL DOES NOT EXIST"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya883 \n");
+				goto cleanup;
+			}
+
+			switch_channel_t *channel = switch_core_session_get_channel(session);
+			cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
 			parse_user_vars(dialog, session);
 			switch_channel_event_set_data(channel, s_event);
-			switch_event_fire(&s_event);
-			success = 1; 
+			switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "abcd", "abcd2");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya884 \n");
+			switch_core_session_rwunlock(session);
+		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya885 \n");
 		}
-		switch_core_session_rwunlock(session);
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya881 Data Sent: \n");
+		switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "action", cJSON_CreateString(action));
+		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
+		switch_event_fire(&s_event);
+		success = 1; 
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya886 \n");
 	}
 
  cleanup:
