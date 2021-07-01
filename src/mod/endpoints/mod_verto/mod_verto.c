@@ -3864,12 +3864,13 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 {
 	cJSON *obj = cJSON_CreateObject();
 	char *json_text = NULL; 
-	switch_core_session_t *session;
+	// switch_core_session_t *session;
 	// cJSON *dialog = NULL;
 	const char *action = NULL;
 	// const char *call_id = NULL, *action = NULL;
 	// const char *call_id = NULL, *destination = NULL, *action = NULL;
 	int success = 0;
+	switch_event_t *s_event;
 
 	*response = obj;
 
@@ -3893,7 +3894,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 		goto cleanup;
 	}
 
-	json_text = cJSON_PrintUnformatted(params)
+	json_text = cJSON_PrintUnformatted(params);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "MCAST surya881 Data Sent: %s\n",json_text);
 
 
