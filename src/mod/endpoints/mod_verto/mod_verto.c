@@ -3903,7 +3903,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 		
 		if ((dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
 			const char *call_id = NULL;
-			switch_channel_t *channel = switch_core_session_get_channel(session);
+			switch_channel_t *channel;
 
 			if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
@@ -3917,6 +3917,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 				goto cleanup;
 			}
 
+			channel = switch_core_session_get_channel(session);
 			cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
 			parse_user_vars(dialog, session);
 			switch_channel_event_set_data(channel, s_event);
