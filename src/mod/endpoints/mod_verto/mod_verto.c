@@ -3865,7 +3865,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 	cJSON *obj = cJSON_CreateObject();
 	char *json_text = NULL; 
 	switch_core_session_t *session;
-	cJSON *dialog = NULL, *jdata = NULL, *data = NULL;
+	cJSON *dialog = NULL, *jdata = NULL;
 	const char *action = NULL;
 	int success = 0;
 	switch_event_t *s_event;
