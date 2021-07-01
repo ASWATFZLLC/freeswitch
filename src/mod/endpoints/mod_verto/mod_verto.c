@@ -3865,33 +3865,34 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 	cJSON *obj = cJSON_CreateObject();
 	char *json_text = NULL; 
 	switch_core_session_t *session;
-	cJSON *dialog = NULL;
+	cJSON *dialog = NULL, *jdata = NULL, *data = NULL;
 	const char *action = NULL;
-	// const char *call_id = NULL, *action = NULL;
-	// const char *call_id = NULL, *destination = NULL, *action = NULL;
 	int success = 0;
 	switch_event_t *s_event;
 
 	*response = obj;
 
 	if (!params) {
-		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Params data missing"));
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Params missing"));
 		goto cleanup;
 	}
-
-	// if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
-	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
-	// 	goto cleanup;
-	// }
-
-	// if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
-	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
-	// 	goto cleanup;
-	// }
 
 	if (!(action = cJSON_GetObjectCstr(params, "action"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("action missing"));
 		goto cleanup;
+	}
+
+	if (!(jdata = cJSON_GetObjectItem(params, "data"))) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("data missing"));
+		// stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto cleanup;
+	}
+
+	if (!(data = cJSON_Parse(jdata))) {
+	// if (!cJSON_IsObject(jdata)) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Json parsing failed"));
+		// stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
 	}
 
 	json_text = cJSON_PrintUnformatted(params);
@@ -3928,13 +3929,14 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya885 \n");
 		}
 
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya881 Data Sent: \n");
+		switch_event_serialize_json_obj(s_event, &data);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya886 Data Sent: \n");
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "action", action);
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
 		switch_event_fire(&s_event);
 		success = 1; 
 	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya886 \n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya887 \n");
 	}
 
  cleanup:
