@@ -3865,8 +3865,8 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 	cJSON *obj = cJSON_CreateObject();
 	char *json_text = NULL; 
 	switch_core_session_t *session;
-	// cJSON *dialog = NULL, *jdata = NULL;
-	cJSON *dialog = NULL;
+	cJSON *dialog = NULL, *jdata = NULL;
+	// cJSON *dialog = NULL;
 	const char *action = NULL, *jdata = NULL;
 	int success = 0;
 	switch_event_t *s_event;
@@ -3883,8 +3883,8 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 		goto cleanup;
 	}
 
-	if (!(jdata = cJSON_GetObjectCstr(params, "data"))) {
-	// if (!(jdata = cJSON_GetObjectItem(params, "data"))) {
+	// if (!(jdata = cJSON_GetObjectCstr(params, "data"))) {
+	if (!(jdata = cJSON_GetObjectItem(params, "data"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("data missing"));
 		// stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto cleanup;
@@ -3931,10 +3931,10 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya885 \n");
 		}
 
-		// switch_event_serialize_json_obj(s_event, &jdata);
+		switch_event_serialize_json_obj(s_event, &jdata);
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya886 Data Sent: \n");
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "action", action);
-		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "data", jdata);
+		// switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "data", jdata);
 		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
 		switch_event_fire(&s_event);
 		success = 1; 
