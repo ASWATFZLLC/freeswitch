@@ -3860,6 +3860,95 @@ static switch_bool_t verto__invite_func(const char *method, cJSON *params, jsock
 
 }
 
+static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
+{
+	cJSON *obj = cJSON_CreateObject();
+	char *json_text = NULL; 
+	switch_core_session_t *session;
+	cJSON *dialog = NULL, *jdata = NULL;
+	// cJSON *dialog = NULL;
+	const char *action = NULL;
+	int success = 0;
+	switch_event_t *s_event;
+
+	*response = obj;
+
+	if (!params) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Params missing"));
+		goto cleanup;
+	}
+
+	if (!(action = cJSON_GetObjectCstr(params, "action"))) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("action missing"));
+		goto cleanup;
+	}
+
+	// if (!(jdata = cJSON_GetObjectCstr(params, "data"))) {
+	if (!(jdata = cJSON_GetObjectItem(params, "data"))) {
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("data missing"));
+		// stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto cleanup;
+	}
+
+	// if (!(data = cJSON_Parse(jdata))) {
+	// if (!cJSON_IsObject(jdata)) {
+	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Json parsing failed"));
+	// 	// stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
+	// 	goto cleanup;
+	// }
+
+	json_text = cJSON_PrintUnformatted(params);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya881 Data Sent: %s\n",json_text);
+
+	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
+
+	if (switch_event_create_subclass(&s_event, SWITCH_EVENT_CUSTOM, MY_EVENT_SEND) == SWITCH_STATUS_SUCCESS) {
+		
+		if ((dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
+			const char *call_id = NULL;
+			switch_channel_t *channel;
+
+			if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
+				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya882 \n");
+				goto cleanup;
+			}
+
+			if (!(session = switch_core_session_locate(call_id))) {
+				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL DOES NOT EXIST"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya883 \n");
+				goto cleanup;
+			}
+
+			channel = switch_core_session_get_channel(session);
+			cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
+			parse_user_vars(dialog, session);
+			switch_channel_event_set_data(channel, s_event);
+			switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "abcd", "abcd2");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya884 \n");
+			switch_core_session_rwunlock(session);
+		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya885 \n");
+		}
+
+		switch_event_serialize_json_obj(s_event, &jdata);
+		// switch_event_serialize_json_obj(s_event, jdata);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya886 Data Sent: \n");
+		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "action", action);
+		// switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "data", jdata);
+		switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "pqrs", "pqrs2");
+		switch_event_fire(&s_event);
+		success = 1; 
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya887 \n");
+	}
+
+ cleanup:
+	if (success) return SWITCH_TRUE;
+	cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
+	return SWITCH_FALSE;
+}
+
 static switch_bool_t event_channel_check_auth(jsock_t *jsock, const char *event_channel)
 {
 
@@ -4224,7 +4313,7 @@ static void jrpc_init(void)
 	jrpc_add_func("verto.unsubscribe", verto__unsubscribe_func);
 	jrpc_add_func("verto.broadcast", verto__broadcast_func);
 	jrpc_add_func("verto.modify", verto__modify_func);
-
+	jrpc_add_func("verto.send", verto__send_func);
 }
 
 
@@ -5572,6 +5661,64 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+#define VERTO_SEND_SYNTAX "{position_name: <position_name>, data: <json>}"
+SWITCH_STANDARD_API(verto_send_function)
+{
+	int success = 0;
+	verto_profile_t *profile = NULL;
+	jsock_t *jsock;
+	const char *position_name = NULL;
+	cJSON *jmsg = NULL, *params = NULL;
+	cJSON *jcmd = NULL, *jdata = NULL;
+
+	if (!(jcmd = cJSON_Parse(cmd))) {
+		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!(position_name = cJSON_GetObjectCstr(jcmd, "position_name"))) {
+		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
+		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!cJSON_IsObject(jdata)) {
+		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9105 position_name %s\n", position_name);
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				jmsg = jrpc_new_req("verto.send", NULL, &params);
+				cJSON_AddItemToObject(params, "data", jdata);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				success = 1;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	if (success == 1) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERR\n");
+	}
+
+  end:
+	switch_safe_free(jcmd);
+	return SWITCH_STATUS_SUCCESS;
+}
 
 static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session,
 												  switch_event_t *var_event,
@@ -6336,6 +6483,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send", "Send json data to client", verto_send_function, VERTO_SEND_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
@@ -6376,6 +6524,7 @@ SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_verto_shutdown)
 	switch_event_free_subclass(MY_EVENT_LOGIN);
 	switch_event_free_subclass(MY_EVENT_CLIENT_DISCONNECT);
 	switch_event_free_subclass(MY_EVENT_CLIENT_CONNECT);
+	switch_event_free_subclass(MY_EVENT_SEND);
 
 	json_cleanup();
 	switch_core_hash_destroy(&json_GLOBALS.store_hash);
