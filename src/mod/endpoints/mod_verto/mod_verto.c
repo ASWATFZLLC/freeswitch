@@ -5691,7 +5691,7 @@ SWITCH_STANDARD_API(verto_send_function)
 		goto end;
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9104 position_name %s\n", position_name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9105 position_name %s\n", position_name);
 
 	switch_mutex_lock(verto_globals.mutex);
 	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
