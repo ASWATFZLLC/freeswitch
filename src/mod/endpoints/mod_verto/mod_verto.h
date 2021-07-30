@@ -82,7 +82,6 @@
 #define MY_EVENT_CLIENT_CONNECT "verto::client_connect"
 #define MY_EVENT_CLIENT_DISCONNECT "verto::client_disconnect"
 #define MY_EVENT_LOGIN "verto::login"
-#define MY_EVENT_SEND "verto::send"
 
 typedef enum {
 	PTYPE_CLIENT     = (1 << 0),
