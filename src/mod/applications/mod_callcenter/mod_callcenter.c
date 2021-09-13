@@ -2539,6 +2539,8 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	serving_agent = argv[9];
 	cbt.member_system = argv[10];
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "surya111 ->\n");
+
 	if (!cbt.queue_name || !(queue = get_queue(cbt.queue_name))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Queue %s not found locally, delete this member\n", cbt.queue_name);
 		sql = switch_mprintf("DELETE FROM members WHERE uuid = '%q' AND instance_id = '%q'", cbt.member_uuid, cbt.member_system);
