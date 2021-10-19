@@ -5575,17 +5575,17 @@ SWITCH_STANDARD_API(verto_dial_function)
 #define VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX "{uuid: <uuid>, position_name: <position_name>, data: <json>}"
 SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 {
-
 	int success = 0;
-	verto_profile_t *profile = NULL;
-	jsock_t *jsock;
+	// verto_profile_t *profile = NULL;
+	// jsock_t *jsock;
 	char *json_text = NULL;
-	// const char *position_name = NULL;
-	// const char *uuid = NULL;
-	char *position_name, *uuid = NULL;
+	const char *position_name = NULL;
+	const char *uuid = NULL;
+	// char *position_name, *uuid = NULL;
 	// char *uuid = (char *) cmd;
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
+	switch_core_session_t *lsession = NULL;
 
 	if (!(jcmd = cJSON_Parse(cmd))) {
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
@@ -5622,7 +5622,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 			jsock_t *jsock = NULL;
 			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
 				switch_mutex_lock(jsock->profile->mutex);
-				for (jsock = jsock->profile->mutex; jsock; jsock = jsock->next) {
+				for (jsock = jsock->profile->jsock_head; jsock; jsock = jsock->next) {
 					if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 						jmsg = jrpc_new_req("verto.sendToAgentOnCall", NULL, &params);
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
@@ -5646,7 +5646,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	}
 
   end:
-	switch_safe_free(mycmd);
+	switch_safe_free(jcmd);
 	return SWITCH_STATUS_SUCCESS;
 }
 
