@@ -5585,7 +5585,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	// char *uuid = (char *) cmd;
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
-	switch_core_session_t *lsession = NULL;
+	switch_core_session_t *session = NULL;
 
 	if (!(jcmd = cJSON_Parse(cmd))) {
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
@@ -5615,28 +5615,42 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	json_text = cJSON_PrintUnformatted(params);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya0001 Data Sent: %s\n",json_text);
 
-	if (uuid && (lsession = switch_core_session_locate(uuid))) {
+	if ((session = switch_core_session_locate(uuid))) {
 		verto_pvt_t *tech_pvt = NULL;
-		if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
+		// verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
+
+		switch_channel_t *channel = switch_core_session_get_channel(session);
+		const char *jsock_uuid_str = switch_channel_get_variable(channel, "jsock_uuid_str");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7100 %s.\n", jsock_uuid_str);
+
+		if ((tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY))) {
 			// cJSON *jmsg = NULL, *params = NULL;
 			jsock_t *jsock = NULL;
 			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
 				switch_mutex_lock(jsock->profile->mutex);
 				for (jsock = jsock->profile->jsock_head; jsock; jsock = jsock->next) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8100 %s.\n", jsock->id);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 %s.\n", jsock->name);
 					if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 						jmsg = jrpc_new_req("verto.sendToAgentOnCall", NULL, &params);
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8101 \n");
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8201 \n");
 						cJSON_AddItemToObject(params, "data", jdata);
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8102 -> params %s \n", cJSON_PrintUnformatted(params));
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8202 -> params %s \n", cJSON_PrintUnformatted(params));
 						jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 						success = 1;
 						break;
 					}
 				}
 				switch_mutex_unlock(jsock->profile->mutex);
+			} else {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "9902 else jsok \n");
 			}
+		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "9903 else tech_pvt \n");
 		}
-		switch_core_session_rwunlock(lsession);
+		switch_core_session_rwunlock(session);
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "9904 else session \n");
 	}
 
 	if (success == 1) {
