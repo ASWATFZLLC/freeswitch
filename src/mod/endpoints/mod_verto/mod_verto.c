@@ -5585,7 +5585,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	// char *uuid = (char *) cmd;
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
-	switch_core_session_t *session = NULL;
+	switch_core_session_t *lsession = NULL;
 
 	if (!(jcmd = cJSON_Parse(cmd))) {
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
@@ -5615,15 +5615,15 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	json_text = cJSON_PrintUnformatted(params);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya0001 Data Sent: %s\n",json_text);
 
-	if ((session = switch_core_session_locate(uuid))) {
+	if ((lsession = switch_core_session_locate(uuid))) {
 		verto_pvt_t *tech_pvt = NULL;
 		// verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
 
-		switch_channel_t *channel = switch_core_session_get_channel(session);
+		switch_channel_t *channel = switch_core_session_get_channel(lsession);
 		const char *jsock_uuid_str = switch_channel_get_variable(channel, "jsock_uuid_str");
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7100 %s.\n", jsock_uuid_str);
 
-		if ((tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY))) {
+		if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
 			// cJSON *jmsg = NULL, *params = NULL;
 			jsock_t *jsock = NULL;
 			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
@@ -5648,7 +5648,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 		} else {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "9903 else tech_pvt \n");
 		}
-		switch_core_session_rwunlock(session);
+		switch_core_session_rwunlock(lsession);
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "9904 else session \n");
 	}
