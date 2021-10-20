@@ -5575,7 +5575,6 @@ SWITCH_STANDARD_API(verto_dial_function)
 #define VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX "{uuid: <uuid>, position_name: <position_name>, data: <json>}"
 SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 {
-	int success = 0;
 	const char *position_name = NULL;
 	const char *uuid = NULL;
 	verto_pvt_t *tech_pvt = NULL;
@@ -5609,26 +5608,34 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 		goto end;
 	}
 
-	if ((lsession = switch_core_session_locate(uuid))) {
-		if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
-			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
-				if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
-					jmsg = jrpc_new_req("verto.sendToAgentOnCall", tech_pvt->call_id, &params);
-					cJSON_AddItemToObject(params, "data", jdata);
-					jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
-					switch_thread_rwlock_unlock(jsock->rwlock);
-					success = 1;
-				}
-			}
-		}
-		switch_core_session_rwunlock(lsession);
+	if (!(lsession = switch_core_session_locate(uuid))) {
+		stream->write_function(stream, "-ERR Invalid uuid.\n");
+		goto end;
 	}
 
-	if (success == 1) {
+	if (!(tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) { 
+		switch_core_session_rwunlock(lsession);
+		stream->write_function(stream, "-ERR Invalid session.\n");
+		goto end;
+	}
+
+	if (!(jsock = get_jsock(tech_pvt->jsock_uuid))) { 
+		switch_core_session_rwunlock(lsession);
+		stream->write_function(stream, "-ERR Failed to find session.\n");
+		goto end;
+	}
+
+	if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+		jmsg = jrpc_new_req("verto.sendToAgentOnCall", tech_pvt->call_id, &params);
+		cJSON_AddItemToObject(params, "data", jdata);
+		jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 		stream->write_function(stream, "+OK\n");
 	} else {
-		stream->write_function(stream, "-ERR\n");
+		stream->write_function(stream, "-ERR Failed to find position.\n");
 	}
+
+	switch_thread_rwlock_unlock(jsock->rwlock);
+	switch_core_session_rwunlock(lsession);
 
   end:
 	switch_safe_free(jcmd);
