@@ -5586,7 +5586,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
 	switch_core_session_t *lsession = NULL;
-	switch_channel_t *channel = NULL;
+	// switch_channel_t *channel = NULL;
 
 	if (!(jcmd = cJSON_Parse(cmd))) {
 		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
@@ -5621,8 +5621,8 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	// 	return 0;
 	// }
 
-	channel = switch_core_session_get_channel(session);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya5100 %s.\n", switch_channel_get_name(channel));
+	// channel = switch_core_session_get_channel(session);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya5100 %s.\n", switch_channel_get_name(channel));
 
 
 
