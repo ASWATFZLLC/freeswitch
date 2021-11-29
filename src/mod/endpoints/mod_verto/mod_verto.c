@@ -5572,6 +5572,62 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+#define VERTO_SEND_SYNTAX "{position_name: <position_name>, data: <json>}"
+SWITCH_STANDARD_API(verto_send_function)
+{
+	int success = 0;
+	verto_profile_t *profile = NULL;
+	jsock_t *jsock;
+	const char *position_name = NULL;
+	cJSON *jmsg = NULL, *params = NULL;
+	cJSON *jcmd = NULL, *jdata = NULL;
+
+	if (!(jcmd = cJSON_Parse(cmd))) {
+		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!(position_name = cJSON_GetObjectCstr(jcmd, "position_name"))) {
+		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
+		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!cJSON_IsObject(jdata)) {
+		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				jmsg = jrpc_new_req("verto.send", NULL, &params);
+				cJSON_AddItemToObject(params, "data", jdata);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				success = 1;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	if (success == 1) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERR\n");
+	}
+
+  end:
+	switch_safe_free(jcmd);
+	return SWITCH_STATUS_SUCCESS;
+}
 
 static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session,
 												  switch_event_t *var_event,
@@ -6336,6 +6392,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send", "Send json data to client", verto_send_function, VERTO_SEND_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
