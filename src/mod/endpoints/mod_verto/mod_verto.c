@@ -5572,70 +5572,57 @@ SWITCH_STANDARD_API(verto_dial_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-#define VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX "{uuid: <uuid>, position_name: <position_name>, data: <json>}"
-SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
+#define VERTO_SEND_SYNTAX "{position_name: <position_name>, data: <json>}"
+SWITCH_STANDARD_API(verto_send_function)
 {
+	int success = 0;
+	verto_profile_t *profile = NULL;
+	jsock_t *jsock;
 	const char *position_name = NULL;
-	const char *uuid = NULL;
-	verto_pvt_t *tech_pvt = NULL;
-	jsock_t *jsock = NULL;
 	cJSON *jmsg = NULL, *params = NULL;
 	cJSON *jcmd = NULL, *jdata = NULL;
-	switch_core_session_t *lsession = NULL;
 
 	if (!(jcmd = cJSON_Parse(cmd))) {
-		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
-		goto end;
-	}
-
-	if (!(uuid = cJSON_GetObjectCstr(jcmd, "uuid"))) {
-		stream->write_function(stream, "-ERR Missing uuid. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto end;
 	}
 
 	if (!(position_name = cJSON_GetObjectCstr(jcmd, "position_name"))) {
-		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto end;
 	}
 
 	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
-		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto end;
 	}
 
 	if (!cJSON_IsObject(jdata)) {
-		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
 		goto end;
 	}
 
-	if (!(lsession = switch_core_session_locate(uuid))) {
-		stream->write_function(stream, "-ERR Invalid uuid.\n");
-		goto end;
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				jmsg = jrpc_new_req("verto.send", NULL, &params);
+				cJSON_AddItemToObject(params, "data", jdata);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				success = 1;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
 	}
+	switch_mutex_unlock(verto_globals.mutex);
 
-	if (!(tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) { 
-		switch_core_session_rwunlock(lsession);
-		stream->write_function(stream, "-ERR Invalid session.\n");
-		goto end;
-	}
-
-	if (!(jsock = get_jsock(tech_pvt->jsock_uuid))) { 
-		switch_core_session_rwunlock(lsession);
-		stream->write_function(stream, "-ERR Failed to find session.\n");
-		goto end;
-	}
-
-	if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
-		jmsg = jrpc_new_req("verto.sendToAgentOnCall", tech_pvt->call_id, &params);
-		cJSON_AddItemToObject(params, "data", jdata);
-		jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+	if (success == 1) {
 		stream->write_function(stream, "+OK\n");
 	} else {
-		stream->write_function(stream, "-ERR Failed to find position.\n");
+		stream->write_function(stream, "-ERR\n");
 	}
-
-	switch_thread_rwlock_unlock(jsock->rwlock);
-	switch_core_session_rwunlock(lsession);
 
   end:
 	switch_safe_free(jcmd);
@@ -6405,7 +6392,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
 	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
 	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
-	SWITCH_ADD_API(api_interface, "verto_send_to_position_on_call", "Send json data to agent client position of call", verto_send_to_position_on_call_function, VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send", "Send json data to client", verto_send_function, VERTO_SEND_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto status");
 	switch_console_set_complete("add verto xmlstatus");
