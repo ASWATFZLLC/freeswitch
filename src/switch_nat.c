@@ -295,7 +295,7 @@ static void *SWITCH_THREAD_FUNC switch_nat_multicast_runtime(switch_thread_t * t
 
 		if (nat_globals.nat_type == SWITCH_NAT_TYPE_UPNP) {
 			/* look for our desc URL and servicetype in the packet */
-			if (strstr(buf, nat_globals.descURL) && (buf == NULL || strstr(buf, nat_globals.data.servicetype))) {
+			if (strstr(buf, nat_globals.descURL) && strstr(buf, nat_globals.data.servicetype)) {
 				if ((pos = strstr(buf, "NTS:"))) {
 					pos = pos + 4;
 					while (*pos && *pos == ' ') {
@@ -427,7 +427,7 @@ SWITCH_DECLARE(void) switch_nat_init(switch_memory_pool_t *pool, switch_bool_t m
 		switch_core_set_variable("nat_public_addr", nat_globals.pub_addr);
 		switch_core_set_variable("nat_private_addr", nat_globals.pvt_addr);
 		switch_core_set_variable("nat_type", nat_globals.nat_type == SWITCH_NAT_TYPE_PMP ? "pmp" : "upnp");
-		strncpy(nat_globals.nat_type_str, nat_globals.nat_type == SWITCH_NAT_TYPE_PMP ? "pmp" : "upnp", sizeof(nat_globals.nat_type_str) - 1);
+		strncpy(nat_globals.nat_type_str, nat_globals.nat_type == SWITCH_NAT_TYPE_PMP ? "pmp" : "upnp", sizeof(nat_globals.nat_type_str));
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "NAT detected type: %s, ExtIP: '%s'\n",
 						  nat_globals.nat_type == SWITCH_NAT_TYPE_PMP ? "pmp" : "upnp", nat_globals.pub_addr);
 

@@ -29,6 +29,7 @@
  * Marcel Barbulescu <marcelbarbulescu@gmail.com>
  * Joseph Sullivan <jossulli@amazon.com>
  * Seven Du <dujinfang@gmail.com>
+ * Andrey Volk <andywolk@gmail.com>
  *
  * switch_core.c -- Main Core Library
  *
@@ -269,19 +270,7 @@ SWITCH_DECLARE(void) switch_core_screen_size(int *x, int *y)
 
 SWITCH_DECLARE(FILE *) switch_core_data_channel(switch_text_channel_t channel)
 {
-	FILE *handle = stdout;
-
-	switch (channel) {
-	case SWITCH_CHANNEL_ID_LOG:
-	case SWITCH_CHANNEL_ID_LOG_CLEAN:
-		handle = runtime.console;
-		break;
-	default:
-		handle = runtime.console;
-		break;
-	}
-
-	return handle;
+	return runtime.console;
 }
 
 
@@ -1306,11 +1295,7 @@ static void load_mime_types(void)
 	}
 
 	switch_safe_free(line_buf);
-
-	if (fd) {
-		fclose(fd);
-		fd = NULL;
-	}
+	fclose(fd);
 
   end:
 
@@ -1370,7 +1355,7 @@ typedef struct {
 
 static switch_ip_list_t IP_LIST = { 0 };
 
-SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_token(const char *ip_str, const char *list_name, const char **token)
+SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_port_token(const char *ip_str, int port, const char *list_name, const char **token)
 {
 	switch_network_list_t *list;
 	ip_t  ip, mask, net;
@@ -1398,9 +1383,9 @@ SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_token(const char *ip_
 
 	if ((list = switch_core_hash_find(IP_LIST.hash, list_name))) {
 		if (ipv6) {
-			ok = switch_network_list_validate_ip6_token(list, ip, token);
+			ok = switch_network_list_validate_ip6_port_token(list, ip, port, token);
 		} else {
-			ok = switch_network_list_validate_ip_token(list, ip.v4, token);
+			ok = switch_network_list_validate_ip_port_token(list, ip.v4, port, token);
 		}
 	} else if (strchr(list_name, '/')) {
 		if (strchr(list_name, ',')) {
@@ -1443,6 +1428,10 @@ SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_token(const char *ip_
 	return ok;
 }
 
+SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_token(const char *ip_str, const char *list_name, const char **token)
+{
+	return switch_check_network_list_ip_port_token(ip_str, 0, list_name, token);
+}
 
 SWITCH_DECLARE(void) switch_load_network_lists(switch_bool_t reload)
 {
@@ -1589,9 +1578,12 @@ SWITCH_DECLARE(void) switch_load_network_lists(switch_bool_t reload)
 
 
 				for (x_node = switch_xml_child(x_list, "node"); x_node; x_node = x_node->next) {
-					const char *cidr = NULL, *host = NULL, *mask = NULL, *domain = NULL;
+					const char *cidr = NULL, *host = NULL, *mask = NULL, *domain = NULL, *port = NULL;
 					switch_bool_t ok = default_type;
 					const char *type = switch_xml_attr(x_node, "type");
+					switch_network_port_range_t port_range;
+					char *argv[MAX_NETWORK_PORTS] = { 0 };
+					int argc = 0, i;
 
 					if (type) {
 						ok = switch_true(type);
@@ -1601,6 +1593,25 @@ SWITCH_DECLARE(void) switch_load_network_lists(switch_bool_t reload)
 					host = switch_xml_attr(x_node, "host");
 					mask = switch_xml_attr(x_node, "mask");
 					domain = switch_xml_attr(x_node, "domain");
+
+					memset(&port_range, 0, sizeof(switch_network_port_range_t));
+
+					if( (port = switch_xml_attr(x_node, "port")) != NULL) {
+						port_range.port = atoi(port);
+					}
+
+					if( (port = switch_xml_attr(x_node, "ports")) != NULL) {
+						argc = switch_separate_string((char*)port, ',', argv, (sizeof(argv) / sizeof(argv[0])));
+						for(i=0; i < argc; i++) {
+							port_range.ports[i] = atoi(argv[i]);
+						}
+					}
+					if( (port = switch_xml_attr(x_node, "port-min")) != NULL) {
+						port_range.min_port = atoi(port);
+					}
+					if( (port = switch_xml_attr(x_node, "port-max")) != NULL) {
+						port_range.max_port = atoi(port);
+					}
 
 					if (domain) {
 						switch_event_t *my_params = NULL;
@@ -1646,7 +1657,7 @@ SWITCH_DECLARE(void) switch_load_network_lists(switch_bool_t reload)
 										if (id && user_cidr) {
 											char *token = switch_mprintf("%s@%s", id, domain);
 											switch_assert(token);
-											switch_network_list_add_cidr_token(list, user_cidr, ok, token);
+											switch_network_list_add_cidr_port_token(list, user_cidr, ok, token, &port_range);
 											free(token);
 										}
 									}
@@ -1656,13 +1667,13 @@ SWITCH_DECLARE(void) switch_load_network_lists(switch_bool_t reload)
 
 						switch_xml_free(xml_root);
 					} else if (cidr) {
-						switch_network_list_add_cidr(list, cidr, ok);
+						switch_network_list_add_cidr_port_token(list, cidr, ok, NULL, &port_range);
 					} else if (host && mask) {
-						switch_network_list_add_host_mask(list, host, mask, ok);
+						switch_network_list_add_host_port_mask(list, host, mask, ok, &port_range);
 					}
-
-					switch_core_hash_insert(IP_LIST.hash, name, list);
 				}
+
+				switch_core_hash_insert(IP_LIST.hash, name, list);
 			}
 		}
 
@@ -1848,7 +1859,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 	switch_set_flag((&runtime), SCF_THREADED_SYSTEM_EXEC);
 #endif
 	switch_set_flag((&runtime), SCF_NO_NEW_SESSIONS);
-	runtime.hard_log_level = SWITCH_LOG_DEBUG;
+	if (flags & SCF_LOG_DISABLE) {
+		runtime.hard_log_level = SWITCH_LOG_DISABLE;
+		flags &= ~SCF_LOG_DISABLE;
+	} else {
+		runtime.hard_log_level = SWITCH_LOG_DEBUG;
+	}
 	runtime.mailer_app = "sendmail";
 	runtime.mailer_app_args = "-t";
 	runtime.max_dtmf_duration = SWITCH_MAX_DTMF_DURATION;
@@ -1966,8 +1982,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 	switch_channel_global_init(runtime.memory_pool);
 
 	if (switch_xml_init(runtime.memory_pool, err) != SWITCH_STATUS_SUCCESS) {
-		apr_terminate();
-		return SWITCH_STATUS_MEMERR;
+		/* allow missing configuration if MINIMAL */
+		if (!(flags & SCF_MINIMAL)) {
+			apr_terminate();
+			return SWITCH_STATUS_MEMERR;
+		}
 	}
 
 	if (switch_test_flag((&runtime), SCF_USE_AUTO_NAT)) {
@@ -1986,10 +2005,6 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 
 	switch_core_state_machine_init(runtime.memory_pool);
 
-	if (switch_core_sqldb_start(runtime.memory_pool, switch_test_flag((&runtime), SCF_USE_SQL) ? SWITCH_TRUE : SWITCH_FALSE) != SWITCH_STATUS_SUCCESS) {
-		*err = "Error activating database";
-		return SWITCH_STATUS_FALSE;
-	}
 	switch_core_media_init();
 	switch_scheduler_task_thread_start();
 
@@ -2314,11 +2329,7 @@ static void switch_load_core_config(const char *file)
 				} else if (!strcasecmp(var, "core-db-name") && !zstr(val)) {
 					runtime.dbname = switch_core_strdup(runtime.memory_pool, val);
 				} else if (!strcasecmp(var, "core-db-dsn") && !zstr(val)) {
-					if (switch_odbc_available() || switch_pgsql_available()) {
-						runtime.odbc_dsn = switch_core_strdup(runtime.memory_pool, val);
-					} else {
-						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "ODBC AND PGSQL ARE NOT AVAILABLE!\n");
-					}
+					runtime.odbc_dsn = switch_core_strdup(runtime.memory_pool, val);
 				} else if (!strcasecmp(var, "core-non-sqlite-db-required") && !zstr(val)) {
 					switch_set_flag((&runtime), SCF_CORE_NON_SQLITE_DB_REQ);
 				} else if (!strcasecmp(var, "core-dbtype") && !zstr(val)) {
@@ -2340,8 +2351,51 @@ static void switch_load_core_config(const char *file)
 										  "rtp-retain-crypto-keys enabled. Could be used to decrypt secure media.\n");
 					}
 					switch_core_set_variable("rtp_retain_crypto_keys", val);
+				} else if (!strcasecmp(var, "caller-profile-soft-variables-uses-prefix") && !zstr(val)) {
+					int v = switch_true(val);
+					if (v) {
+						switch_set_flag((&runtime), SCF_CPF_SOFT_PREFIX);
+					} else {
+						switch_clear_flag((&runtime), SCF_CPF_SOFT_PREFIX);
+					}
+				} else if (!strcasecmp(var, "caller-profile-soft-lookup-values") && !zstr(val)) {
+					int v = switch_true(val);
+					if (v) {
+						switch_set_flag((&runtime), SCF_CPF_SOFT_LOOKUP);
+					} else {
+						switch_clear_flag((&runtime), SCF_CPF_SOFT_LOOKUP);
+					}
+				} else if (!strcasecmp(var, "event-channel-key-separator") && !zstr(val)) {
+					runtime.event_channel_key_separator = switch_core_strdup(runtime.memory_pool, val);
+				} else if (!strcasecmp(var, "event-channel-enable-hierarchy-deliver") && !zstr(val)) {
+					int v = switch_true(val);
+					if (v) {
+						switch_set_flag((&runtime), SCF_EVENT_CHANNEL_ENABLE_HIERARCHY_DELIVERY);
+					} else {
+						switch_clear_flag((&runtime), SCF_EVENT_CHANNEL_ENABLE_HIERARCHY_DELIVERY);
+					}
+				} else if (!strcasecmp(var, "event-channel-hierarchy-deliver-once") && !zstr(val)) {
+					int v = switch_true(val);
+					if (v) {
+						switch_set_flag((&runtime), SCF_EVENT_CHANNEL_HIERARCHY_DELIVERY_ONCE);
+					} else {
+						switch_clear_flag((&runtime), SCF_EVENT_CHANNEL_HIERARCHY_DELIVERY_ONCE);
+					}
+				} else if (!strcasecmp(var, "event-channel-log-undeliverable-json") && !zstr(val)) {
+					int v = switch_true(val);
+					if (v) {
+						switch_set_flag((&runtime), SCF_EVENT_CHANNEL_LOG_UNDELIVERABLE_JSON);
+					} else {
+						switch_clear_flag((&runtime), SCF_EVENT_CHANNEL_LOG_UNDELIVERABLE_JSON);
+					}
+				} else if (!strcasecmp(var, "max-audio-channels") && !zstr(val)) {
+					switch_core_max_audio_channels(atoi(val));
 				}
 			}
+		}
+
+		if (runtime.event_channel_key_separator == NULL) {
+			runtime.event_channel_key_separator = switch_core_strdup(runtime.memory_pool, ".");
 		}
 
 		if ((settings = switch_xml_child(cfg, "variables"))) {
@@ -2382,6 +2436,20 @@ SWITCH_DECLARE(const char *) switch_core_banner(void)
 			"\n");
 }
 
+switch_status_t switch_core_sqldb_init(const char **err)
+{
+	if (switch_core_check_core_db_dsn() != SWITCH_STATUS_SUCCESS) {
+		*err = "NO SUITABLE DATABASE INTERFACE IS AVAILABLE TO SERVE 'core-db-dsn'!\n";
+		return SWITCH_STATUS_GENERR;
+	}
+
+	if (switch_core_sqldb_start(runtime.memory_pool, switch_test_flag((&runtime), SCF_USE_SQL) ? SWITCH_TRUE : SWITCH_FALSE) != SWITCH_STATUS_SUCCESS) {
+		*err = "Error activating database";
+		return SWITCH_STATUS_GENERR;
+	}
+
+	return SWITCH_STATUS_SUCCESS;
+}
 
 SWITCH_DECLARE(switch_status_t) switch_core_init_and_modload(switch_core_flag_t flags, switch_bool_t console, const char **err)
 {
@@ -2577,6 +2645,15 @@ SWITCH_DECLARE(int32_t) switch_core_sessions_peak_fivemin(void)
 	return runtime.sessions_peak_fivemin;
 }
 
+SWITCH_DECLARE(uint32_t) switch_core_max_audio_channels(uint32_t limit)
+{
+	if (limit) {
+		runtime.max_audio_channels = limit;
+	}
+
+	return runtime.max_audio_channels;
+}
+
 SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *val)
 {
 	int *intval = (int *) val;
@@ -2599,6 +2676,7 @@ SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *
 
 			if (!zstr(arg)) {
 				tech = strdup(arg);
+				switch_assert(tech);
 
 				if ((prof = strchr(tech, ':'))) {
 					*prof++ = '\0';
@@ -2606,10 +2684,9 @@ SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *
 
 				if (!strcasecmp(tech, "flush")) {
 					flush++;
-					tech = NULL;
 
 					if (prof) {
-						tech = prof;
+						char *tech = prof;
 						if ((prof = strchr(tech, ':'))) {
 							*prof++ = '\0';
 						}
@@ -2748,7 +2825,11 @@ SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *
 		{
 			int x = 19;
 			uint32_t count;
-
+			switch_event_t *shutdown_requested_event = NULL;
+			if (switch_event_create(&shutdown_requested_event, SWITCH_EVENT_SHUTDOWN_REQUESTED) == SWITCH_STATUS_SUCCESS) {
+				switch_event_add_header(shutdown_requested_event, SWITCH_STACK_BOTTOM, "Event-Info", "%s", cmd == SCSC_SHUTDOWN_ASAP ? "ASAP" : "elegant");
+				switch_event_fire(&shutdown_requested_event);
+			}
 			switch_set_flag((&runtime), SCF_SHUTDOWN_REQUESTED);
 			if (cmd == SCSC_SHUTDOWN_ASAP) {
 				switch_set_flag((&runtime), SCF_NO_NEW_SESSIONS);
@@ -2822,7 +2903,7 @@ SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *
 		newintval = runtime.running;
 		break;
 	case SCSC_LOGLEVEL:
-		if (oldintval > -1) {
+		if (oldintval >= SWITCH_LOG_DISABLE) {
 			runtime.hard_log_level = oldintval;
 		}
 
@@ -2834,7 +2915,7 @@ SWITCH_DECLARE(int32_t) switch_core_session_ctl(switch_session_ctl_t cmd, void *
 	case SCSC_DEBUG_LEVEL:
 		if (oldintval > -1) {
 			if (oldintval > 10)
-				newintval = 10;
+				oldintval = 10;
 			runtime.debug_level = oldintval;
 		}
 		newintval = runtime.debug_level;
@@ -2926,6 +3007,13 @@ SWITCH_DECLARE(switch_bool_t) switch_core_ready_outbound(void)
 	return (switch_test_flag((&runtime), SCF_SHUTTING_DOWN) || switch_test_flag((&runtime), SCF_NO_NEW_OUTBOUND_SESSIONS)) ? SWITCH_FALSE : SWITCH_TRUE;
 }
 
+void switch_core_sqldb_destroy()
+{
+	if (switch_test_flag((&runtime), SCF_USE_SQL)) {
+		switch_core_sqldb_stop();
+	}
+}
+
 SWITCH_DECLARE(switch_status_t) switch_core_destroy(void)
 {
 	switch_event_t *event;
@@ -2944,11 +3032,10 @@ SWITCH_DECLARE(switch_status_t) switch_core_destroy(void)
 
 	switch_loadable_module_shutdown();
 
+	switch_curl_destroy();
+
 	switch_ssl_destroy_ssl_locks();
 
-	if (switch_test_flag((&runtime), SCF_USE_SQL)) {
-		switch_core_sqldb_stop();
-	}
 	switch_scheduler_task_thread_stop();
 
 	switch_rtp_shutdown();
@@ -2994,6 +3081,10 @@ SWITCH_DECLARE(switch_status_t) switch_core_destroy(void)
 	switch_safe_free(SWITCH_GLOBAL_dirs.temp_dir);
 	switch_safe_free(SWITCH_GLOBAL_dirs.data_dir);
 	switch_safe_free(SWITCH_GLOBAL_dirs.localstate_dir);
+	switch_safe_free(SWITCH_GLOBAL_dirs.certs_dir);
+	switch_safe_free(SWITCH_GLOBAL_dirs.lib_dir);
+
+	switch_safe_free(SWITCH_GLOBAL_filenames.conf_name);
 
 	switch_event_destroy(&runtime.global_vars);
 	switch_core_hash_destroy(&runtime.ptimes);
@@ -3329,6 +3420,11 @@ SWITCH_DECLARE(uint16_t) switch_core_get_rtp_port_range_end_port()
 	end_port = (uint16_t)switch_rtp_set_end_port((switch_port_t)end_port);
 
 	return end_port;
+}
+
+SWITCH_DECLARE(const char *) switch_core_get_event_channel_key_separator(void)
+{
+	return runtime.event_channel_key_separator;
 }
 
 /* For Emacs:

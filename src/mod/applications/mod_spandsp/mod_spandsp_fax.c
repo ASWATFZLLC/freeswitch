@@ -59,6 +59,25 @@ typedef enum {
 	T38_MODE_REFUSED = -1,
 } t38_mode_t;
 
+const char * get_t38_status(t38_mode_t mode)
+{
+	const char *str = "off";
+	switch(mode) {
+	case T38_MODE_NEGOTIATED:
+		str = "negotiated";
+		break;
+	case T38_MODE_REQUESTED:
+		str = "requested";
+		break;
+	case T38_MODE_REFUSED:
+		str = "refused";
+		break;
+	default:
+		break;
+	}
+	return str;
+}
+
 
 struct pvt_s {
 	switch_core_session_t *session;
@@ -316,6 +335,7 @@ static int phase_b_handler(void *user_data, int result)
 	}
 
 	switch_channel_set_variable(channel, "fax_ecm_used", (t30_stats.error_correcting_mode) ? "on" : "off");
+	switch_channel_set_variable(channel, "fax_t38_status", get_t38_status(pvt->t38_mode));
 	switch_channel_set_variable(channel, "fax_local_station_id", local_ident);
 	switch_channel_set_variable(channel, "fax_remote_station_id", far_ident);
 	switch_channel_set_variable(channel, "fax_remote_country", switch_str_nil(t30_get_rx_country(pvt->t30)));
@@ -328,9 +348,10 @@ static int phase_b_handler(void *user_data, int result)
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Local station id:  %s\n", local_ident);
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Transfer Rate:     %i\n", t30_stats.bit_rate);
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "ECM status         %s\n", (t30_stats.error_correcting_mode) ? "on" : "off");
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote country:   %s\n", switch_str_nil(t30_get_rx_country(pvt->t30)));
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote vendor:    %s\n", switch_str_nil(t30_get_rx_vendor(pvt->t30)));
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote model:     %s\n", switch_str_nil(t30_get_rx_model(pvt->t30)));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "T38 status         %s\n", get_t38_status(pvt->t38_mode));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote country:    %s\n", switch_str_nil(t30_get_rx_country(pvt->t30)));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote vendor:     %s\n", switch_str_nil(t30_get_rx_vendor(pvt->t30)));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote model:      %s\n", switch_str_nil(t30_get_rx_model(pvt->t30)));
 	if (pvt->app_mode == FUNCTION_TX) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Total fax pages:   %s\n", fax_document_total_pages);
 	}
@@ -347,6 +368,7 @@ static int phase_b_handler(void *user_data, int result)
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "uuid", switch_core_session_get_uuid(session));
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-transfer-rate", fax_transfer_rate);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-ecm-used", (t30_stats.error_correcting_mode) ? "on" : "off");
+		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-t38-status", get_t38_status(pvt->t38_mode));
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-local-station-id", local_ident);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-remote-station-id", far_ident);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-remote-country", switch_str_nil(t30_get_rx_country(pvt->t30)));
@@ -546,9 +568,10 @@ static void phase_e_handler(void *user_data, int result)
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Transfer Rate:     %i\n", t.bit_rate);
 
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "ECM status         %s\n", (t.error_correcting_mode) ? "on" : "off");
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote country:   %s\n", switch_str_nil(t30_get_rx_country(pvt->t30)));
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote vendor:    %s\n", switch_str_nil(t30_get_rx_vendor(pvt->t30)));
-	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote model:     %s\n", switch_str_nil(t30_get_rx_model(pvt->t30)));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "T38 status         %s\n", get_t38_status(pvt->t38_mode));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote country:    %s\n", switch_str_nil(t30_get_rx_country(pvt->t30)));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote vendor:     %s\n", switch_str_nil(t30_get_rx_vendor(pvt->t30)));
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "remote model:      %s\n", switch_str_nil(t30_get_rx_model(pvt->t30)));
 
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "==============================================================================\n");
 
@@ -564,6 +587,7 @@ static void phase_e_handler(void *user_data, int result)
 	switch_channel_set_variable(channel, "fax_result_text", t30_completion_code_to_str(result));
 
 	switch_channel_set_variable(channel, "fax_ecm_used", (t.error_correcting_mode) ? "on" : "off");
+	switch_channel_set_variable(channel, "fax_t38_status", get_t38_status(pvt->t38_mode));
 	switch_channel_set_variable(channel, "fax_local_station_id", local_ident);
 	switch_channel_set_variable(channel, "fax_remote_station_id", far_ident);
 
@@ -616,6 +640,7 @@ static void phase_e_handler(void *user_data, int result)
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-bad-rows", fax_bad_rows);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-transfer-rate", fax_transfer_rate);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-ecm-used", (t.error_correcting_mode) ? "on" : "off");
+		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-t38-status", get_t38_status(pvt->t38_mode));
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-local-station-id", local_ident);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "fax-remote-station-id", far_ident);
 		switch_event_fire(&event);
@@ -799,9 +824,7 @@ static switch_status_t spanfax_init(pvt_t *pvt, transport_mode_t trans_mode)
 
 			/* add to timer thread processing */
 			if (!add_pvt(pvt)) {
-				if (channel) {
-					switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
-				}
+				switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 			}
 
 			span_log_set_message_handler(t38_terminal_get_logging_state(t38), mod_spandsp_log_message, pvt->session);
@@ -1002,12 +1025,17 @@ static switch_status_t spanfax_destroy(pvt_t *pvt)
 
 static t38_mode_t configure_t38(pvt_t *pvt)
 {
-	switch_core_session_t *session = pvt->session;
-	switch_channel_t *channel = switch_core_session_get_channel(session);
-	switch_t38_options_t *t38_options = switch_channel_get_private(channel, "t38_options");
+	switch_core_session_t *session;
+	switch_channel_t *channel;
+	switch_t38_options_t *t38_options;
 	int method = 2;
 
-	if (!t38_options || !pvt || !pvt->t38_core) {
+	switch_assert(pvt && pvt->session);
+	session = pvt->session;
+	channel = switch_core_session_get_channel(session);
+	t38_options = switch_channel_get_private(channel, "t38_options");
+
+	if (!t38_options || !pvt->t38_core) {
 		pvt->t38_mode = T38_MODE_REFUSED;
 		return pvt->t38_mode;
 	}
@@ -2033,12 +2061,10 @@ static switch_status_t t38_gateway_on_consume_media(switch_core_session_t *sessi
 
 	if (read_fd != FAX_INVALID_SOCKET) {
 		close(read_fd);
-		read_fd = FAX_INVALID_SOCKET;
 	}
 
 	if (write_fd != FAX_INVALID_SOCKET) {
 		close(write_fd);
-		write_fd = FAX_INVALID_SOCKET;
 	}
 
 
@@ -2204,6 +2230,7 @@ static switch_bool_t tone_detect_callback(switch_media_bug_t *bug, void *user_da
 		}
 		break;
 	case SWITCH_ABC_TYPE_CLOSE:
+		switch_channel_execute_on(switch_core_session_get_channel(cont->session), "execute_on_fax_close_detect");
 		break;
 	case SWITCH_ABC_TYPE_READ_REPLACE:
 	case SWITCH_ABC_TYPE_WRITE_REPLACE:
@@ -2339,7 +2366,7 @@ switch_status_t spandsp_fax_detect_session(switch_core_session_t *session,
 		return SWITCH_STATUS_FALSE;
 	}
 
-	if (!cont && !(cont = switch_core_session_alloc(session, sizeof(*cont)))) {
+	if (!(cont = switch_core_session_alloc(session, sizeof(*cont)))) {
 		return SWITCH_STATUS_MEMERR;
 	}
 

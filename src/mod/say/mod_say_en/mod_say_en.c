@@ -202,7 +202,7 @@ static switch_status_t en_say_time(switch_say_file_handle_t *sh, char *tosay, sw
 		if (strchr(tosay, ':')) {
 			char *tme = strdup(tosay);
 			char *p;
-
+			switch_assert(tme);
 			if ((p = strrchr(tme, ':'))) {
 				*p++ = '\0';
 				seconds = atoi(p);
@@ -343,16 +343,17 @@ static switch_status_t en_say_time(switch_say_file_handle_t *sh, char *tosay, sw
 			say_dow = 1;
 			break;
 		}
-		if (tm.tm_mon != tm_now.tm_mon) {
-			say_month = say_day = say_dow = 1;
-			break;
-		}
 
 		say_month = say_day = say_dow = 1;
 
 		break;
 	default:
 		break;
+	}
+
+	if (say_date) {
+		say_year = say_month = say_day = say_dow = 1;
+		say_today = say_yesterday = 0;
 	}
 
 	if (say_today) {
@@ -364,12 +365,6 @@ static switch_status_t en_say_time(switch_say_file_handle_t *sh, char *tosay, sw
 	if (say_dow) {
 		switch_say_file(sh, "time/day-%d", tm.tm_wday);
 	}
-
-	if (say_date) {
-		say_year = say_month = say_day = say_dow = 1;
-		say_today = say_yesterday = 0;
-	}
-
 	if (say_month) {
 		switch_say_file(sh, "time/mon-%d", tm.tm_mon);
 	}

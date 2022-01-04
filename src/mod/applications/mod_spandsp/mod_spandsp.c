@@ -282,6 +282,8 @@ SWITCH_STANDARD_API(start_tone_detect_api)
 
 	puuid = strdup((char *)cmd);
 
+	switch_assert(puuid);
+
 	if ((descriptor = strchr(puuid, ' '))) {
 		*descriptor++ = '\0';
 	}
@@ -367,7 +369,7 @@ SWITCH_STANDARD_API(start_tdd_detect_api)
 		return SWITCH_STATUS_SUCCESS;
 	}
 
-	spandsp_tdd_decode_session(psession);
+	status = spandsp_tdd_decode_session(psession);
 
 	if (status == SWITCH_STATUS_SUCCESS) {
 		stream->write_function(stream, "+OK started\n");
@@ -412,6 +414,8 @@ SWITCH_STANDARD_API(start_send_tdd_api)
 	}
 
 	puuid = strdup((char *)cmd);
+
+	switch_assert(puuid);
 
 	if ((text = strchr(puuid, ' '))) {
 		*text++ = '\0';
@@ -469,7 +473,6 @@ void mod_spandsp_indicate_data(switch_core_session_t *session, switch_bool_t sel
 
 		if (locked) {
 			switch_core_session_rwunlock(target_session);
-			locked = 0;
 		}
 	}
 }
@@ -482,7 +485,7 @@ static void destroy_descriptor(void *ptr)
 {
     tone_descriptor_t *d = (tone_descriptor_t *) ptr;
 
-    super_tone_rx_free_descriptor(d->spandsp_tone_descriptor);
+	tone_descriptor_destroy(d);
 }
 
 switch_status_t load_configuration(switch_bool_t reload)

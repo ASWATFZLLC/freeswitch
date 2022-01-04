@@ -98,6 +98,8 @@ struct listener {
 	time_t linger_timeout;
 	struct listener *next;
 	switch_pollfd_t *pollfd;
+	uint8_t lock_acquired;
+	uint8_t finished;
 };
 
 typedef struct listener listener_t;
@@ -163,7 +165,7 @@ SWITCH_DECLARE_GLOBAL_STRING_FUNC(set_pref_ip, prefs.ip);
 SWITCH_DECLARE_GLOBAL_STRING_FUNC(set_pref_pass, prefs.password);
 
 static void *SWITCH_THREAD_FUNC listener_run(switch_thread_t *thread, void *obj);
-static void launch_listener_thread(listener_t *listener);
+static switch_status_t launch_listener_thread(listener_t *listener);
 
 static switch_status_t socket_logger(const switch_log_node_t *node, switch_log_level_t level)
 {
@@ -375,6 +377,9 @@ static void event_handler(switch_event_t *event)
 			if (!uuid || (l->session && strcmp(uuid, switch_core_session_get_uuid(l->session)))) {
 				send = 0;
 			}
+			if (!strcmp(switch_core_session_get_uuid(l->session), switch_event_get_header_nil(event, "Job-Owner-UUID"))) {
+			    send = 1;
+			}
 		}
 
 		if (send) {
@@ -520,9 +525,17 @@ SWITCH_STANDARD_APP(socket_function)
 	if (switch_test_flag(listener, LFLAG_ASYNC)) {
 		const char *var;
 
-		launch_listener_thread(listener);
+		if (launch_listener_thread(listener) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Failed to start listener\n");
+			return;
+		}
 
-		while (switch_channel_ready(channel) && !switch_test_flag(listener, LFLAG_CONNECTED)) {
+		/* Wait until listener_thread acquires session read lock */
+		while (!listener->lock_acquired && !listener->finished) {
+			switch_cond_next();
+		}
+
+		while (switch_channel_ready(channel) && !listener->finished && !switch_test_flag(listener, LFLAG_CONNECTED)) {
 			switch_cond_next();
 		}
 
@@ -906,6 +919,8 @@ SWITCH_STANDARD_API(event_sink_function)
 
 			edup = strdup(events);
 
+			switch_assert(edup);
+
 			if (strchr(edup, ' ')) {
 				delim = ' ';
 			}
@@ -1273,7 +1288,6 @@ static switch_status_t read_packet(listener_t *listener, switch_event_t **event,
 			if (crcount == 2) {
 				char *next;
 				char *cur = mbuf;
-				bytes = 0;
 				while (cur) {
 					if ((next = strchr(cur, '\r')) || (next = strchr(cur, '\n'))) {
 						while (*next == '\r' || *next == '\n') {
@@ -1295,7 +1309,7 @@ static switch_status_t read_packet(listener_t *listener, switch_event_t **event,
 									val++;
 								}
 							}
-							if (var && val) {
+							if (val) {
 								switch_event_add_header_string(*event, SWITCH_STACK_BOTTOM, var, val);
 								if (!strcasecmp(var, "content-length")) {
 									clen = atoi(val);
@@ -1498,6 +1512,7 @@ struct api_command_struct {
 	listener_t *listener;
 	char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
 	int bg;
+	char bg_owner_uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
 	int ack;
 	int console_execute;
 	switch_memory_pool_t *pool;
@@ -1556,6 +1571,7 @@ static void *SWITCH_THREAD_FUNC api_exec(switch_thread_t *thread, void *obj)
 
 		if (switch_event_create(&event, SWITCH_EVENT_BACKGROUND_JOB) == SWITCH_STATUS_SUCCESS) {
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Job-UUID", acs->uuid_str);
+			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Job-Owner-UUID", acs->bg_owner_uuid_str);
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Job-Command", acs->api_cmd);
 			if (acs->arg) {
 				switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Job-Command-Arg", acs->arg);
@@ -1581,9 +1597,7 @@ static void *SWITCH_THREAD_FUNC api_exec(switch_thread_t *thread, void *obj)
 	switch_safe_free(stream.data);
 	switch_safe_free(freply);
 
-	if (acs->listener->rwlock) {
-		switch_thread_rwlock_unlock(acs->listener->rwlock);
-	}
+	switch_thread_rwlock_unlock(acs->listener->rwlock);
 
   done:
 
@@ -1636,6 +1650,7 @@ static switch_bool_t auth_api_command(listener_t *listener, const char *api_cmd,
 					if (arg) {
 						switch_safe_free(dup_arg);
 						dup_arg = strdup(arg);
+						switch_assert(dup_arg);
 						check_cmd = dup_arg;
 						if ((next = strchr(check_cmd, ' '))) {
 							*next++ = '\0';
@@ -1762,7 +1777,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 
 			user = cmd + 9;
 
-			if (user && (domain_name = strchr(user, '@'))) {
+			if ((domain_name = strchr(user, '@'))) {
 				*domain_name++ = '\0';
 			}
 
@@ -1840,8 +1855,9 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 					switch_core_hash_init(&listener->allowed_event_hash);
 
 					edup = strdup(allowed_events);
-					cur = edup;
 
+					switch_assert(edup);
+					
 					if (strchr(edup, ' ')) {
 						delim = ' ';
 					}
@@ -1895,7 +1911,6 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 					switch_core_hash_init(&listener->allowed_api_hash);
 
 					edup = strdup(allowed_api);
-					cur = edup;
 
 					if (strchr(edup, ' ')) {
 						delim = ' ';
@@ -1918,10 +1933,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 
 
 		  bot:
-
-			if (params) {
-				switch_event_destroy(&params);
-			}
+			switch_event_destroy(&params);
 
 			if (authed) {
 				switch_set_flag_locked(listener, LFLAG_AUTHED);
@@ -2063,8 +2075,6 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 						if (fmt) {
 							switch_snprintf(reply, reply_len, "-ERR invalid uuid");
 							goto done;
-						} else {
-							fmt = uuid;
 						}
 					}
 
@@ -2133,16 +2143,14 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 
 		channel = switch_core_session_get_channel(listener->session);
 
-		if (onoff) {
-			while (*onoff == ' ') {
-				onoff++;
-			}
+		while (*onoff == ' ') {
+			onoff++;
+		}
 
-			if (*onoff == '\r' || *onoff == '\n') {
-				onoff = NULL;
-			} else {
-				strip_cr(onoff);
-			}
+		if (*onoff == '\r' || *onoff == '\n') {
+			onoff = NULL;
+		} else {
+			strip_cr(onoff);
 		}
 
 		if (zstr(onoff)) {
@@ -2173,16 +2181,14 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 			async = 1;
 		}
 
-		if (uuid) {
-			while (*uuid == ' ') {
-				uuid++;
-			}
+		while (*uuid == ' ') {
+			uuid++;
+		}
 
-			if (*uuid == '\r' || *uuid == '\n') {
-				uuid = NULL;
-			} else {
-				strip_cr(uuid);
-			}
+		if (*uuid == '\r' || *uuid == '\n') {
+			uuid = NULL;
+		} else {
+			strip_cr(uuid);
 		}
 
 		if (zstr(uuid)) {
@@ -2286,6 +2292,8 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 			char *arg_copy = NULL;
 			int ok = 0;
 
+			switch_assert(api_copy);
+
 			if ((arg_copy = strchr(api_copy, ' '))) {
 				*arg_copy++ = '\0';
 			}
@@ -2348,9 +2356,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 		acs->listener = listener;
 		acs->console_execute = 0;
 
-		if (api_cmd) {
-			acs->api_cmd = switch_core_strdup(acs->pool, api_cmd);
-		}
+		acs->api_cmd = switch_core_strdup(acs->pool, api_cmd);
 		if (arg) {
 			acs->arg = switch_core_strdup(acs->pool, arg);
 		}
@@ -2366,6 +2372,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 			switch_uuid_get(&uuid);
 			switch_uuid_format(acs->uuid_str, &uuid);
 		}
+		switch_copy_string(acs->bg_owner_uuid_str, switch_core_session_get_uuid(listener->session), sizeof(acs->bg_owner_uuid_str));
 		switch_snprintf(reply, reply_len, "~Reply-Text: +OK Job-UUID: %s\nJob-UUID: %s\n\n", acs->uuid_str, acs->uuid_str);
 		switch_thread_create(&thread, thd_attr, api_exec, acs, acs->pool);
 		sanity = 2000;
@@ -2457,7 +2464,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 		strip_cr(cmd);
 		cur = cmd + 5;
 
-		if (cur && (cur = strchr(cur, ' '))) {
+		if ((cur = strchr(cur, ' '))) {
 			for (cur++; cur; count++) {
 				switch_event_types_t type;
 
@@ -2539,7 +2546,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 		strip_cr(cmd);
 		cur = cmd + 8;
 
-		if (cur && (cur = strchr(cur, ' '))) {
+		if ((cur = strchr(cur, ' '))) {
 			for (cur++; cur; count++) {
 				switch_event_types_t type;
 
@@ -2640,9 +2647,19 @@ static void *SWITCH_THREAD_FUNC listener_run(switch_thread_t *thread, void *obj)
 
 	if ((session = listener->session)) {
 		if (switch_core_session_read_lock(session) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Unable to lock session!\n");
 			locked = 0;
+			session = NULL;
 			goto done;
 		}
+
+		listener->lock_acquired = 1;
+	}
+
+	if (!listener->sock) {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Listener socket is null!\n");
+		switch_clear_flag_locked(listener, LFLAG_RUNNING);
+		goto done;
 	}
 
 	switch_socket_opt_set(listener->sock, SWITCH_SO_TCP_NODELAY, TRUE);
@@ -2787,7 +2804,7 @@ static void *SWITCH_THREAD_FUNC listener_run(switch_thread_t *thread, void *obj)
 	}
 	switch_mutex_unlock(listener->filter_mutex);
 
-	if (listener->session) {
+	if (listener->session && locked) {
 		channel = switch_core_session_get_channel(listener->session);
 	}
 
@@ -2819,7 +2836,9 @@ static void *SWITCH_THREAD_FUNC listener_run(switch_thread_t *thread, void *obj)
 	}
 
 	if (listener->session) {
-		switch_channel_clear_flag(switch_core_session_get_channel(listener->session), CF_CONTROLLED);
+		if (locked) {
+			switch_channel_clear_flag(switch_core_session_get_channel(listener->session), CF_CONTROLLED);
+		}
 		switch_clear_flag_locked(listener, LFLAG_SESSION);
 		if (locked) {
 			switch_core_session_rwunlock(listener->session);
@@ -2833,12 +2852,14 @@ static void *SWITCH_THREAD_FUNC listener_run(switch_thread_t *thread, void *obj)
 	prefs.threads--;
 	switch_mutex_unlock(globals.listener_mutex);
 
+	listener->finished = 1;
+
 	return NULL;
 }
 
 
 /* Create a thread for the socket and launch it */
-static void launch_listener_thread(listener_t *listener)
+static switch_status_t launch_listener_thread(listener_t *listener)
 {
 	switch_thread_t *thread;
 	switch_threadattr_t *thd_attr = NULL;
@@ -2846,7 +2867,7 @@ static void launch_listener_thread(listener_t *listener)
 	switch_threadattr_create(&thd_attr, listener->pool);
 	switch_threadattr_detach_set(thd_attr, 1);
 	switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
-	switch_thread_create(&thread, thd_attr, listener_run, listener, listener->pool);
+	return switch_thread_create(&thread, thd_attr, listener_run, listener, listener->pool);
 }
 
 static int config(void)
@@ -2937,8 +2958,10 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_event_socket_runtime)
 
 	while (!prefs.done) {
 		rv = switch_sockaddr_info_get(&sa, prefs.ip, SWITCH_UNSPEC, prefs.port, 0, pool);
-		if (rv)
+		if (rv) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Cannot get information about IP address %s\n", prefs.ip);
 			goto fail;
+		}
 		rv = switch_socket_create(&listen_list.sock, switch_sockaddr_get_family(sa), SOCK_STREAM, SWITCH_PROTO_TCP, pool);
 		if (rv)
 			goto sock_fail;
@@ -3026,9 +3049,9 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_event_socket_runtime)
 
 		if (switch_socket_addr_get(&listener->sa, SWITCH_TRUE, listener->sock) == SWITCH_STATUS_SUCCESS && listener->sa) {
 			switch_get_addr(listener->remote_ip, sizeof(listener->remote_ip), listener->sa);
-			if (listener->sa && (listener->remote_port = switch_sockaddr_get_port(listener->sa))) {
-				launch_listener_thread(listener);
-				continue;
+			if ((listener->remote_port = switch_sockaddr_get_port(listener->sa))) {
+				if (launch_listener_thread(listener) == SWITCH_STATUS_SUCCESS)
+					continue;
 			}
 		}
 

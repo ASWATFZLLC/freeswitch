@@ -644,11 +644,11 @@ static switch_bool_t avmd_callback(switch_media_bug_t * bug, void *user_data, sw
 
         case SWITCH_ABC_TYPE_CLOSE:
             avmd_session_close(avmd_session);
-            switch_mutex_lock(avmd_globals.mutex);
+			switch_mutex_lock(avmd_globals.mutex);
             if (avmd_globals.session_n > 0) {
                 --avmd_globals.session_n;
             }
-            switch_mutex_unlock(avmd_globals.mutex);
+			switch_mutex_unlock(avmd_globals.mutex);
             break;
 
         default:
@@ -1151,7 +1151,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_avmd_load) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "No memory pool assigned!\n");
         return SWITCH_STATUS_TERM;
     }
-    switch_mutex_init(&avmd_globals.mutex, SWITCH_MUTEX_DEFAULT, pool);
+    switch_mutex_init(&avmd_globals.mutex, SWITCH_MUTEX_NESTED, pool);
     avmd_globals.pool = pool;
 
     if (avmd_load_xml_configuration(NULL) != SWITCH_STATUS_SUCCESS) {
@@ -1340,6 +1340,7 @@ static switch_status_t avmd_parse_cmd_data(avmd_session_t *s, const char *cmd_da
             /* iterate over params, check if they mean something to us, set */
             idx = 0;
             while (idx < argc) {
+                switch_assert(argv[idx]);
                 status = avmd_parse_cmd_data_one_entry(argv[idx], &settings);
                 if (status != SWITCH_STATUS_SUCCESS) {
                     switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(s->session), SWITCH_LOG_ERROR,
@@ -1403,6 +1404,7 @@ SWITCH_STANDARD_APP(avmd_start_app) {
     avmd_session_t      *avmd_session = NULL;
     switch_core_media_flag_t flags = 0;
 	const char *direction = "NO DIRECTION";
+	uint8_t report = 0;
 
     if (session == NULL) {
         switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "BUGGG. FreeSWITCH session is NULL! Please report to developers\n");
@@ -1446,6 +1448,8 @@ SWITCH_STANDARD_APP(avmd_start_app) {
             switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Failed to set dynamic parameteres for avmd session. Unknown error\n");
             goto end;
     }
+	
+	report = avmd_session->settings.report_status;
 
     status = init_avmd_session_data(avmd_session, session, avmd_globals.mutex);
     if (status != SWITCH_STATUS_SUCCESS) {
@@ -1508,7 +1512,10 @@ SWITCH_STANDARD_APP(avmd_start_app) {
     status = switch_core_media_bug_add(session, "avmd", NULL, avmd_callback, avmd_session, 0, flags, &bug); /* Add a media bug that allows me to intercept the audio stream */
     if (status != SWITCH_STATUS_SUCCESS) { /* If adding a media bug fails exit */
         switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Failed to add media bug!\n");
-        goto end_unlock;
+
+		switch_mutex_unlock(avmd_session->mutex);
+		avmd_session_close(avmd_session);
+        goto end;
     }
 
     switch_mutex_lock(avmd_globals.mutex);
@@ -1526,7 +1533,7 @@ end_unlock:
 
 end:
     if (status != SWITCH_STATUS_SUCCESS) {
-        if (avmd_session == NULL || avmd_session->settings.report_status == 1) {
+        if (avmd_session == NULL || report) {
             switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Avmd on channel [%s] NOT started\n", switch_channel_get_name(channel));
         }
     }
@@ -2225,7 +2232,7 @@ static enum avmd_detection_mode avmd_process_sample(avmd_session_t *s, circ_buff
             return AVMD_DETECT_FREQ;
         }
         if (mode == AVMD_DETECT_BOTH) {
-            if ((avmd_decision_amplitude(s, buffer, v_amp, AVMD_AMPLITUDE_RSD_THRESHOLD) == 1) && (avmd_decision_freq(s, buffer, v_fir, AVMD_VARIANCE_RSD_THRESHOLD) == 1) && (valid_omega == 1))  {
+            if ((avmd_decision_amplitude(s, buffer, v_amp, AVMD_AMPLITUDE_RSD_THRESHOLD) == 1) && (avmd_decision_freq(s, buffer, v_fir, AVMD_VARIANCE_RSD_THRESHOLD) == 1))  {
                 return AVMD_DETECT_BOTH;
             }
         }

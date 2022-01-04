@@ -27,6 +27,7 @@
  * Luke Dashjr <luke@openmethods.com> (OpenMethods, LLC)
  * Joseph Sullivan <jossulli@amazon.com>
  * Emmanuel Schmidbauer <eschmidbauer@gmail.com>
+ * Andrey Volk <andywolk@gmail.com>
  *
  * switch_core.h -- Core Library
  *
@@ -284,6 +285,8 @@ SWITCH_DECLARE(switch_vid_spy_fmt_t) switch_media_bug_parse_spy_fmt(const char *
 /*!
   \brief Add a media bug to the session
   \param session the session to add the bug to
+  \param function user defined module/function/reason identifying this bug
+  \param target user defined identification of the target of the bug
   \param callback a callback for events
   \param user_data arbitrary user data
   \param stop_time absolute time at which the bug is automatically removed (or 0)
@@ -622,6 +625,8 @@ SWITCH_DECLARE(const switch_state_handler_table_t *) switch_core_get_state_handl
 
 SWITCH_DECLARE(void) switch_core_memory_pool_tag(switch_memory_pool_t *pool, const char *tag);
 
+SWITCH_DECLARE(void) switch_core_pool_stats(switch_stream_handle_t *stream);
+
 SWITCH_DECLARE(switch_status_t) switch_core_perform_new_memory_pool(_Out_ switch_memory_pool_t **pool,
 																	_In_z_ const char *file, _In_z_ const char *func, _In_ int line);
 
@@ -723,6 +728,8 @@ SWITCH_DECLARE(char *) switch_core_perform_session_strdup(_In_ switch_core_sessi
 
 SWITCH_DECLARE(char *) switch_core_perform_strdup(_In_ switch_memory_pool_t *pool, _In_z_ const char *todup, _In_z_ const char *file,
 												  _In_z_ const char *func, _In_ int line);
+SWITCH_DECLARE(char *) switch_core_perform_strndup(_In_ switch_memory_pool_t *pool, _In_z_ const char *todup, size_t len, _In_z_ const char *file,
+												  _In_z_ const char *func, _In_ int line);
 
 /*!
   \brief Copy a string using memory allocation from a given pool
@@ -731,6 +738,8 @@ SWITCH_DECLARE(char *) switch_core_perform_strdup(_In_ switch_memory_pool_t *poo
   \return a pointer to the newly duplicated string
 */
 #define switch_core_strdup(_pool, _todup)  switch_core_perform_strdup(_pool, _todup, __FILE__, __SWITCH_FUNC__, __LINE__)
+
+#define switch_core_strndup(_pool, _todup, _len)  switch_core_perform_strndup(_pool, _todup, _len, __FILE__, __SWITCH_FUNC__, __LINE__)
 
 /*!
   \brief printf-style style printing routine.  The data is output to a string allocated from the session
@@ -1420,6 +1429,16 @@ SWITCH_DECLARE(switch_status_t) switch_core_hash_init_case(_Out_ switch_hash_t *
 SWITCH_DECLARE(switch_status_t) switch_core_hash_destroy(_Inout_ switch_hash_t **hash);
 
 /*!
+  \brief Insert data into a hash and set flags so the value is automatically freed on delete
+  \param hash the hash to add data to
+  \param key the name of the key to add the data to
+  \param data the data to add
+  \return SWITCH_STATUS_SUCCESS if the data is added
+  \note the string key must be a constant or a dynamic string
+*/
+SWITCH_DECLARE(switch_status_t) switch_core_hash_insert_auto_free(switch_hash_t *hash, const char *key, const void *data);
+
+/*!
   \brief Insert data into a hash
   \param hash the hash to add data to
   \param key the name of the key to add the data to
@@ -1836,6 +1855,13 @@ SWITCH_DECLARE(switch_codec_t *) switch_core_session_get_video_write_codec(_In_ 
   \return the db handle
 */
 SWITCH_DECLARE(switch_core_db_t *) switch_core_db_open_file(const char *filename);
+
+/*!
+  \brief Open a core db (SQLite) in-memory
+  \param uri to the db to open
+  \return the db handle
+*/
+SWITCH_DECLARE(switch_core_db_t *) switch_core_db_open_in_memory(const char *uri);
 
 /*!
   \brief Execute a sql stmt until it is accepted
@@ -2427,6 +2453,7 @@ SWITCH_DECLARE(const char *) switch_lookup_timezone(const char *tz_name);
 SWITCH_DECLARE(switch_status_t) switch_strftime_tz(const char *tz, const char *format, char *date, size_t len, switch_time_t thetime);
 SWITCH_DECLARE(switch_status_t) switch_time_exp_tz_name(const char *tz, switch_time_exp_t *tm, switch_time_t thetime);
 SWITCH_DECLARE(void) switch_load_network_lists(switch_bool_t reload);
+SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_port_token(const char *ip_str, int port, const char *list_name, const char **token);
 SWITCH_DECLARE(switch_bool_t) switch_check_network_list_ip_token(const char *ip_str, const char *list_name, const char **token);
 #define switch_check_network_list_ip(_ip_str, _list_name) switch_check_network_list_ip_token(_ip_str, _list_name, NULL)
 SWITCH_DECLARE(void) switch_time_set_monotonic(switch_bool_t enable);
@@ -2467,23 +2494,25 @@ typedef int (*switch_core_db_event_callback_func_t) (void *pArg, switch_event_t 
 #define CACHE_DB_LEN 256
 typedef enum {
 	CDF_INUSE = (1 << 0),
-	CDF_PRUNE = (1 << 1)
+	CDF_PRUNE = (1 << 1),
+	CDF_NONEXPIRING = (1 << 2)
 } cache_db_flag_t;
 
 typedef enum {
 	SCDB_TYPE_CORE_DB,
 	SCDB_TYPE_ODBC,
-	SCDB_TYPE_PGSQL
+	SCDB_TYPE_DATABASE_INTERFACE
 } switch_cache_db_handle_type_t;
 
 typedef union {
-	switch_core_db_t *core_db_dbh;
+	switch_coredb_handle_t *core_db_dbh;
 	switch_odbc_handle_t *odbc_dbh;
-	switch_pgsql_handle_t *pgsql_dbh;
+	switch_database_interface_handle_t *database_interface_dbh;
 } switch_cache_db_native_handle_t;
 
 typedef struct {
 	char *db_path;
+	switch_bool_t in_memory;
 } switch_cache_db_core_db_options_t;
 
 typedef struct {
@@ -2493,13 +2522,17 @@ typedef struct {
 } switch_cache_db_odbc_options_t;
 
 typedef struct {
-	char *dsn;
-} switch_cache_db_pgsql_options_t;
+	const char *original_dsn;
+	char *connection_string;
+	char prefix[16];
+	switch_database_interface_t *database_interface;
+	switch_bool_t make_module_no_unloadable;
+} switch_cache_db_database_interface_options_t;
 
 typedef union {
 	switch_cache_db_core_db_options_t core_db_options;
 	switch_cache_db_odbc_options_t odbc_options;
-	switch_cache_db_pgsql_options_t pgsql_options;
+	switch_cache_db_database_interface_options_t database_interface_options;
 } switch_cache_db_connection_options_t;
 
 struct switch_cache_db_handle;
@@ -2510,9 +2543,9 @@ static inline const char *switch_cache_db_type_name(switch_cache_db_handle_type_
 	const char *type_str = "INVALID";
 
 	switch (type) {
-	case SCDB_TYPE_PGSQL:
+	case SCDB_TYPE_DATABASE_INTERFACE:
 		{
-			type_str = "PGSQL";
+			type_str = "DATABASE_INTERFACE";
 		}
 		break;
 	case SCDB_TYPE_ODBC:
@@ -2558,6 +2591,8 @@ SWITCH_DECLARE(switch_status_t) _switch_cache_db_get_db_handle(switch_cache_db_h
 															   const char *file, const char *func, int line);
 #define switch_cache_db_get_db_handle(_a, _b, _c) _switch_cache_db_get_db_handle(_a, _b, _c, __FILE__, __SWITCH_FUNC__, __LINE__)
 
+SWITCH_DECLARE(switch_status_t) _switch_cache_db_get_db_handle_dsn_ex(switch_cache_db_handle_t **dbh, const char *dsn, switch_bool_t make_module_no_unloadable,
+																	  const char *file, const char *func, int line);
 SWITCH_DECLARE(switch_status_t) _switch_cache_db_get_db_handle_dsn(switch_cache_db_handle_t **dbh, const char *dsn,
 																   const char *file, const char *func, int line);
 #define switch_cache_db_get_db_handle_dsn(_a, _b) _switch_cache_db_get_db_handle_dsn(_a, _b, __FILE__, __SWITCH_FUNC__, __LINE__)
@@ -2634,6 +2669,8 @@ SWITCH_DECLARE(switch_status_t) _switch_core_db_handle(switch_cache_db_handle_t 
 
 SWITCH_DECLARE(switch_bool_t) switch_cache_db_test_reactive(switch_cache_db_handle_t *db,
 															const char *test_sql, const char *drop_sql, const char *reactive_sql);
+SWITCH_DECLARE(switch_bool_t) switch_cache_db_test_reactive_ex(switch_cache_db_handle_t *db,
+															const char *test_sql, const char *drop_sql, const char *reactive_sql, const char *row_size_limited_reactive_sql);
 SWITCH_DECLARE(switch_status_t) switch_cache_db_persistant_execute(switch_cache_db_handle_t *dbh, const char *sql, uint32_t retries);
 SWITCH_DECLARE(switch_status_t) switch_cache_db_persistant_execute_trans_full(switch_cache_db_handle_t *dbh, char *sql, uint32_t retries,
 																			  const char *pre_trans_execute,
@@ -2641,6 +2678,18 @@ SWITCH_DECLARE(switch_status_t) switch_cache_db_persistant_execute_trans_full(sw
 																			  const char *inner_pre_trans_execute,
 																			  const char *inner_post_trans_execute);
 #define switch_cache_db_persistant_execute_trans(_d, _s, _r) switch_cache_db_persistant_execute_trans_full(_d, _s, _r, NULL, NULL, NULL, NULL)
+
+SWITCH_DECLARE(void) switch_cache_db_database_interface_flush_handles(switch_database_interface_t *database_interface);
+
+/*!
+\brief Returns error if no suitable database interface found to serve core db dsn.
+*/
+SWITCH_DECLARE(switch_status_t) switch_core_check_core_db_dsn(void);
+
+/*!
+\brief Returns error if no suitable database interface found for a dsn.
+*/
+SWITCH_DECLARE(switch_status_t) switch_database_available(char* dsn);
 
 SWITCH_DECLARE(void) switch_core_set_signal_handlers(void);
 SWITCH_DECLARE(uint32_t) switch_core_debug_level(void);
@@ -2655,6 +2704,7 @@ SWITCH_DECLARE(const char *) switch_core_banner(void);
 SWITCH_DECLARE(switch_bool_t) switch_core_session_in_thread(switch_core_session_t *session);
 SWITCH_DECLARE(uint32_t) switch_default_ptime(const char *name, uint32_t number);
 SWITCH_DECLARE(uint32_t) switch_default_rate(const char *name, uint32_t number);
+SWITCH_DECLARE(uint32_t) switch_core_max_audio_channels(uint32_t limit);
 
 /*!
  \brief Add user registration
@@ -2791,6 +2841,7 @@ SWITCH_DECLARE(void) switch_core_autobind_cpu(void);
 
 SWITCH_DECLARE(switch_status_t) switch_core_session_start_text_thread(switch_core_session_t *session);
 
+SWITCH_DECLARE(const char *) switch_core_get_event_channel_key_separator(void);
 
 SWITCH_END_EXTERN_C
 #endif

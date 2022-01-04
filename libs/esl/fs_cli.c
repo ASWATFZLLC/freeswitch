@@ -50,7 +50,7 @@ static unsigned char esl_console_complete(const char *buffer, const char *cursor
 #endif
 
 typedef struct {
-	char name[128];
+	char name[256];
 	char host[128];
 	esl_port_t port;
 	char user[256];
@@ -630,8 +630,8 @@ static const char *usage_str =
 	"  -R, --reconnect                 Reconnect if disconnected\n"
 	"  -d, --debug=level               Debug Level (0 - 7)\n"
 	"  -b, --batchmode                 Batch mode\n"
-	"  -t, --timeout                   Timeout for API commands (in miliseconds)\n"
-	"  -T, --connect-timeout           Timeout for socket connection (in miliseconds)\n"
+	"  -t, --timeout                   Timeout for API commands (in milliseconds)\n"
+	"  -T, --connect-timeout           Timeout for socket connection (in milliseconds)\n"
 	"  -n, --no-color                  Disable color\n\n";
 
 static int usage(char *name){
@@ -674,7 +674,7 @@ static void redisplay(void)
 	esl_mutex_lock(MUTEX);
 	{
 #ifdef HAVE_LIBEDIT
-#ifdef XHAVE_DECL_EL_REFRESH
+#ifdef HAVE_DECL_EL_REFRESH
 #ifdef HAVE_EL_WSET
 		/* Current libedit versions don't implement EL_REFRESH in eln.c so
 		 * use the wide version instead. */
@@ -689,7 +689,10 @@ static void redisplay(void)
 		 * our own implementation instead. */
 		const LineInfo *lf = el_line(el);
 		const char *c = lf->buffer;
-		if (global_profile->batch_mode) return;
+		if (global_profile->batch_mode) {
+			esl_mutex_unlock(MUTEX);
+			return;
+		}
 		printf("%s",prompt_str);
 		while (c < lf->lastchar && *c) {
 			putchar(*c);
@@ -898,7 +901,7 @@ static int process_command(esl_handle_t *handle, const char *cmd)
 			r = -1; goto end;
 		} else if (!strncasecmp(cmd, "logfilter", 9)) {
 			cmd += 9;
-			while (*cmd && *cmd == ' ') {
+			while (cmd && *cmd && *cmd == ' ') {
 				cmd++;
 			}
 			if (!esl_strlen_zero(cmd)) {
@@ -910,7 +913,7 @@ static int process_command(esl_handle_t *handle, const char *cmd)
 			output_printf("Logfilter %s\n", logfilter ? "enabled" : "disabled");
 		} else if (!strncasecmp(cmd, "uuid", 4)) {
 			cmd += 4;
-			while (*cmd && *cmd == ' ') {
+			while (cmd && *cmd && *cmd == ' ') {
 				cmd++;
 			}
 			if (!esl_strlen_zero(cmd)) {
@@ -957,7 +960,7 @@ static int process_command(esl_handle_t *handle, const char *cmd)
 		if (handle->last_sr_event) {
 			if (handle->last_sr_event->body) {
 				output_printf("%s\n", handle->last_sr_event->body);
-			} else if ((err = esl_event_get_header(handle->last_sr_event, "reply-text")) && !strncasecmp(err, "-err", 3)) {
+			} else if ((err = esl_event_get_header(handle->last_sr_event, "reply-text")) && !strncasecmp(err, "-err", 4)) {
 				output_printf("Error: %s!\n", err + 4);
 			}
 		}
@@ -999,10 +1002,13 @@ static const char *basic_gets(int *cnt)
 	for (x = 0; x < (sizeof(command_buf) - 1); x++) {
 		int c = getchar();
 		if (c < 0) {
+			size_t command_buf_len;
 			if (fgets(command_buf, sizeof(command_buf) - 1, stdin) != command_buf) {
 				break;
+			}			
+			if ((command_buf_len = strlen(command_buf)) > 0) {
+				command_buf[command_buf_len - 1] = '\0'; /* remove endline */
 			}
-			command_buf[strlen(command_buf)-1] = '\0'; /* remove endline */
 			break;
 		}
 		command_buf[x] = (char) c;
@@ -1127,7 +1133,10 @@ static char* end_of_str(char *s) { return (*s == '\0' ? s : s + strlen(s) - 1); 
 
 static char* _strndup(const char *s, int n)
 {
-	char *r = (char*)malloc(n + 1), *d=r;
+	char *r = (char*)malloc(n + 1), *d;
+
+	assert(r);
+	d = r;
 	while (n > 0 && *s) {
 		*d = *s;
 		d++; s++; n--;
@@ -1141,9 +1150,13 @@ static unsigned char esl_console_complete(const char *buffer, const char *cursor
 	char cmd_str[2048] = "";
 	unsigned char ret = CC_REDISPLAY;
 	char *dup = _strndup(buffer, (int)(lastchar - buffer));
-	char *buf = dup;
+	char *buf;
 	int sc = 0, offset = (int)(cursor - buffer), pos = (offset > 0) ? offset : 0;
 	char *p;
+
+	assert(dup);
+	buf = dup;
+
 	if (pos > 0) {
 		*(buf + pos) = '\0';
 	}
@@ -1184,31 +1197,30 @@ static unsigned char esl_console_complete(const char *buffer, const char *cursor
 	if (global_handle->last_sr_event && global_handle->last_sr_event->body) {
 		char *r = global_handle->last_sr_event->body;
 		char *w, *p1;
-		if (r) {
-			if ((w = strstr(r, "\n\nwrite="))) {
-				int len = 0;
-				*w = '\0';
-				w += 8;
-				len = atoi(w);
-				if ((p1= strchr(w, ':'))) {
-					w = p1+ 1;
-				}
-				printf("%s\n\n\n", r);
+
+		if ((w = strstr(r, "\n\nwrite="))) {
+			int len = 0;
+			*w = '\0';
+			w += 8;
+			len = atoi(w);
+			if ((p1= strchr(w, ':'))) {
+				w = p1+ 1;
+			}
+			printf("%s\n\n\n", r);
 #ifdef HAVE_LIBEDIT
-				el_deletestr(el, len);
-				el_insertstr(el, w);
+			el_deletestr(el, len);
+			el_insertstr(el, w);
 #else
 #ifdef _MSC_VER
-				console_bufferInput(0, len, (char*)buffer, DELETE_REFRESH_OP);
-				console_bufferInput(w, (int)strlen(w), (char*)buffer, 0);
+			console_bufferInput(0, len, (char*)buffer, DELETE_REFRESH_OP);
+			console_bufferInput(w, (int)strlen(w), (char*)buffer, 0);
 #endif
 #endif
-			} else {
-				printf("%s\n", r);
+		} else {
+			printf("%s\n", r);
 #ifdef _MSC_VER
-				console_bufferInput(0, 0, (char*)buffer, DELETE_REFRESH_OP);
+			console_bufferInput(0, 0, (char*)buffer, DELETE_REFRESH_OP);
 #endif
-			}
 		}
 		fflush(stdout);
 	}
@@ -1267,7 +1279,7 @@ static void read_config(const char *dft_cfile, const char *cfile) {
 	if (esl_config_open_file(&cfg, cfile) ||
 		esl_config_open_file(&cfg, dft_cfile)) {
 		char *var, *val;
-		char cur_cat[128] = "";
+		char cur_cat[256] = "";
 		while (esl_config_next_pair(&cfg, &var, &val)) {
 			if (strcmp(cur_cat, cfg.category)) {
 				esl_set_string(cur_cat, cfg.category);
@@ -1470,7 +1482,7 @@ int main(int argc, char *argv[])
 	int argv_error = 0;
 	int argv_exec = 0;
 	char argv_command[1024] = "";
-	char argv_loglevel[128] = "";
+	char argv_loglevel[127] = "";
 	int argv_log_uuid = 0;
 	int argv_log_uuid_short = 0;
 	int argv_quiet = 0;
@@ -1710,7 +1722,7 @@ int main(int argc, char *argv[])
 		if (handle.last_sr_event) {
 			if (handle.last_sr_event->body) {
 				printf("%s\n", handle.last_sr_event->body);
-			} else if ((err = esl_event_get_header(handle.last_sr_event, "reply-text")) && !strncasecmp(err, "-err", 3)) {
+			} else if ((err = esl_event_get_header(handle.last_sr_event, "reply-text")) && !strncasecmp(err, "-err", 4)) {
 				printf("Error: %s!\n", err + 4);
 			}
 		}

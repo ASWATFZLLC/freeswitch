@@ -468,6 +468,8 @@ static const char *switch_cause_to_rayo_cause(switch_call_cause_t cause)
 		case SWITCH_CAUSE_NO_PICKUP:
 		case SWITCH_CAUSE_SRTP_READ_ERROR:
 			return RAYO_END_REASON_ERROR;
+		default:
+			break;
 	}
 	return RAYO_END_REASON_HANGUP;
 }
@@ -910,6 +912,7 @@ void rayo_message_send(struct rayo_actor *from, const char *to, iks *payload, in
 {
 	const char *msg_name;
 	struct rayo_message *msg = malloc(sizeof(*msg));
+	switch_assert(msg);
 	if (dup) {
 		msg->payload = iks_copy(payload);
 	} else {
@@ -4851,7 +4854,7 @@ static int alias_api(struct rayo_cmd_alias *alias, char *args, switch_stream_han
 	cmd = strdup(alias->cmd);
 	for (i = 1; i < argc; i++) {
 		char *cmd_new;
-		char to_replace[4] = { 0 };
+		char to_replace[12] = { 0 };
 		sprintf(to_replace, "$%i", i);
 		cmd_new = switch_string_replace(cmd, to_replace, argv[i]);
 		free(cmd);

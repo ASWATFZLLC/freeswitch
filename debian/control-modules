@@ -117,7 +117,7 @@ Module: applications/mod_hiredis
 Description: Redis client support
  This module provides a mechanism to use Redis as a datastore.
 Build-Depends: libhiredis-dev
-Depends: libhiredis0.10 | libhiredis0.13
+Depends: libhiredis0.10 | libhiredis0.13 | libhiredis0.14
 
 Module: applications/mod_httapi
 Description: HT-TAPI Hypertext Telephony API
@@ -391,6 +391,18 @@ Module: codecs/mod_yuv
 Description: Adds mod_yuv
  Adds mod_yuv.
 
+## mod/databases
+
+Module: databases/mod_mariadb
+Description: Adds mod_mariadb
+ Adds mod_mariadb.
+Build-Depends: libmariadb-dev
+
+Module: databases/mod_pgsql
+Description: Adds mod_pgsql
+ Adds mod_pgsql.
+Build-Depends: libpq-dev 
+
 ## mod/dialplans
 
 Module: dialplans/mod_dialplan_asterisk
@@ -479,6 +491,7 @@ Module: endpoints/mod_verto
 Description: Adds mod_verto.
  Adds mod_verto.
 Build-Depends: libperl-dev
+Build-Depends-Buster: libperl-dev, libgdbm-compat-dev
 
 ## mod/event_handlers
 
@@ -621,6 +634,11 @@ Module: formats/mod_webm
 Description: Adds mod_webm
  Adds mod_webm.
 
+Module: formats/mod_opusfile
+Description: mod_opusfile
+ Adds mod_opusfile.
+Build-Depends: libopusfile-dev
+
 ## mod/languages
 
 Module: languages/mod_basic
@@ -630,7 +648,7 @@ Description: Adds mod_basic.
 Module: languages/mod_java
 Description: mod_java
  Adds mod_java.
-Build-Depends: default-jdk, gcj-jdk
+Build-Depends: default-jdk
 
 Module: languages/mod_lua
 Description: mod_lua
@@ -646,6 +664,7 @@ Module: languages/mod_perl
 Description: mod_perl
  Adds mod_perl.
 Build-Depends: libperl-dev
+Build-Depends-Buster: libperl-dev, libgdbm-compat-dev
 
 Module: languages/mod_python
 Description: mod_python

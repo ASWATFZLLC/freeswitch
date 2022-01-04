@@ -76,6 +76,7 @@ void conference_member_bind_controls(conference_member_t *member, const char *co
 	switch_event_add_header_string(params, SWITCH_STACK_BOTTOM, "Conf-Profile", member->conference->profile_name);
 	switch_event_add_header_string(params, SWITCH_STACK_BOTTOM, "Action", "request-controls");
 	switch_event_add_header_string(params, SWITCH_STACK_BOTTOM, "Controls", controls);
+	switch_event_add_header_string(params, SWITCH_STACK_BOTTOM, "Fetch-Call-UUID", switch_core_session_get_uuid(member->session));
 
 	if (!(cxml = switch_xml_open_cfg(mod_conference_cf_name, &cfg, params))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Open of %s failed\n", mod_conference_cf_name);
@@ -127,7 +128,7 @@ void conference_member_update_status_field(conference_member_t *member)
 	char *str, *vstr = "", display[128] = "", *json_display = NULL;
 	cJSON *json, *audio, *video;
 
-	if (!member->conference->la || !member->json || !member->status_field || conference_utils_member_test_flag(member, MFLAG_SECOND_SCREEN)) {
+	if (!member || !member->conference || !member->conference->la || !member->json || !member->status_field || conference_utils_member_test_flag(member, MFLAG_SECOND_SCREEN)) {
 		return;
 	}
 
@@ -156,7 +157,7 @@ void conference_member_update_status_field(conference_member_t *member)
 			vstr = " VIDEO (BLIND)";
 		} else {
 			vstr = " VIDEO";
-			if (member && member->id == member->conference->video_floor_holder) {
+			if (member->id == member->conference->video_floor_holder) {
 				vstr = " VIDEO (FLOOR)";
 			}
 		}
@@ -193,8 +194,8 @@ void conference_member_update_status_field(conference_member_t *member)
 			cJSON_AddItemToObject(video, "avatarPresented", cJSON_CreateBool(!!member->avatar_png_img));
 			cJSON_AddItemToObject(video, "mediaFlow", cJSON_CreateString(switch_core_session_media_flow(member->session, SWITCH_MEDIA_TYPE_VIDEO) == SWITCH_MEDIA_FLOW_SENDONLY ? "sendOnly" : "sendRecv"));
 			cJSON_AddItemToObject(video, "muted", cJSON_CreateBool(!conference_utils_member_test_flag(member, MFLAG_CAN_BE_SEEN)));
-			cJSON_AddItemToObject(video, "floor", cJSON_CreateBool(member && member->id == member->conference->video_floor_holder));
-			if (member && member->id == member->conference->video_floor_holder && conference_utils_test_flag(member->conference, CFLAG_VID_FLOOR_LOCK)) {
+			cJSON_AddItemToObject(video, "floor", cJSON_CreateBool(member->id == member->conference->video_floor_holder));
+			if (member->id == member->conference->video_floor_holder && conference_utils_test_flag(member->conference, CFLAG_VID_FLOOR_LOCK)) {
 				cJSON_AddItemToObject(video, "floorLocked", cJSON_CreateTrue());
 			}
 			cJSON_AddItemToObject(video, "reservationID", member->video_reservation_id ?
@@ -204,6 +205,8 @@ void conference_member_update_status_field(conference_member_t *member)
 								  cJSON_CreateString(member->video_role_id) : cJSON_CreateNull());
 
 			cJSON_AddItemToObject(video, "videoLayerID", cJSON_CreateNumber(member->video_layer_id));
+			cJSON_AddItemToObject(video, "canvasID", cJSON_CreateNumber(member->canvas_id));
+			cJSON_AddItemToObject(video, "watchingCanvasID", cJSON_CreateNumber(member->watching_canvas_id));
 
 			cJSON_AddItemToObject(json, "video", video);
 		} else {
@@ -501,7 +504,7 @@ void conference_member_check_channels(switch_frame_t *frame, conference_member_t
 		rlen = frame->datalen / 2 / from;
 
 		if (in && frame->rate == 48000 && ((from == 1 && to == 2) || (from == 2 && to == 2)) && conference_utils_member_test_flag(member, MFLAG_POSITIONAL)) {
-			if (from == 2 && to == 2) {
+			if (from == 2) {
 				switch_mux_channels((int16_t *) frame->data, rlen, 2, 1);
 				frame->datalen /= 2;
 				rlen = frame->datalen / 2;
@@ -567,11 +570,10 @@ void conference_member_add_file_data(conference_member_t *member, int16_t *data,
 				}
 			} else if (member->fnode->type == NODE_TYPE_FILE) {
 				switch_core_file_read(&member->fnode->fh, file_frame, &file_sample_len);
-				file_data_len = file_sample_len * 2 * member->fnode->fh.channels;
-					if (member->fnode->fh.vol) {
-						switch_change_sln_volume_granular((void *)file_frame, (uint32_t)file_sample_len * member->fnode->fh.channels,
-														  member->fnode->fh.vol);
-					}
+				if (member->fnode->fh.vol) {
+					switch_change_sln_volume_granular((void *)file_frame, (uint32_t)file_sample_len * member->fnode->fh.channels,
+													  member->fnode->fh.vol);
+				}
 
 			}
 
@@ -762,7 +764,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "conference_join_volume_in", SWITCH_FALSE, -1))) {
-			uint32_t id = atoi(var);
+			int id = atoi(var);
 
 			if (id > -5 && id < 5) {
 				member->volume_in_level = id;
@@ -770,7 +772,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "conference_join_volume_out", SWITCH_FALSE, -1))) {
-			uint32_t id = atoi(var);
+			int id = atoi(var);
 
 			if (id > -5 && id < 5) {
 				member->volume_out_level = id;
@@ -779,15 +781,15 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "conference_join_energy_level", SWITCH_FALSE, -1))) {
-			uint32_t id = atoi(var);
+			int id = atoi(var);
 
-			if (id > -5 && id < 5) {
+			if (id > -2 && id < 1801) {
 				member->energy_level = id;
 			}
 		}
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "video_initial_canvas", SWITCH_FALSE, -1))) {
-			uint32_t id = atoi(var) - 1;
+			int id = atoi(var) - 1;
 			if (id < conference->canvas_count) {
 				member->canvas_id = id;
 				member->layer_timeout = DEFAULT_LAYER_TIMEOUT;
@@ -795,9 +797,9 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "video_initial_watching_canvas", SWITCH_FALSE, -1))) {
-			uint32_t id = atoi(var) - 1;
+			int id = atoi(var) - 1;
 
-			if (id == 0) {
+			if (id == -1) {
 				id = conference->canvas_count;
 			}
 
@@ -1396,11 +1398,13 @@ switch_status_t conference_member_play_file(conference_member_t *member, char *f
 	char *dfile = NULL, *expanded = NULL;
 	conference_file_node_t *fnode, *nptr = NULL;
 	switch_memory_pool_t *pool;
-	int channels = member->conference->channels;
+	int channels = 0;
 	int bad_params = 0;
 
 	if (member == NULL || file == NULL || conference_utils_member_test_flag(member, MFLAG_KICKED))
 		return status;
+
+	channels = member->conference->channels;
 
 	if ((expanded = switch_channel_expand_variables(switch_core_session_get_channel(member->session), file)) != file) {
 		file = expanded;
@@ -1509,20 +1513,22 @@ switch_status_t conference_member_play_file(conference_member_t *member, char *f
 /* Say some thing with TTS in the conference room */
 switch_status_t conference_member_say(conference_member_t *member, char *text, uint32_t leadin)
 {
-	conference_obj_t *conference = member->conference;
+	conference_obj_t *conference = NULL;
 	conference_file_node_t *fnode, *nptr;
 	switch_memory_pool_t *pool;
 	switch_speech_flag_t flags = SWITCH_SPEECH_FLAG_NONE;
 	switch_status_t status = SWITCH_STATUS_FALSE;
 	char *fp = NULL;
-	int channels = member->conference->channels;
+	int channels = 0;
 	switch_event_t *params = NULL;
 	const char *position = NULL;
 
 	if (member == NULL || zstr(text))
 		return SWITCH_STATUS_FALSE;
 
+	conference = member->conference;
 	switch_assert(conference != NULL);
+	channels = conference->channels;
 
 	if (!(conference->tts_engine && conference->tts_voice)) {
 		return SWITCH_STATUS_SUCCESS;

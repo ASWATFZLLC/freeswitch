@@ -331,8 +331,6 @@ SWITCH_DECLARE(switch_stun_packet_t *) switch_stun_packet_parse(uint8_t *buf, ui
 
 		bytes_left -= alen;	/* attribute value consumed, substract padded length */
 
-		if (alen == 0) break;
-
 		xlen += 4 + alen;
 
 		attr = (switch_stun_packet_attribute_t *) (attr->value + alen);
@@ -811,26 +809,23 @@ SWITCH_DECLARE(switch_status_t) switch_stun_lookup(char **ip,
 	end_buf = buf + ((sizeof(buf) > packet->header.length) ? packet->header.length : sizeof(buf));
 
 	switch_stun_packet_first_attribute(packet, attr);
+	switch_assert(attr);
+
+
 	do {
 		switch (attr->type) {
 		case SWITCH_STUN_ATTR_MAPPED_ADDRESS:
-			if (attr->type) {
-				if (funny) {
-					switch_stun_ip_t *tmp = (switch_stun_ip_t *) attr->value;
-					tmp->address ^= ntohl(0xabcdabcd);
-				}
-				switch_stun_packet_attribute_get_mapped_address(attr, rip, sizeof(rip), &rport);
+			if (funny) {
+				switch_stun_ip_t *tmp = (switch_stun_ip_t *) attr->value;
+				tmp->address ^= ntohl(0xabcdabcd);
 			}
+			switch_stun_packet_attribute_get_mapped_address(attr, rip, sizeof(rip), &rport);
 			break;
 		case SWITCH_STUN_ATTR_XOR_MAPPED_ADDRESS:
-			if (attr->type) {
-				switch_stun_packet_attribute_get_xor_mapped_address(attr, &packet->header, rip, sizeof(rip), &rport);
-			}
+			switch_stun_packet_attribute_get_xor_mapped_address(attr, &packet->header, rip, sizeof(rip), &rport);
 			break;
 		case SWITCH_STUN_ATTR_USERNAME:
-			if (attr->type) {
-				switch_stun_packet_attribute_get_username(attr, username, 32);
-			}
+			switch_stun_packet_attribute_get_username(attr, username, 32);
 			break;
 		}
 
@@ -888,9 +883,6 @@ SWITCH_DECLARE(switch_status_t) switch_stun_ip_lookup(char **external_ip, const 
 			if (iport > 0 && iport < 0xFFFF) {
 				stun_port = (switch_port_t)iport;
 			}
-		}
-		else {
-			p = stun_ip;
 		}
 
 		switch_find_local_ip(ip_buf, sizeof(ip_buf), NULL, AF_INET);

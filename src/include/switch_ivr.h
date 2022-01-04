@@ -1,6 +1,6 @@
 /*
  * FreeSWITCH Modular Media Switching Software Library / Soft-Switch Application
- * Copyright (C) 2005-2014, Anthony Minessale II <anthm@freeswitch.org>
+ * Copyright (C) 2005-2019, Anthony Minessale II <anthm@freeswitch.org>
  *
  * Version: MPL 1.1
  *
@@ -293,6 +293,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_detect_speech_start_input_timers(swit
   \return SWITCH_STATUS_SUCCESS if all is well
 */
 SWITCH_DECLARE(switch_status_t) switch_ivr_record_session(switch_core_session_t *session, const char *file, uint32_t limit, switch_file_handle_t *fh);
+SWITCH_DECLARE(switch_status_t) switch_ivr_record_session_event(switch_core_session_t *session, const char *file, uint32_t limit, switch_file_handle_t *fh, switch_event_t *variables);
 SWITCH_DECLARE(switch_status_t) switch_ivr_transfer_recordings(switch_core_session_t *orig_session, switch_core_session_t *new_session);
 
 
@@ -557,6 +558,9 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_bridge_bleg(switch_core_session_t *se
   \return SWITCH_STATUS_SUCCESS if all is well
 */
 SWITCH_DECLARE(switch_status_t) switch_ivr_signal_bridge(switch_core_session_t *session, switch_core_session_t *peer_session);
+
+SWITCH_DECLARE(void) switch_ivr_check_hold(switch_core_session_t *session);								
+
 
 /*!
   \brief Transfer an existing session to another location
@@ -1035,7 +1039,11 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_video_write_overlay_session(switch_co
 SWITCH_DECLARE(switch_status_t) switch_ivr_capture_text(switch_core_session_t *session, switch_bool_t on);
 
 SWITCH_DECLARE(switch_status_t) switch_dial_handle_create(switch_dial_handle_t **handle);
+SWITCH_DECLARE(switch_status_t) switch_dial_handle_create_json_obj(switch_dial_handle_t **handle, cJSON *json);
+SWITCH_DECLARE(switch_status_t) switch_dial_handle_create_json(switch_dial_handle_t **handle, const char *handle_string);
 SWITCH_DECLARE(void) switch_dial_handle_destroy(switch_dial_handle_t **handle);
+SWITCH_DECLARE(switch_status_t) switch_dial_handle_serialize_json_obj(switch_dial_handle_t *handle, cJSON **json);
+SWITCH_DECLARE(switch_status_t) switch_dial_handle_serialize_json(switch_dial_handle_t *handle, char **str);
 SWITCH_DECLARE(void) switch_dial_handle_add_leg_list(switch_dial_handle_t *handle, switch_dial_leg_list_t **leg_listP);
 SWITCH_DECLARE(void) switch_dial_leg_list_add_leg(switch_dial_leg_list_t *parent, switch_dial_leg_t **legP, const char *dial_string);
 SWITCH_DECLARE(void) switch_dial_leg_list_add_leg_printf(switch_dial_leg_list_t *parent, switch_dial_leg_t **legP, const char *fmt, ...);
@@ -1047,8 +1055,22 @@ SWITCH_DECLARE(int) switch_dial_handle_get_peers(switch_dial_handle_t *handle, i
 SWITCH_DECLARE(int) switch_dial_handle_get_vars(switch_dial_handle_t *handle, int idx, switch_event_t **array, int max);
 SWITCH_DECLARE(switch_event_t *) switch_dial_handle_get_global_vars(switch_dial_handle_t *handle);
 SWITCH_DECLARE(switch_event_t *) switch_dial_leg_get_vars(switch_dial_leg_t *leg);
+SWITCH_DECLARE(const char *) switch_dial_leg_get_var(switch_dial_leg_t *leg, const char *key);
 SWITCH_DECLARE(int) switch_dial_handle_get_total(switch_dial_handle_t *handle);
-SWITCH_DECLARE(void) switch_ivr_orig_and_bridge(switch_core_session_t *session, const char *data, switch_dial_handle_t *dh);
+SWITCH_DECLARE(switch_status_t) switch_ivr_orig_and_bridge(switch_core_session_t *session, const char *data, switch_dial_handle_t *dh, switch_call_cause_t *cause);
+
+SWITCH_DECLARE(switch_status_t) switch_ivr_play_and_collect_input(switch_core_session_t *session,
+															const char *prompt,
+															const char *recognizer_mod_name,
+															const char *recognizer_grammar,
+															int min_digits,
+															int max_digits,
+															const char *terminators,
+															uint32_t digit_timeout,
+															cJSON **recognition_result,
+															char **digits_collected,
+															char *terminator_collected,
+															switch_input_args_t *args);
 
 /** @} */
 

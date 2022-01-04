@@ -133,9 +133,6 @@
 
 
 #include "switch.h"
-#ifndef WIN32
-#include "../../config.h"
-#endif
 
 #include "sofia-sip/su.h"
 
@@ -326,7 +323,7 @@ switch_status_t sip_dig_function(_In_opt_z_ const char *cmd, _In_opt_ switch_cor
 		usage(2);
 	}
 
-	multiple = argv[i] && argv[i +1];
+	if (argv[i + 1]) multiple = 1;
 
 	if (!count_transports(dig, NULL, NULL)) {
 		prepare_transport(dig, "udp");
@@ -822,7 +819,7 @@ int dig_addr(struct dig *dig,
 			}
 	}
 
-	if (count1 + count2) {
+	if (count1 + count2 > 0) {
 		double w = weight / (count1 + count2) / tcount;
 
 		if (count1)

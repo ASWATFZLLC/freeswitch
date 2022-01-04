@@ -939,6 +939,10 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 			goto do_continue;
 		}
 
+		if (!switch_channel_test_flag(channel, CF_AUDIO)) {
+			goto do_continue;
+		}
+		
 		/* if the member can speak, compute the audio energy level and */
 		/* generate events when the level crosses the threshold        */
 		if (((conference_utils_member_test_flag(member, MFLAG_CAN_SPEAK) && !conference_utils_member_test_flag(member, MFLAG_HOLD)) ||
@@ -1007,12 +1011,12 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 					} else if (!member->mute_counter && member->score > (int)((double)member->max_energy_level * .75)) {
 						int dec = 1;
 
-						if (member->score_count > 3) {
-							dec = 2;
+						if (member->score_count > 9) {
+							dec = 4;
 						} else if (member->score_count > 6) {
 							dec = 3;
-						} else if (member->score_count > 9) {
-							dec = 4;
+						} else if (member->score_count > 3) {
+							dec = 2;
 						}
 
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG2, "MAX ENERGY THRESHOLD! -%d\n", dec);
@@ -1189,7 +1193,7 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 
 			member->last_score = member->score;
 
-			if (member->id == member->conference->floor_holder) {
+			if ((switch_channel_test_flag(channel, CF_VIDEO) || member->avatar_png_img) && (member->id == member->conference->floor_holder)) {
 				if (member->id != member->conference->video_floor_holder &&
 					(member->floor_packets > member->conference->video_floor_packets || member->energy_level == 0)) {
 					conference_video_set_floor_holder(member->conference, member, SWITCH_FALSE);
@@ -1228,7 +1232,7 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 
 			if (datalen) {
 				switch_size_t ok = 1;
-
+				
 				/* Write the audio into the input buffer */
 				switch_mutex_lock(member->audio_in_mutex);
 				if (switch_buffer_inuse(member->audio_buffer) > flush_len) {
@@ -1444,7 +1448,6 @@ void conference_loop_output(conference_member_t *member)
 	while (!member->loop_loop && conference_utils_member_test_flag(member, MFLAG_RUNNING) && conference_utils_member_test_flag(member, MFLAG_ITHREAD)
 		   && switch_channel_ready(channel)) {
 		switch_event_t *event;
-		int use_timer = 0;
 		switch_buffer_t *use_buffer = NULL;
 		uint32_t mux_used = 0;
 
@@ -1503,8 +1506,6 @@ void conference_loop_output(conference_member_t *member)
 		use_buffer = NULL;
 		mux_used = (uint32_t) switch_buffer_inuse(member->mux_buffer);
 
-		use_timer = 1;
-
 		if (mux_used) {
 			if (mux_used < bytes) {
 				if (++low_count >= 5) {
@@ -1527,28 +1528,26 @@ void conference_loop_output(conference_member_t *member)
 			low_count = 0;
 
 			if ((write_frame.datalen = (uint32_t) switch_buffer_read(use_buffer, write_frame.data, bytes))) {
-				if (write_frame.datalen) {
-					write_frame.samples = write_frame.datalen / 2 / member->conference->channels;
+				write_frame.samples = write_frame.datalen / 2 / member->conference->channels;
 
-					if( !conference_utils_member_test_flag(member, MFLAG_CAN_HEAR)) {
-						memset(write_frame.data, 255, write_frame.datalen);
-					} else if (member->volume_out_level) { /* Check for output volume adjustments */
-						switch_change_sln_volume(write_frame.data, write_frame.samples * member->conference->channels, member->volume_out_level);
-					}
+				if( !conference_utils_member_test_flag(member, MFLAG_CAN_HEAR)) {
+					memset(write_frame.data, 255, write_frame.datalen);
+				} else if (member->volume_out_level) { /* Check for output volume adjustments */
+					switch_change_sln_volume(write_frame.data, write_frame.samples * member->conference->channels, member->volume_out_level);
+				}
 
-					//write_frame.timestamp = timer.samplecount;
+				//write_frame.timestamp = timer.samplecount;
 
-					if (member->fnode) {
-						conference_member_add_file_data(member, write_frame.data, write_frame.datalen);
-					}
+				if (member->fnode) {
+					conference_member_add_file_data(member, write_frame.data, write_frame.datalen);
+				}
 
-					conference_member_check_channels(&write_frame, member, SWITCH_FALSE);
+				conference_member_check_channels(&write_frame, member, SWITCH_FALSE);
 
-					if (switch_core_session_write_frame(member->session, &write_frame, SWITCH_IO_FLAG_NONE, 0) != SWITCH_STATUS_SUCCESS) {
-						switch_mutex_unlock(member->audio_out_mutex);
-						switch_mutex_unlock(member->write_mutex);
-						break;
-					}
+				if (switch_core_session_write_frame(member->session, &write_frame, SWITCH_IO_FLAG_NONE, 0) != SWITCH_STATUS_SUCCESS) {
+					switch_mutex_unlock(member->audio_out_mutex);
+					switch_mutex_unlock(member->write_mutex);
+					break;
 				}
 			}
 
@@ -1641,11 +1640,7 @@ void conference_loop_output(conference_member_t *member)
 			switch_ivr_parse_all_messages(member->session);
 		}
 
-		if (use_timer) {
-			switch_core_timer_next(&timer);
-		} else {
-			switch_cond_next();
-		}
+		switch_core_timer_next(&timer);
 
 	} /* Rinse ... Repeat */
 

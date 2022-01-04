@@ -42,7 +42,7 @@ void deinit_ssl(void)
 }
 
 #else
-static unsigned long pthreads_thread_id(void);
+static void pthreads_thread_id(CRYPTO_THREADID *id);
 static void pthreads_locking_callback(int mode, int type, const char *file, int line);
 
 static pthread_mutex_t *lock_cs;
@@ -62,7 +62,7 @@ static void thread_setup(void)
 		pthread_mutex_init(&(lock_cs[i]), NULL);
 	}
 
-	CRYPTO_set_id_callback(pthreads_thread_id);
+	CRYPTO_THREADID_set_callback(pthreads_thread_id);
 	CRYPTO_set_locking_callback(pthreads_locking_callback);
 }
 
@@ -93,9 +93,9 @@ static void pthreads_locking_callback(int mode, int type, const char *file, int 
 
 
 
-static unsigned long pthreads_thread_id(void)
+static void pthreads_thread_id(CRYPTO_THREADID *id)
 {
-	return (unsigned long) pthread_self();
+	CRYPTO_THREADID_set_numeric(id, (unsigned long)pthread_self());
 }
 
 
@@ -290,6 +290,9 @@ int ws_handshake(wsh_t *wsh)
 	}
 
 	wsh->uri = malloc((e-p) + 1);
+
+	if (!wsh->uri) goto err;
+
 	strncpy(wsh->uri, p, e-p);
 	*(wsh->uri + (e-p)) = '\0';
 
@@ -439,10 +442,10 @@ ssize_t ws_raw_write(wsh_t *wsh, void *data, size_t bytes)
 				int ms = 1;
 
 				if (wsh->block) {
-					if (sanity < WS_WRITE_SANITY * 3 / 4) {
-						ms = 50;
-					} else if (sanity < WS_WRITE_SANITY / 2) {
+					if (sanity < WS_WRITE_SANITY / 2) {
 						ms = 25;
+					} else if (sanity < WS_WRITE_SANITY * 3 / 4) {
+						ms = 50;
 					}
 				}
 				ms_sleep(ms);
@@ -479,10 +482,10 @@ ssize_t ws_raw_write(wsh_t *wsh, void *data, size_t bytes)
 			int ms = 1;
 
 			if (wsh->block) {
-				if (sanity < WS_WRITE_SANITY * 3 / 4) {
-					ms = 50;
-				} else if (sanity < WS_WRITE_SANITY / 2) {
+				if (sanity < WS_WRITE_SANITY / 2) {
 					ms = 25;
+				} else if (sanity < WS_WRITE_SANITY * 3 / 4) {
+					ms = 50;
 				}
 			}
 			ms_sleep(ms);
@@ -584,7 +587,7 @@ int establish_logical_layer(wsh_t *wsh)
 
 			if (code < 0) {
 				int ssl_err = SSL_get_error(wsh->ssl, code);
-				if (code < 0 && !SSL_WANT_READ_WRITE(ssl_err)) {
+				if (!SSL_WANT_READ_WRITE(ssl_err)) {
 					return -1;
 				}
 			}
@@ -695,23 +698,6 @@ void ws_destroy(wsh_t *wsh)
 	}
 
 	if (wsh->ssl) {
-		int code, ssl_err, sanity = 100;
-		do {
-			code = SSL_shutdown(wsh->ssl);
-			if (code == 1) {
-				break;
-			}
-			if (code < 0) {
-				ssl_err = SSL_get_error(wsh->ssl, code);
-			}
-			if (wsh->block) {
-				ms_sleep(10);
-			} else {
-				ms_sleep(1);
-			}
-
-		} while ((code == 0 || (code < 0 && SSL_WANT_READ_WRITE(ssl_err))) && --sanity > 0);
-
 		SSL_free(wsh->ssl);
 		wsh->ssl = NULL;
 	}
@@ -746,12 +732,30 @@ ssize_t ws_close(wsh_t *wsh, int16_t reason)
 		ws_raw_write(wsh, fr, 4);
 	}
 
+	if (wsh->ssl && wsh->sock != ws_sock_invalid) {
+		/* first invocation of SSL_shutdown() would normally return 0 and just try to send SSL protocol close request.
+		   we just slightly polite, since we want to close socket fast and
+		   not bother waiting for SSL protocol close response before closing socket,
+		   since we want cleanup to be done fast for scenarios like:
+		   client change NAT (like jump from one WiFi to another) and now unreachable from old ip:port, however
+		   immidiately reconnect with new ip:port but old session id (and thus should replace the old session/channel)
+		*/
+		SSL_shutdown(wsh->ssl);
+	}
+
+	/* restore to blocking here, so any further read/writes will block */
 	restore_socket(wsh->sock);
 
 	if (wsh->close_sock && wsh->sock != ws_sock_invalid) {
+		/* signal socket to shutdown() before close(): FIN-ACK-FIN-ACK insead of RST-RST
+		   do not really handle errors here since it all going to die anyway.
+		   all buffered writes if any(like SSL_shutdown() ones) will still be sent.
+		 */
 #ifndef WIN32
+		shutdown(wsh->sock, SHUT_RDWR);
 		close(wsh->sock);
 #else
+		shutdown(wsh->sock, SD_BOTH);
 		closesocket(wsh->sock);
 #endif
 	}
@@ -817,7 +821,7 @@ ssize_t ws_read_frame(wsh_t *wsh, ws_opcode_t *oc, uint8_t **data)
 	if (wsh->datalen < need) {
 		ssize_t bytes = ws_raw_read(wsh, wsh->buffer + wsh->datalen, 9 - wsh->datalen, WS_BLOCK);
 		
-		if (bytes < 0 || (wsh->datalen += bytes) < need) {
+		if (bytes < 0 || (wsh->datalen + bytes) < need) {
 			/* too small - protocol err */
 			return ws_close(wsh, WS_NONE);
 		}

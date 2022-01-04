@@ -84,9 +84,18 @@ static HANDLE shutdown_event;
 static void handle_SIGILL(int sig)
 {
 	int32_t arg = 0;
-	if (sig) {};
+	if (sig) {}
 	/* send shutdown signal to the freeswitch core */
 	switch_core_session_ctl(SCSC_SHUTDOWN, &arg);
+	return;
+}
+
+static void handle_SIGTERM(int sig)
+{
+	int32_t arg = 0;
+	if (sig) {}
+	/* send shutdown signal to the freeswitch core */
+	switch_core_session_ctl(SCSC_SHUTDOWN_ELEGANT, &arg);
 	return;
 }
 
@@ -495,6 +504,7 @@ int main(int argc, char *argv[])
 	switch_bool_t win32_service = SWITCH_FALSE;
 #endif
 	switch_bool_t nc = SWITCH_FALSE;				/* TRUE if we are running in noconsole mode */
+	switch_bool_t elegant_term = SWITCH_FALSE;
 	pid_t pid = 0;
 	int i, x;
 	char *opts;
@@ -663,6 +673,10 @@ int main(int argc, char *argv[])
 
 		else if (!strcmp(local_argv[x], "-nf")) {
 			nf = SWITCH_TRUE;
+		}
+
+		else if (!strcmp(local_argv[x], "-elegant-term")) {
+			elegant_term = SWITCH_TRUE;
 		}
 
 		else if (!strcmp(local_argv[x], "-reincarnate")) {
@@ -1065,7 +1079,12 @@ int main(int argc, char *argv[])
 #endif
 #endif
 	signal(SIGILL, handle_SIGILL);
-	signal(SIGTERM, handle_SIGILL);
+	if (elegant_term) {
+		signal(SIGTERM, handle_SIGTERM);
+	} else {
+		signal(SIGTERM, handle_SIGILL);
+	}
+
 #ifndef WIN32
 	if (do_wait) {
 		if (pipe(fds)) {
@@ -1221,7 +1240,7 @@ int main(int argc, char *argv[])
 		int j = 0;
 
 		switch_sleep(1000000);
-		if (!argv || execv(argv[0], argv) == -1) {
+		if (!argv || !argv[0] || execv(argv[0], argv) == -1) {
 			fprintf(stderr, "Restart Failed [%s] resorting to plan b\n", strerror(errno));
 			for (j = 0; j < argc; j++) {
 				switch_snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "%s ", argv[j]);

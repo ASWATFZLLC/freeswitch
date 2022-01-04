@@ -34,6 +34,7 @@
 #include "private/switch_core_pvt.h"
 
 static const char *LEVELS[] = {
+	"DISABLE",
 	"CONSOLE",
 	"ALERT",
 	"CRIT",
@@ -85,6 +86,143 @@ static const char *
 SWITCH_SEQ_FYELLOW };
 
 
+SWITCH_DECLARE(cJSON *) switch_log_node_to_json(const switch_log_node_t *node, int log_level, switch_log_json_format_t *json_format, switch_event_t *chan_vars)
+{
+	cJSON *json = cJSON_CreateObject();
+	char *hostname;
+	char *full_message = node->content;
+	char *parsed_full_message = NULL;
+	char *field_name = NULL;
+	switch_event_t *log_fields = NULL;
+	switch_core_session_t *session = NULL;
+
+	if (json_format->version.name && json_format->version.value) {
+		cJSON_AddItemToObject(json, json_format->version.name, cJSON_CreateString(json_format->version.value));
+	}
+	if (json_format->host.name) {
+		if (json_format->host.value) {
+			cJSON_AddItemToObject(json, json_format->host.name, cJSON_CreateString(json_format->host.value));
+		} else if ((hostname = switch_core_get_variable("hostname")) && !zstr(hostname)) {
+			cJSON_AddItemToObject(json, json_format->host.name, cJSON_CreateString(hostname));
+		} else if ((hostname = switch_core_get_variable("local_ip_v4")) && !zstr(hostname)) {
+			cJSON_AddItemToObject(json, json_format->host.name, cJSON_CreateString(hostname));
+		}
+	}
+	if (json_format->timestamp.name) {
+		double timestamp = node->timestamp;
+		if (json_format->timestamp_divisor > 1.0) {
+			timestamp = timestamp / json_format->timestamp_divisor;
+		}
+		cJSON_AddItemToObject(json, json_format->timestamp.name, cJSON_CreateNumber(timestamp));
+	}
+	if (json_format->level.name) {
+		cJSON_AddItemToObject(json, json_format->level.name, cJSON_CreateNumber(log_level));
+	}
+	if (json_format->ident.name) {
+		if (json_format->ident.value) {
+			cJSON_AddItemToObject(json, json_format->ident.name, cJSON_CreateString(json_format->ident.value));
+		} else {
+			cJSON_AddItemToObject(json, json_format->ident.name, cJSON_CreateString("freeswitch"));
+		}
+	}
+	if (json_format->pid.name) {
+		if (json_format->pid.value) {
+			cJSON_AddItemToObject(json, json_format->pid.name, cJSON_CreateNumber(atoi(json_format->pid.value)));
+		} else {
+			cJSON_AddItemToObject(json, json_format->pid.name, cJSON_CreateNumber((int)getpid()));
+		}
+	}
+	if (json_format->uuid.name && !zstr(node->userdata)) {
+		cJSON_AddItemToObject(json, json_format->uuid.name, cJSON_CreateString(node->userdata));
+	}
+	if (json_format->file.name && !zstr_buf(node->file)) {
+		cJSON_AddItemToObject(json, json_format->file.name, cJSON_CreateString(node->file));
+		if (json_format->line.name) {
+			cJSON_AddItemToObject(json, json_format->line.name, cJSON_CreateNumber(node->line));
+		}
+	}
+	if (json_format->function.name && !zstr_buf(node->func)) {
+		cJSON_AddItemToObject(json, json_format->function.name, cJSON_CreateString(node->func));
+	}
+
+	/* skip initial space and new line */
+	if (*full_message == ' ') {
+		full_message++;
+	}
+	if (*full_message == '\n') {
+		full_message++;
+	}
+
+	/* get fields from log tags */
+	if (node->tags) {
+		switch_event_dup(&log_fields, node->tags);
+	}
+
+	/* get fields from channel data, if configured */
+	if (!zstr(node->userdata) && chan_vars && chan_vars->headers && (session = switch_core_session_locate(node->userdata))) {
+		switch_channel_t *channel = switch_core_session_get_channel(session);
+		switch_event_header_t *hp;
+		/* session_fields name mapped to variable name */
+		for (hp = chan_vars->headers; hp; hp = hp->next) {
+			if (!zstr(hp->name) && !zstr(hp->value)) {
+				const char *val = switch_channel_get_variable(channel, hp->value);
+				if (!zstr(val)) {
+					if (!log_fields) {
+						switch_event_create_plain(&log_fields, SWITCH_EVENT_CHANNEL_DATA);
+					}
+					switch_event_add_header_string(log_fields, SWITCH_STACK_BOTTOM, hp->name, val);
+				}
+			}
+		}
+		switch_core_session_rwunlock(session);
+	}
+
+	/* parse list of fields from message text, if any */
+	if (strncmp(full_message, "LOG_FIELDS", 10) == 0) {
+		switch_event_create_brackets(full_message+10, '[', ']', ',', &log_fields, &parsed_full_message, SWITCH_TRUE);
+		full_message = parsed_full_message;
+	}
+
+	/* add additional fields */
+	if (log_fields) {
+		switch_event_header_t *hp;
+		const char *prefix = json_format->custom_field_prefix ? json_format->custom_field_prefix : "";
+		for (hp = log_fields->headers; hp; hp = hp->next) {
+			if (!zstr(hp->name) && !zstr(hp->value)) {
+				if (strncmp(hp->name, "@#", 2) == 0) {
+					field_name = switch_mprintf("%s%s", prefix, hp->name + 2);
+					cJSON_AddItemToObject(json, field_name, cJSON_CreateNumber(strtod(hp->value, NULL)));
+				} else {
+					field_name = switch_mprintf("%s%s", prefix, hp->name);
+					cJSON_AddItemToObject(json, field_name, cJSON_CreateString(hp->value));
+				}
+				free(field_name);
+			}
+		}
+		switch_event_destroy(&log_fields);
+	}
+
+	if (json_format->full_message.name) {
+		cJSON_AddItemToObject(json, json_format->full_message.name, cJSON_CreateString(full_message));
+	} else {
+		cJSON_AddItemToObject(json, "message", cJSON_CreateString(full_message));
+	}
+
+	if (json_format->short_message.name) {
+		char short_message[151];
+		char *short_message_end = NULL;
+		switch_snprintf(short_message, sizeof(short_message) - 1, "%s", full_message);
+		if ((short_message_end = strchr(short_message, '\n'))) {
+			*short_message_end = '\0';
+		}
+		cJSON_AddItemToObject(json, json_format->short_message.name, cJSON_CreateString(short_message));
+	}
+
+	switch_safe_free(parsed_full_message);
+
+	return json;
+}
+
 static switch_log_node_t *switch_log_node_alloc()
 {
 	switch_log_node_t *node = NULL;
@@ -108,15 +246,25 @@ SWITCH_DECLARE(switch_log_node_t *) switch_log_node_dup(const switch_log_node_t 
 	switch_log_node_t *newnode = switch_log_node_alloc();
 
 	*newnode = *node;
+	newnode->content = NULL;
 
-	if (!zstr(node->data)) {
+	if (node->data) {
 		newnode->data = strdup(node->data);
-		switch_assert(node->data);
+		switch_assert(newnode->data);
+
+		// content is a pointer inside data; need to calculate the new pointer
+		if (node->content && node->content >= node->data) {
+			newnode->content = newnode->data + (node->content - node->data);
+		}
 	}
 
-	if (!zstr(node->userdata)) {
+	if (node->userdata) {
 		newnode->userdata = strdup(node->userdata);
-		switch_assert(node->userdata);
+		switch_assert(newnode->userdata);
+	}
+
+	if (node->tags) {
+		switch_event_dup(&newnode->tags, node->tags);
 	}
 
 	return newnode;
@@ -135,6 +283,9 @@ SWITCH_DECLARE(void) switch_log_node_free(switch_log_node_t **pnode)
 	if (node) {
 		switch_safe_free(node->userdata);
 		switch_safe_free(node->data);
+		if (node->tags) {
+			switch_event_destroy(&node->tags);
+		}
 #ifdef SWITCH_LOG_RECYCLE
 		if (switch_queue_trypush(LOG_RECYCLE_QUEUE, node) != SWITCH_STATUS_SUCCESS) {
 			free(node);
@@ -151,7 +302,31 @@ SWITCH_DECLARE(const char *) switch_log_level2str(switch_log_level_t level)
 	if (level > SWITCH_LOG_DEBUG) {
 		level = SWITCH_LOG_DEBUG;
 	}
-	return LEVELS[level];
+	return LEVELS[level + 1];
+}
+
+static int switch_log_to_mask(switch_log_level_t level)
+{
+	switch (level) {
+	case SWITCH_LOG_DEBUG:
+		return (1<<7);
+	case SWITCH_LOG_INFO:
+		return (1<<6);
+	case SWITCH_LOG_NOTICE:
+		return (1<<5);
+	case SWITCH_LOG_WARNING:
+		return (1<<4);
+	case SWITCH_LOG_ERROR:
+		return (1<<3);
+	case SWITCH_LOG_CRIT:
+		return (1<<2);
+	case SWITCH_LOG_ALERT:
+		return (1<<1);
+	case SWITCH_LOG_CONSOLE:
+		return (1<<0);
+	default:
+		return 0;
+	}
 }
 
 SWITCH_DECLARE(uint32_t) switch_log_str2mask(const char *str)
@@ -160,7 +335,7 @@ SWITCH_DECLARE(uint32_t) switch_log_str2mask(const char *str)
 	char *argv[10] = { 0 };
 	uint32_t mask = 0;
 	char *p = strdup(str);
-	switch_log_level_t level;
+	switch_log_level_t level = SWITCH_LOG_INVALID;
 
 	switch_assert(p);
 
@@ -171,8 +346,9 @@ SWITCH_DECLARE(uint32_t) switch_log_str2mask(const char *str)
 				break;
 			} else {
 				level = switch_log_str2level(argv[x]);
+
 				if (level != SWITCH_LOG_INVALID) {
-					mask |= (1 << level);
+					mask |= switch_log_to_mask(level);
 				}
 			}
 		}
@@ -207,7 +383,7 @@ SWITCH_DECLARE(switch_log_level_t) switch_log_str2level(const char *str)
 		}
 
 		if (!strcasecmp(LEVELS[x], str)) {
-			level = (switch_log_level_t) x;
+			level = (switch_log_level_t)(x - 1);
 			break;
 		}
 	}
@@ -349,6 +525,10 @@ SWITCH_DECLARE(void) switch_log_vprintf(switch_text_channel_t channel, const cha
 	switch_log_level_t limit_level = runtime.hard_log_level;
 	switch_log_level_t special_level = SWITCH_LOG_UNINIT;
 
+	if (limit_level == SWITCH_LOG_DISABLE) {
+		return;
+	}
+
 	if (channel == SWITCH_CHANNEL_ID_SESSION && userdata) {
 		switch_core_session_t *session = (switch_core_session_t *) userdata;
 		special_level = session->loglevel;
@@ -484,9 +664,13 @@ SWITCH_DECLARE(void) switch_log_vprintf(switch_text_channel_t channel, const cha
 		node->content = content;
 		node->timestamp = now;
 		node->channel = channel;
+		node->tags = NULL;
 		if (channel == SWITCH_CHANNEL_ID_SESSION) {
 			switch_core_session_t *session = (switch_core_session_t *) userdata;
 			node->userdata = userdata ? strdup(switch_core_session_get_uuid(session)) : NULL;
+			if (session) {
+				switch_channel_get_log_tags(switch_core_session_get_channel(session), &node->tags);
+			}
 		} else {
 			node->userdata = !zstr(userdata) ? strdup(userdata) : NULL;
 		}

@@ -303,6 +303,12 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_sleep(switch_core_session_t *session,
 			}
 		}
 
+		if (read_frame && args && (args->read_frame_callback)) {
+			if ((status = args->read_frame_callback(session, read_frame, args->user_data)) != SWITCH_STATUS_SUCCESS) {
+				break;
+			}
+		}
+
 		if (sval && write_frame.datalen) {
 			switch_generate_sln_silence((int16_t *) write_frame.data, write_frame.samples, imp.number_of_channels, sval);
 			switch_core_session_write_frame(session, &write_frame, SWITCH_IO_FLAG_NONE, 0);
@@ -550,6 +556,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_event(switch_core_session_t *se
 	if (cmd_hash == CMD_EXECUTE) {
 		char *app_name = switch_event_get_header(event, "execute-app-name");
 		char *event_uuid = switch_event_get_header(event, "event-uuid");
+		char *event_uuid_name = switch_event_get_header(event, "event-uuid-name");
 		char *app_arg = switch_event_get_header(event, "execute-app-arg");
 		char *content_type = switch_event_get_header(event, "content-type");
 		char *loop_h = switch_event_get_header(event, "loops");
@@ -622,12 +629,15 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_event(switch_core_session_t *se
 			for (x = 0; x < loops || loops < 0; x++) {
 				switch_time_t b4, aftr;
 
-				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "%s Command Execute %s(%s)\n",
-								  switch_channel_get_name(channel), app_name, switch_str_nil(app_arg));
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "%s Command Execute [depth=%d] %s(%s)\n",
+								  switch_channel_get_name(channel), switch_core_session_stack_count(session, 0), app_name, switch_str_nil(app_arg));
 				b4 = switch_micro_time_now();
 
 				if (event_uuid) {
 					switch_channel_set_variable(channel, "app_uuid", event_uuid);
+				}
+				if (event_uuid_name) {
+					switch_channel_set_variable(channel, "app_uuid_name", event_uuid_name);
 				}
 
 				switch_channel_set_variable_printf(channel, "current_loop", "%d", x + 1);
@@ -821,6 +831,11 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_process_indications(switch_core_sessi
 				switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 			}
 			break;
+		case SWITCH_MESSAGE_INDICATE_RESPOND:
+			switch_core_session_receive_message(session, message);
+			status = SWITCH_STATUS_SUCCESS;
+			break;
+
 		default:
 		status = SWITCH_STATUS_FALSE;
 			break;
@@ -897,17 +912,16 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_next_signal_data(switch_core_se
 
 SWITCH_DECLARE(switch_status_t) switch_ivr_parse_all_events(switch_core_session_t *session)
 {
-	int x = 0;
 	switch_channel_t *channel;
-
-	if (switch_core_session_stack_count(session, 0) > SWITCH_MAX_STACKS) {
-		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Error %s too many stacked extensions\n",
-						  switch_core_session_get_name(session));
+	uint32_t stack_count = 0;
+	if ((stack_count = switch_core_session_stack_count(session, 0)) > SWITCH_MAX_STACKS) {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Error %s too many stacked extensions [depth=%d]\n",
+						  switch_core_session_get_name(session), stack_count);
 		return SWITCH_STATUS_FALSE;
 	}
 
 	switch_core_session_stack_count(session, 1);
-	
+
 	switch_ivr_parse_all_messages(session);
 
 	channel = switch_core_session_get_channel(session);
@@ -920,9 +934,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_all_events(switch_core_session_
 		}
 	}
 
-	while (switch_ivr_parse_next_event(session) == SWITCH_STATUS_SUCCESS) {
-		x++;
-	}
+	while (switch_ivr_parse_next_event(session) == SWITCH_STATUS_SUCCESS) {}
 
  done:
 	switch_core_session_stack_count(session, -1);
@@ -977,9 +989,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_park(switch_core_session_t *session, 
 			timeout_cause = switch_channel_str2cause(cause_str + 1);
 		}
 
-		if ((timeout = atoi(to)) < 0) {
-			timeout = 0;
-		} else {
+		if ((timeout = atoi(to)) >= 0) {
 			expires = switch_epoch_time_now(NULL) + timeout;
 		}
 		switch_channel_set_variable(channel, "park_timeout", NULL);
@@ -1287,7 +1297,10 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_collect_digits_callback(switch_core_s
 		}
 
 		if (switch_core_session_dequeue_event(session, &event, SWITCH_FALSE) == SWITCH_STATUS_SUCCESS) {
-			switch_status_t ostatus = args->input_callback(session, event, SWITCH_INPUT_TYPE_EVENT, args->buf, args->buflen);
+			switch_status_t ostatus = SWITCH_STATUS_FALSE;
+			if (args->input_callback) {
+				ostatus = args->input_callback(session, event, SWITCH_INPUT_TYPE_EVENT, args->buf, args->buflen);
+			}
 			if (ostatus != SWITCH_STATUS_SUCCESS) {
 				status = ostatus;
 			}
@@ -1402,7 +1415,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_collect_digits_count(switch_core_sess
 	if (digit_timeout && first_timeout) {
 		eff_timeout = first_timeout;
 	} else if (digit_timeout && !first_timeout) {
-		first_timeout = eff_timeout = digit_timeout;
+		eff_timeout = digit_timeout;
 	} else if (first_timeout) {
 		digit_timeout = eff_timeout = first_timeout;
 	}
@@ -2080,6 +2093,26 @@ SWITCH_DECLARE(void) switch_ivr_bg_media(const char *uuid, switch_media_flag_t f
 
 }
 
+SWITCH_DECLARE(void) switch_ivr_check_hold(switch_core_session_t *session)
+{
+	switch_channel_t *channel = switch_core_session_get_channel(session);
+	switch_media_flow_t flow;
+
+	if (switch_channel_test_flag(channel, CF_ANSWERED) &&
+		(flow = switch_core_session_media_flow(session, SWITCH_MEDIA_TYPE_AUDIO)) != SWITCH_MEDIA_FLOW_SENDRECV) {
+		switch_core_session_message_t msg = { 0 };
+
+		msg.message_id = SWITCH_MESSAGE_INDICATE_MEDIA_RENEG;
+		msg.from = __FILE__;
+
+		switch_core_media_set_smode(session, SWITCH_MEDIA_TYPE_AUDIO, SWITCH_MEDIA_FLOW_SENDRECV, SDP_TYPE_REQUEST);
+		switch_core_session_receive_message(session, &msg);
+	}
+
+	if (switch_channel_test_flag(channel, CF_HOLD)) {
+		switch_ivr_unhold(session);
+	}
+}
 
 SWITCH_DECLARE(switch_status_t) switch_ivr_session_transfer(switch_core_session_t *session, const char *extension, const char *dialplan,
 															const char *context)
@@ -2095,7 +2128,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_session_transfer(switch_core_session_
 	const char *forwardvar = switch_channel_get_variable(channel, forwardvar_name);
 	int forwardval = 70;
 	const char *use_dialplan = dialplan, *use_context = context;
-
+	
 	if (zstr(forwardvar)) {
 		forwardvar_name = SWITCH_MAX_FORWARDS_VARIABLE; /* fall back to max_forwards variable for setting maximum */
 		forwardvar = switch_channel_get_variable(channel, forwardvar_name);
@@ -2108,6 +2141,9 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_session_transfer(switch_core_session_
 		return SWITCH_STATUS_FALSE;
 	}
 
+	switch_ivr_check_hold(session);
+	
+	
 	max_forwards = switch_core_session_sprintf(session, "%d", forwardval);
 	switch_channel_set_variable(channel, forwardvar_name, max_forwards);
 

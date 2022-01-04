@@ -24,6 +24,7 @@
  * Contributor(s):
  *
  * Anthony Minessale II <anthm@freeswitch.org>
+ * Andrey Volk <andywolk@gmail.com>
  *
  *
  * switch_core.h -- Core Library Private Data (not to be installed into the system)
@@ -129,6 +130,7 @@ struct switch_core_session {
 	switch_audio_resampler_t *write_resampler;
 
 	switch_mutex_t *mutex;
+	switch_mutex_t *stack_count_mutex;
 	switch_mutex_t *resample_mutex;
 	switch_mutex_t *codec_read_mutex;
 	switch_mutex_t *codec_write_mutex;
@@ -311,6 +313,8 @@ struct switch_runtime {
 	char *core_db_inner_post_trans_execute;
 	int events_use_dispatch;
 	uint32_t port_alloc_flags;
+	char *event_channel_key_separator;
+	uint32_t max_audio_channels;
 };
 
 extern struct switch_runtime runtime;
@@ -333,6 +337,8 @@ extern struct switch_session_manager session_manager;
 
 
 
+switch_status_t switch_core_sqldb_init(const char **err);
+void switch_core_sqldb_destroy();
 switch_status_t switch_core_sqldb_start(switch_memory_pool_t *pool, switch_bool_t manage);
 void switch_core_sqldb_stop(void);
 void switch_core_session_init(switch_memory_pool_t *pool);
