@@ -73,6 +73,7 @@ TAGS
 /freeswitch
 /fs_cli
 /fs_encode
+/fs_tts
 /fs_ivrd
 /libtool
 /Makefile
@@ -141,7 +142,6 @@ Release/
 /libs/libcodec2/unittest/Makefile
 /libs/libcodec2/unittest/Makefile.in
 /libs/mpg123-1.13.2/
-/libs/spandsp/src/cielab_luts.h
 /scripts/fsxs
 /scripts/gentls_cert
 
@@ -259,3 +259,24 @@ libs/libsilk-*/
 libs/rabbitmq-c-*/
 libs/rabbitmq-c-*.zip
 libs/ffmpeg-*/
+libs/sofia-sip*/
+libs/sofia-sip*
+
+src/mod/applications/mod_test/test/test_asr
+src/mod/event_handlers/mod_rayo/test/test_iks
+src/mod/event_handlers/mod_rayo/test/test_nlsml
+src/mod/event_handlers/mod_rayo/test/test_srgs
+src/mod/applications/mod_http_cache/test/Makefile
+src/mod/applications/mod_http_cache/test/Makefile.in
+src/mod/applications/mod_http_cache/test/test-suite.log
+src/mod/applications/mod_http_cache/test/test_aws
+src/mod/applications/mod_http_cache/test/test_aws.log
+src/mod/applications/mod_http_cache/test/test_aws.trs
+src/mod/formats/mod_sndfile/test/test_sndfile
+src/mod/formats/mod_sndfile/test/test_sndfile_conf
+src/mod/*/*/test/*.log
+src/mod/*/*/test/*.trs
+src/mod/*/*/test/[0-9]*/*
+test-suite.log
+src/mod/applications/mod_av/test/test_BT7.mp4
+src/mod/applications/mod_av/test/test_RGB.mp4

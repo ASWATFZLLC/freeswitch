@@ -496,7 +496,6 @@ static void *SWITCH_THREAD_FUNC read_stream_thread(switch_thread_t *thread, void
 				if (source->hup) {
 					source->hup = 0;
 					if (is_open) {
-						is_open = 0;
 
 						switch_core_file_close(use_fh);
 						flush_video_queue(source->video_q);
@@ -560,7 +559,6 @@ static void *SWITCH_THREAD_FUNC read_stream_thread(switch_thread_t *thread, void
 
 						if (use_fh == &source->chime_fh) {
 							source->chime_counter = source->rate * source->chime_freq;
-							use_fh = &fh;
 						} else {
 							is_open = 0;
 						}
@@ -766,6 +764,10 @@ static void *SWITCH_THREAD_FUNC read_stream_thread(switch_thread_t *thread, void
 					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "local_stream://%s partially reloaded.\n",source->name);
 					source->part_reload = 0;
 					source->full_reload = 0;
+
+					if (xml) {
+						switch_xml_free(xml);
+					}
 				}
 			} else {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "local_stream://%s fully reloaded.\n",source->name);
@@ -1106,7 +1108,7 @@ static switch_status_t local_stream_file_read_video(switch_file_handle_t *handle
 	}
 
 	if (context->source->banner_txt) {
-		if ((!context->banner_timeout || context->banner_timeout >= now)) {
+		if (!context->banner_timeout || context->banner_timeout >= now) {
 			if (context->newres) {
 				switch_img_free(&context->banner_img);
 				context->newres = 0;
@@ -1276,12 +1278,12 @@ static void launch_thread(const char *name, const char *path, switch_xml_t direc
 			source->logo_pos = parse_img_position(val);
 		} else if (!strcasecmp(var, "logo-opacity") && !zstr(val)) {
 			source->logo_opacity = atoi(val);
-			if (source->logo_opacity < 0 && source->logo_opacity > 100) {
+			if (source->logo_opacity < 0 || source->logo_opacity > 100) {
 				source->logo_opacity = 0;
 			}
 		} else if (!strcasecmp(var, "text-opacity") && !zstr(val)) {
 			source->text_opacity = atoi(val);
-			if (source->text_opacity < 0 && source->text_opacity > 100) {
+			if (source->text_opacity < 0 || source->text_opacity > 100) {
 				source->text_opacity = 0;
 			}
 		} else if (!strcasecmp(var, "volume")) {

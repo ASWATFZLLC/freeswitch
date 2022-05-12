@@ -3,8 +3,8 @@
 # spec file for package freeswitch
 #
 # includes module(s): freeswitch-devel freeswitch-codec-passthru-amr freeswitch-codec-passthru-amrwb freeswitch-codec-passthru-g729 
-#                     freeswitch-codec-passthru-g7231 freeswitch-lua freeswitch-perl freeswitch-python freeswitch-v8 freeswitch-signalwire
-#                     freeswitch-lan-de freeswitch-lang-en freeswitch-lang-fr freeswitch-lang-hu freeswitch-lang-ru freeswitch-freetdm
+#                     freeswitch-codec-passthru-g7231 freeswitch-lua freeswitch-mariadb freeswitch-pgsql freeswitch-perl freeswitch-python freeswitch-v8 freeswitch-signalwire
+#                     freeswitch-lan-de freeswitch-lang-en freeswitch-lang-fr freeswitch-lang-hu freeswitch-lang-ru
 #		      and others
 #
 # Initial Version Copyright (C) 2007 Peter Nixon and Michal Bielicki, All Rights Reserved.
@@ -25,7 +25,7 @@
 #                 Ken Rice <krice@freeswitch.org>
 #                 Chris Rienzo <crienzo@grasshopper.com>
 #
-# Maintainer(s): Ken Rice <krice@freeswitch.org>
+# Maintainer(s): SignalWire, Inc <support@signalwire.com>
 #
 ######################################################################################################################
 # Module build settings
@@ -37,7 +37,9 @@
 %define build_mod_esl 0
 %define build_mod_rayo 1
 %define build_mod_ssml 1
-%define build_mod_shout 0
+%define build_mod_shout 1
+%define build_mod_opusfile 0
+%define build_mod_v8 0
 
 %{?with_sang_tc:%define build_sng_tc 1 }
 %{?with_sang_isdn:%define build_sng_isdn 1 }
@@ -46,8 +48,11 @@
 %{?with_timerfd:%define build_timerfd 1 }
 %{?with_mod_esl:%define build_mod_esl 1 }
 %{?with_mod_shout:%define build_mod_shout 1 }
+%{?with_mod_opusfile:%define build_mod_opusfile 1 }
+%{?with_mod_v8:%define build_mod_v8 1 }
 
-%define version 1.7.0
+%define nonparsedversion 1.7.0
+%define version %(echo '%{nonparsedversion}' | sed 's/-//g')
 %define release 1
 
 ######################################################################################################################
@@ -116,7 +121,7 @@ Vendor:       	http://www.freeswitch.org/
 #					Source files and where to get them
 #
 ######################################################################################################################
-Source0:        http://files.freeswitch.org/%{name}-%{version}.tar.bz2
+Source0:        http://files.freeswitch.org/%{name}-%{nonparsedversion}.tar.bz2
 Source1:	http://files.freeswitch.org/downloads/libs/v8-3.24.14.tar.bz2
 Source2:	http://files.freeswitch.org/downloads/libs/mongo-c-driver-1.1.0.tar.gz
 Source3:	http://files.freeswitch.org/downloads/libs/pocketsphinx-0.8.tar.gz
@@ -147,17 +152,14 @@ BuildRequires: gnutls-devel
 BuildRequires: libtool >= 1.5.17
 BuildRequires: ncurses-devel
 BuildRequires: openssl-devel >= 1.0.1e
+BuildRequires: sofia-sip-devel >= 1.12.12
+BuildRequires: spandsp3-devel >= 3.0
 BuildRequires: pcre-devel 
 BuildRequires: speex-devel 
 BuildRequires: sqlite-devel
 BuildRequires: libtiff-devel
-BuildRequires: ldns-devel
 BuildRequires: libedit-devel
-BuildRequires: perl
 BuildRequires: yasm
-%if 0%{?fedora} >= 8 || 0%{?rhel} >= 6
-BuildRequires: perl-ExtUtils-Embed
-%endif
 BuildRequires: pkgconfig
 %if 0%{?rhel} < 6 && 0%{?fedora} <= 6
 BuildRequires: termcap
@@ -169,38 +171,17 @@ BuildRequires: db-devel
 %else
 BuildRequires: db4-devel
 %endif
-BuildRequires: python-devel
 BuildRequires: libogg-devel
 BuildRequires: libvorbis-devel
 BuildRequires: libjpeg-devel
 #BuildRequires: mono-devel
-BuildRequires: alsa-lib-devel
 BuildRequires: which
 BuildRequires: zlib-devel
 BuildRequires: e2fsprogs-devel
 BuildRequires: libtheora-devel
 BuildRequires: libxml2-devel
-BuildRequires: bison
-BuildRequires: net-snmp-devel
-BuildRequires: libmemcached-devel
-BuildRequires: portaudio-devel
 BuildRequires: libsndfile-devel
-BuildRequires: broadvoice-devel
-BuildRequires: flite-devel
-BuildRequires: ilbc2-devel 
-BuildRequires: g722_1-devel
-BuildRequires: libcodec2-devel
-BuildRequires: libsilk-devel
 BuildRequires: libyuv-devel >= 0.0.1280
-BuildRequires: lua-devel
-BuildRequires: mongo-c-driver-devel
-BuildRequires: opus-devel
-BuildRequires: soundtouch-devel >= 1.7.1
-%if %{build_py26_esl}
-BuildRequires: python26-devel
-Requires: python26
-%endif
-Requires: alsa-lib
 Requires: libogg
 Requires: libvorbis
 Requires: curl
@@ -218,7 +199,6 @@ Requires: db4
 Requires: gdbm
 Requires: zlib
 Requires: libtiff
-Requires: python
 Requires: libtheora
 Requires: libxml2
 Requires: libsndfile
@@ -378,6 +358,7 @@ Engine. Uses ODBC to connect to the DB of your choice.
 Summary:	FreeSWITCH mod_enum
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  ldns-devel
 
 %description application-enum
 Provides FreeSWITCH mod_enum, a ENUM dialplan, with API and Dialplan extensions 
@@ -485,6 +466,7 @@ Provides FreeSWITCH mod_limit, provide application to limit both concurrent and 
 Summary:	FreeSWITCH mod_memcache
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  libmemcached-devel
 
 %description application-memcache
 Provides FreeSWITCH mod_memcache, implements an API interface to memcached which
@@ -496,6 +478,7 @@ alleviating database load."
 Summary:	FreeSWITCH mod_mongo
 Group:		System/Libraries
 Requires:	%{name} = %{version}-%{release}
+BuildRequires:  mongo-c-driver-devel
 
 %description application-mongo
 Provides FreeSWITCH mod_mongo, which implements an API interface to mongodb.
@@ -540,6 +523,7 @@ the entries aloud via a TTS engine
 Summary:	FreeSWITCH mod_signalwire
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  libks signalwire-client-c
 
 %description application-signalwire
 Provides FreeSWITCH mod_signalwire
@@ -576,6 +560,7 @@ and appearance of the programmable softkeys on Snom phones
 Summary:	FreeSWITCH mod_soundtouch
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  soundtouch-devel >= 1.7.1
 
 %description application-soundtouch
 Provides FreeSWITCH mod_soundtouch, uses the soundtouch library, which can do
@@ -652,6 +637,8 @@ system for backend voicemail systems
 Summary:	FreeSWITCH mod_flite
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+Requires:       flite >= 2.0.0
+BuildRequires:  flite-devel >= 2.0.0
 
 %description asrtts-flite
 Provides FreeSWITCH mod_flite, a interface to the flite text to speech engine
@@ -660,6 +647,7 @@ Provides FreeSWITCH mod_flite, a interface to the flite text to speech engine
 Summary:	FreeSWITCH mod_pocketsphinx
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  bison
 
 %description asrtts-pocketsphinx
 Provides FreeSWITCH mod_pocketsphinx, a interface to the OpenSource 
@@ -709,6 +697,7 @@ Pass-through AMR WideBand Codec support for FreeSWITCH open source telephony pla
 Summary:        BroadVoice16 and BroadVoice32 WideBand Codec support for FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  broadvoice-devel
 
 %description codec-bv
 BroadVoice16 and BroadVoice32 WideBand Codec support for FreeSWITCH open source telephony platform
@@ -717,6 +706,7 @@ BroadVoice16 and BroadVoice32 WideBand Codec support for FreeSWITCH open source 
 Summary:        Codec2 Narrow Band Codec support for FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  codec2-devel
 
 %description codec-codec2
 CODEC2 narrow band codec support for FreeSWITCH open source telephony platform.
@@ -753,6 +743,7 @@ Summary:        iLCB Codec support for FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
 Requires:       ilbc2
+BuildRequires:  ilbc2-devel 
 
 
 %description codec-ilbc
@@ -786,6 +777,8 @@ MP4V Video Codec support for FreeSWITCH open source telephony platform
 Summary:        Opus Codec support for FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+Requires:       opus >= 1.1
+BuildRequires:  opus-devel >= 1.1
 
 %description codec-opus
 OPUS Codec support for FreeSWITCH open source telephony platform
@@ -807,6 +800,7 @@ Sangoma D100 and D500 Codec Card Support
 Summary:        Silk Codec support for FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  libsilk-devel
 
 %description codec-silk
 Silk Codec (from Skype) support for FreeSWITCH open source telephony platform
@@ -815,6 +809,7 @@ Silk Codec (from Skype) support for FreeSWITCH open source telephony platform
 Summary:        Siren Codec support for FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
+BuildRequires:  g722_1-devel
 
 %description codec-siren
 Siren Codec support for FreeSWITCH open source telephony platform. Using 
@@ -831,6 +826,30 @@ Requires:       %{name} = %{version}-%{release}
 
 %description codec-theora
 Theora Video Codec support for FreeSWITCH open source telephony platform.
+
+######################################################################################################################
+#				FreeSWITCH Database Modules
+######################################################################################################################
+
+%package database-mariadb
+Summary:	MariaDB native support for FreeSWITCH
+Group:		System/Libraries
+Requires:	%{name} = %{version}-%{release}
+Requires:	mariadb-connector-c
+BuildRequires:	mariadb-connector-c-devel
+
+%description database-mariadb
+MariaDB native support for FreeSWITCH.
+
+%package database-pgsql
+Summary:	PostgreSQL native support for FreeSWITCH
+Group:		System/Libraries
+Requires:	%{name} = %{version}-%{release}
+Requires:	postgresql-libs
+BuildRequires:	postgresql-devel
+
+%description database-pgsql
+PostgreSQL native support for FreeSWITCH.
 
 ######################################################################################################################
 #				FreeSWITCH Directory Modules
@@ -889,6 +908,7 @@ Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
 Requires:	alsa-lib
 BuildRequires:	alsa-lib-devel
+BuildRequires:	portaudio-devel
 
 %description endpoint-portaudio
 PortAudio endpoint support for FreeSWITCH open source telephony platform.
@@ -927,52 +947,6 @@ Requires:       %{name} = %{version}-%{release}
 %description endpoint-rtc
 Verto protocol support for FreeSWITCH open source telephony platform.
 
-%package freetdm
-Summary:	Provides a unified interface to hardware TDM cards and ss7 stacks for FreeSWITCH
-Group:		System/Libraries
-Requires:        %{name} = %{version}-%{release}
-
-%description freetdm
-FreeTDM
-
-%if %{build_sng_isdn}
-
-%package freetdm-sng-isdn
-Summary:	Sangoma ISDN Module for FreeTDM
-Group:		System/Libraries
-Requires:       %{name} = %{version}-%{release}
-Requires:       %{name}-freetdm = %{version}-%{release}
-Requires: wanpipe 
-Requires: libsng_isdn 
-BuildRequires: wanpipe 
-BuildRequires: libsng_isdn 
-
-%description freetdm-sng-isdn
-Sangoma ISDN Module for freetdm
-
-%endif
-
-%if %{build_sng_ss7}
-
-%package freetdm-sng-ss7
-Summary:	Provides a unified interface to hardware TDM cards and ss7 stacks for FreeSWITCH, Sangoma SS7 Module
-Group:		System/Libraries
-Requires:        %{name} = %{version}-%{release}
-Requires:       %{name}-freetdm = %{version}-%{release}
-Requires: wanpipe 
-Requires: libsng_ss7 
-BuildRequires: wanpipe 
-BuildRequires: libsng_ss7 
-%if 0%{?fedora_version} >= 8 || 0%{?rhel} >= 6
-Requires: openssl098e
-BuildRequires: openssl098e
-%endif
-
-%description freetdm-sng-ss7
-Sangoma SMG-SS7 drivers for FreeTDM
-
-%endif
-
 ######################################################################################################################
 #				FreeSWITCH Event Handler Modules
 ######################################################################################################################
@@ -980,7 +954,8 @@ Sangoma SMG-SS7 drivers for FreeTDM
 %package event-cdr-mongodb
 Summary:	MongoDB CDR Logger for the FreeSWITCH open source telephony platform
 Group:		System/Libraries
-Requires:	 %{name} = %{version}-%{release}
+Requires:       %{name} = %{version}-%{release}
+BuildRequires:  mongo-c-driver-devel
 
 %description event-cdr-mongodb
 MongoDB CDR Logger for FreeSWITCH
@@ -1126,6 +1101,7 @@ a native format sound file is available then FreeSWITCH can use it.
 Summary:	PortAudio Media Steam support for the FreeSWITCH open source telephony platform
 Group:		System/Libraries
 Requires:	%{name} = %{version}-%{release}
+BuildRequires:	portaudio-devel
 
 %description format-portaudio-stream
 Portaudio Streaming interface Audio for FreeSWITCH
@@ -1145,16 +1121,28 @@ a soundcard, etc.
 Summary:	Implements Media Steaming from arbitrary shell commands for the FreeSWITCH open source telephony platform
 Group:		System/Libraries
 Requires:	%{name} = %{version}-%{release}
-Requires:	libshout >= 2.3.1
+Requires:	libshout >= 2.2.2
 Requires:	libmpg123 >= 1.20.1
 Requires:	lame
-BuildRequires:	libshout-devel >= 2.3.1
+BuildRequires:	libshout-devel >= 2.2.2
 BuildRequires:	libmpg123-devel >= 1.20.1
 BuildRequires:	lame-devel
 
 %description format-mod-shout
 Mod Shout is a FreeSWITCH module to allow you to stream audio from MP3s or a i
 shoutcast stream.
+%endif
+
+%if %{build_mod_opusfile}
+%package format-mod-opusfile
+Summary:	Plays Opus encoded files
+Group:		System/Libraries
+Requires:	%{name} = %{version}-%{release}
+Requires:	opusfile >= 0.5
+BuildRequires:	opusfile-devel >= 0.5
+
+%description format-mod-opusfile
+Mod Opusfile is a FreeSWITCH module to allow you to play Opus encoded files
 %endif
 
 %if %{build_mod_ssml}
@@ -1183,6 +1171,7 @@ Implements TGML Tone Generation for the FreeSWITCH open source telephony platfor
 Summary:	Lua support for the FreeSWITCH open source telephony platform
 Group:		System/Libraries
 Requires:	%{name} = %{version}-%{release}
+BuildRequires:  lua-devel
 
 %description	lua
 
@@ -1191,6 +1180,8 @@ Summary:	Perl support for the FreeSWITCH open source telephony platform
 Group:		System/Libraries
 Requires:	%{name} = %{version}-%{release}
 Requires:	perl
+BuildRequires:	perl-devel
+BuildRequires:	perl-ExtUtils-Embed
 
 %description	perl
 
@@ -1198,16 +1189,19 @@ Requires:	perl
 Summary:        Python support for the FreeSWITCH open source telephony platform
 Group:          System/Libraries
 Requires:       %{name} = %{version}-%{release}
-Requires:	python
+Requires:       python
+BuildRequires:  python-devel
 
 %description    python
 
+%if %{build_mod_v8}
 %package v8
 Summary:	JavaScript support for the FreeSWITCH open source telephony platform, using Google V8 JavaScript engine
 Group:		System/Libraries
 Requires:	%{name} = %{version}-%{release}
 
 %description v8
+%endif
 
 ######################################################################################################################
 #				FreeSWITCH Say Modules
@@ -1343,6 +1337,8 @@ The Perl ESL module allows for native interaction with FreeSWITCH over the event
 %package	-n python-ESL
 Summary:	The Python ESL module allows for native interaction with FreeSWITCH over the event socket interface.
 Group:		System Environment/Libraries
+Requires:	python
+BuildRequires:	python-devel
 
 %description	-n python-ESL
 The Python ESL module allows for native interaction with FreeSWITCH over the event socket interface.
@@ -1399,6 +1395,7 @@ Requires:	freeswitch-codec-passthru-g729
 Requires:	freeswitch-codec-h26x
 Requires:	freeswitch-codec-ilbc
 Requires:	freeswitch-codec-siren
+Requires:	freeswitch-database-pgsql
 Requires:	freeswitch-format-local-stream
 Requires:	freeswitch-format-native-file
 Requires:	freeswitch-format-portaudio-stream
@@ -1415,7 +1412,7 @@ Basic vanilla config set for the FreeSWITCH Open Source telephone platform.
 ######################################################################################################################
 
 %prep
-%setup -b0 -q
+%setup -b0 -q -n %{name}-%{nonparsedversion}
 cp %{SOURCE1} libs/
 cp %{SOURCE2} libs/
 cp %{SOURCE3} libs/
@@ -1496,6 +1493,13 @@ CODECS_MODULES+="codecs/mod_sangoma_codec"
 
 ######################################################################################################################
 #
+#					Database Modules
+#
+######################################################################################################################
+DATABASES_MODULES="databases/mod_mariadb databases/mod_pgsql"
+
+######################################################################################################################
+#
 #					Dialplan Modules
 #
 ######################################################################################################################
@@ -1513,7 +1517,7 @@ DIRECTORIES_MODULES=""
 #						Endpoints
 #
 ######################################################################################################################
-ENDPOINTS_MODULES="endpoints/mod_dingaling ../../libs/freetdm/mod_freetdm \
+ENDPOINTS_MODULES="endpoints/mod_dingaling \
 			endpoints/mod_loopback endpoints/mod_portaudio endpoints/mod_rtmp \
 			endpoints/mod_skinny endpoints/mod_verto endpoints/mod_rtc endpoints/mod_sofia"
 
@@ -1546,6 +1550,9 @@ FORMATS_MODULES+=" formats/mod_shout "
 %if %{build_mod_ssml}
 FORMATS_MODULES+=" formats/mod_ssml"
 %endif
+%if %{build_mod_opusfile}
+FORMATS_MODULES+=" formats/mod_opusfile"
+%endif
 
 ######################################################################################################################
 #
@@ -1553,7 +1560,9 @@ FORMATS_MODULES+=" formats/mod_ssml"
 #
 ######################################################################################################################
 LANGUAGES_MODULES="languages/mod_lua languages/mod_perl languages/mod_python "
-#LANGUAGES_MODULES+="languages/mod_v8"
+%if %{build_mod_v8}
+LANGUAGES_MODULES+="languages/mod_v8"
+%endif
 
 ######################################################################################################################
 #
@@ -1591,7 +1600,7 @@ XML_INT_MODULES="xml_int/mod_xml_cdr xml_int/mod_xml_curl xml_int/mod_xml_rpc"
 #				Create one environment variable out of all the module defs
 #
 ######################################################################################################################
-MYMODULES="$APPLICATIONS_MODULES $CODECS_MODULES $DIALPLANS_MODULES $DIRECTORIES_MODULES \
+MYMODULES="$APPLICATIONS_MODULES $CODECS_MODULES $DATABASES_MODULES $DIALPLANS_MODULES $DIRECTORIES_MODULES \
 $ENDPOINTS_MODULES $ASR_TTS_MODULES $EVENT_HANDLERS_MODULES $FORMATS_MODULES $LANGUAGES_MODULES $LOGGERS_MODULES \
 $SAY_MODULES $TIMERS_MODULES $XML_INT_MODULES"
 
@@ -1623,6 +1632,8 @@ else
    ./rebootstrap.sh
 fi
 
+autoreconf --force --install
+
 %configure -C \
 --prefix=%{PREFIX} \
 --exec-prefix=%{EXECPREFIX} \
@@ -1642,7 +1653,6 @@ fi
 --with-dbdir=%{DBDIR} \
 --with-htdocsdir=%{HTDOCSDIR} \
 --with-soundsdir=%{SOUNDSDIR} \
---enable-core-pgsql-support \
 --enable-core-odbc-support \
 --enable-core-libedit-support \
 --with-grammardir=%{GRAMMARDIR} \
@@ -1911,6 +1921,7 @@ fi
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/amrwb.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/alsa.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/amqp.conf.xml
+%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/av.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/avmd.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/blacklist.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/callcenter.conf.xml
@@ -1923,6 +1934,7 @@ fi
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/conference.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/conference_layouts.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/console.conf.xml
+%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/curl.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/db.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/dialplan_directory.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/dingaling.conf.xml 
@@ -1958,6 +1970,7 @@ fi
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/pocketsphinx.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/portaudio.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/post_load_modules.conf.xml
+%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/pre_load_modules.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/presence_map.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/redis.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/rss.conf.xml
@@ -1967,6 +1980,7 @@ fi
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/skinny.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/smpp.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/sms_flowroute.conf.xml
+%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/sndfile.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/sofia.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/spandsp.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/switch.conf.xml
@@ -1979,6 +1993,7 @@ fi
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/verto.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/voicemail.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/voicemail_ivr.conf.xml
+%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/vpx.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/xml_cdr.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/xml_curl.conf.xml
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/xml_rpc.conf.xml
@@ -2234,6 +2249,18 @@ fi
 
 ######################################################################################################################
 #
+#						FreeSWITCH Database Modules
+#
+######################################################################################################################
+
+%files database-mariadb
+%{MODINSTDIR}/mod_mariadb.so*
+
+%files database-pgsql
+%{MODINSTDIR}/mod_pgsql.so*
+
+######################################################################################################################
+#
 #						FreeSWITCH Directory Modules
 #
 ######################################################################################################################
@@ -2274,32 +2301,6 @@ fi
 %files endpoint-rtc
 %{MODINSTDIR}/mod_rtc.so*
 
-######################################################################################################################
-#
-#						FreeTDM Module for TDM Interaction
-#
-######################################################################################################################
-%files freetdm
-%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/tones.conf
-%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/freetdm.conf.xml
-%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/pika.conf
-%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/freetdm.conf
-%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/wanpipe.conf
-%config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/zt.conf
-%{LIBDIR}/libfreetdm.so*
-%{MODINSTDIR}/mod_freetdm.so*
-%{MODINSTDIR}/ftmod_skel*.so*
-%{MODINSTDIR}/ftmod_[a-r,t-z]*.so*
-
-%if %{build_sng_ss7}
-%files freetdm-sng-ss7
-%{MODINSTDIR}/ftmod_sangoma_ss7.so*
-%endif
-
-%if %{build_sng_isdn}
-%files freetdm-sng-isdn
-%{MODINSTDIR}/ftmod_sangoma_isdn.so*
-%endif
 
 ######################################################################################################################
 #
@@ -2397,12 +2398,14 @@ fi
 %dir %attr(0750, freeswitch, daemon) %{sysconfdir}/autoload_configs
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/python.conf.xml
 
+%if %{build_mod_v8}
 %files v8
-#%{MODINSTDIR}/mod_v8*.so*
-#%{LIBDIR}/libv8.so
-#%{LIBDIR}/libicui18n.so
-#%{LIBDIR}/libicuuc.so
-#%dir %attr(0750, freeswitch, daemon) %{sysconfdir}/autoload_configs
+%{MODINSTDIR}/mod_v8*.so*
+%{LIBDIR}/libv8.so
+%{LIBDIR}/libicui18n.so
+%{LIBDIR}/libicuuc.so
+%endif
+%dir %attr(0750, freeswitch, daemon) %{sysconfdir}/autoload_configs
 %config(noreplace) %attr(0640, freeswitch, daemon) %{sysconfdir}/autoload_configs/v8.conf.xml
 
 ######################################################################################################################
@@ -2553,6 +2556,10 @@ fi
 #
 ######################################################################################################################
 %changelog
+* Fri Jan 31 2020 - Andrey Volk
+- Add sndfile.conf.xml
+* Tue Apr 23 2019 - Andrey Volk
+- Fix build for Stack 20.x
 * Tue Dec 11 2018 - Andrey Volk
 - add mod_signalwire
 * Sun Mar 13 2016 - Matthew Vale

@@ -147,7 +147,7 @@ static int oreka_setup_rtp(oreka_session_t *oreka, oreka_stream_type_t type)
 			0, /* PCMU IANA*/
 			codec_impl->samples_per_packet,
 			codec_impl->microseconds_per_packet,
-			flags, NULL, &err, switch_core_session_get_pool(oreka->session));
+								flags, NULL, &err, switch_core_session_get_pool(oreka->session), 0, 0);
 	if (!rtp_stream) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Failed to create %s RTP stream at %s:%d: %s\n",
 				type_str, globals.local_ipv4_str, rtp_port, err);
@@ -494,7 +494,6 @@ static switch_bool_t oreka_audio_callback(switch_media_bug_t *bug, void *user_da
 
                 raw_frame.data = raw_data;
                 raw_frame.buflen = SWITCH_RECOMMENDED_BUFFER_SIZE;
-                linear_frame = &raw_frame;
 
                 while (switch_core_media_bug_read(bug, &raw_frame, SWITCH_TRUE) == SWITCH_STATUS_SUCCESS) {
                     linear_frame = &raw_frame;

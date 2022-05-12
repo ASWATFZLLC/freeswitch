@@ -462,6 +462,7 @@
 
         if (args["useCamera"]) {
             verto.options.deviceParams["useCamera"] = args["useCamera"];
+            verto.options.deviceParams["useCameraLabel"] = args["useCameraLabel"];
         }
 
         var dialog = new $.verto.dialog($.verto.enum.direction.outbound, this, args);
@@ -1938,6 +1939,7 @@
 	    screenShare: false,
 	    useCamera: false,
 	    useMic: verto.options.deviceParams.useMic,
+	    useMicLabel: verto.options.deviceParams.useMicLabel,
 	    useSpeak: verto.options.deviceParams.useSpeak,
             tag: verto.options.tag,
             localTag: verto.options.localTag,
@@ -1949,6 +1951,7 @@
 
 	if (!dialog.params.screenShare) {
 	    dialog.params.useCamera = verto.options.deviceParams.useCamera;
+	    dialog.params.useCameraLabel = verto.options.deviceParams.useCameraLabel;
 	}
 
         dialog.verto = verto;
@@ -1960,7 +1963,9 @@
         dialog.attach = params.attach || false;
 	dialog.screenShare = params.screenShare || false;
 	dialog.useCamera = dialog.params.useCamera;
+	dialog.useCameraLabel = dialog.params.useCameraLabel;
 	dialog.useMic = dialog.params.useMic;
+	dialog.useMicLabel = dialog.params.useMicLabel;
 	dialog.useSpeak = dialog.params.useSpeak;
 	
         if (dialog.params.callID) {
@@ -2099,7 +2104,9 @@
             iceServers: verto.options.iceServers,
             screenShare: dialog.screenShare,
             useCamera: dialog.useCamera,
+            useCameraLabel: dialog.useCameraLabel,
             useMic: dialog.useMic,
+            useMicLabel: dialog.useMicLabel,
             useSpeak: dialog.useSpeak,
       turnServer: verto.options.turnServer,
       useStream: dialog.params.useStream
@@ -2551,11 +2558,13 @@
 		dialog.params.callee_id_number = params.callee_id_number;
 
 		if (params.useCamera) {
-		    dialog.useCamera = params.useCamera;
+            dialog.useCamera = params.useCamera;
+            dialog.useCameraLabel = params.useCameraLabel;
 		}
 
 		if (params.useMic) {
-		    dialog.useMic = params.useMic;
+            dialog.useMic = params.useMic;
+            dialog.useMic = params.useMicLabel;
 		}
 
 		if (params.useSpeak) {
@@ -2828,16 +2837,15 @@
 		    has_video++;
 		}
 	    }
+	    navigator.mediaDevices.getUserMedia({ audio: (has_audio > 0 ? true : false), video: (has_video > 0 ? true : false)})
+                .then(function(stream) {
+                        Xstream = stream;
+                        navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
+           })
+           .catch(function(err) {
+                console.log("The following error occurred: " + err.name);
+          });
 
-	    navigator.getUserMedia({ audio: (has_audio > 0 ? true : false), video: (has_video > 0 ? true : false)},
-				   function(stream) {
-				       Xstream = stream;
-				       navigator.mediaDevices.enumerateDevices().then(gotDevices).catch(handleError);
-				   },
-				   function(err) {
-				       console.log("The following error occurred: " + err.name);
-				   }
-				  );
 	}
 
 	navigator.mediaDevices.enumerateDevices().then(checkTypes).catch(handleError);

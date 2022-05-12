@@ -257,59 +257,57 @@ static switch_status_t switch_opus_fmtp_parse(const char *fmtp, switch_codec_fmt
 				if ((arg = strchr(data, '='))) {
 					*arg++ = '\0';
 
-					if (codec_settings) {
-						if (!strcasecmp(data, "useinbandfec")) {
-							codec_settings->useinbandfec = switch_true(arg);
-						}
+					if (!strcasecmp(data, "useinbandfec")) {
+						codec_settings->useinbandfec = switch_true(arg);
+					}
 
-						if (!strcasecmp(data, "usedtx")) {
-							codec_settings->usedtx = switch_true(arg);
-						}
+					if (!strcasecmp(data, "usedtx")) {
+						codec_settings->usedtx = switch_true(arg);
+					}
 
-						if (!strcasecmp(data, "cbr")) {
-							codec_settings->cbr = switch_true(arg);
-						}
+					if (!strcasecmp(data, "cbr")) {
+						codec_settings->cbr = switch_true(arg);
+					}
 
-						if (!strcasecmp(data, "maxptime")) {
-							codec_settings->maxptime = atoi(arg);
-						}
+					if (!strcasecmp(data, "maxptime")) {
+						codec_settings->maxptime = atoi(arg);
+					}
 
-						if (!strcasecmp(data, "minptime")) {
-							codec_settings->minptime = atoi(arg);
-						}
+					if (!strcasecmp(data, "minptime")) {
+						codec_settings->minptime = atoi(arg);
+					}
 
-						if (!strcasecmp(data, "ptime")) {
-							codec_settings->ptime = atoi(arg);
-							codec_fmtp->microseconds_per_packet = codec_settings->ptime * 1000;
-						}
+					if (!strcasecmp(data, "ptime")) {
+						codec_settings->ptime = atoi(arg);
+						codec_fmtp->microseconds_per_packet = codec_settings->ptime * 1000;
+					}
 
-						if (!strcasecmp(data, "stereo")) {
-							codec_settings->stereo = atoi(arg);
-							codec_fmtp->stereo = codec_settings->stereo;
-						}
+					if (!strcasecmp(data, "stereo")) {
+						codec_settings->stereo = atoi(arg);
+						codec_fmtp->stereo = codec_settings->stereo;
+					}
 
-						if (!strcasecmp(data, "sprop-stereo")) {
-							codec_settings->sprop_stereo = atoi(arg);
-						}
+					if (!strcasecmp(data, "sprop-stereo")) {
+						codec_settings->sprop_stereo = atoi(arg);
+					}
 
-						if (!strcasecmp(data, "maxaveragebitrate")) {
-							codec_settings->maxaveragebitrate = atoi(arg);
-							if (codec_settings->maxaveragebitrate < SWITCH_OPUS_MIN_BITRATE || codec_settings->maxaveragebitrate > SWITCH_OPUS_MAX_BITRATE) {
-								codec_settings->maxaveragebitrate = 0; /* values outside the range between 6000 and 510000 SHOULD be ignored */
-							}
+					if (!strcasecmp(data, "maxaveragebitrate")) {
+						codec_settings->maxaveragebitrate = atoi(arg);
+						if (codec_settings->maxaveragebitrate < SWITCH_OPUS_MIN_BITRATE || codec_settings->maxaveragebitrate > SWITCH_OPUS_MAX_BITRATE) {
+							codec_settings->maxaveragebitrate = 0; /* values outside the range between 6000 and 510000 SHOULD be ignored */
 						}
+					}
 
-						if (!strcasecmp(data, "maxplaybackrate")) {
-							codec_settings->maxplaybackrate = atoi(arg);
-							if (!switch_opus_acceptable_rate(codec_settings->maxplaybackrate)) {
-								codec_settings->maxplaybackrate = 0; /* value not supported */
-							}
+					if (!strcasecmp(data, "maxplaybackrate")) {
+						codec_settings->maxplaybackrate = atoi(arg);
+						if (!switch_opus_acceptable_rate(codec_settings->maxplaybackrate)) {
+							codec_settings->maxplaybackrate = 0; /* value not supported */
 						}
-						if (!strcasecmp(data, "sprop-maxcapturerate")) {
-							codec_settings->sprop_maxcapturerate = atoi(arg);
-							if (!switch_opus_acceptable_rate(codec_settings->sprop_maxcapturerate)) {
-								codec_settings->sprop_maxcapturerate = 0; /* value not supported */
-							}
+					}
+					if (!strcasecmp(data, "sprop-maxcapturerate")) {
+						codec_settings->sprop_maxcapturerate = atoi(arg);
+						if (!switch_opus_acceptable_rate(codec_settings->sprop_maxcapturerate)) {
+							codec_settings->sprop_maxcapturerate = 0; /* value not supported */
 						}
 					}
 				}
@@ -403,8 +401,6 @@ static switch_bool_t switch_opus_has_fec(const uint8_t* payload,int payload_leng
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "OPUS_INVALID_PACKET ! nb_opus_frames: %d\n", nb_opus_frames);
 		return SWITCH_FALSE;
 	}
-
-	nb_silk_frames  = 0;
 
 	if ((payload[0] >> 3 ) < 12) { /* config in silk-only : NB,MB,WB */
 		nb_silk_frames = (payload[0] >> 3) & 0x3;
@@ -572,7 +568,7 @@ static switch_status_t switch_opus_init(switch_codec_t *codec, switch_codec_flag
 	if (encoding) {
 		/* come up with a way to specify these */
 		int bitrate_bps = OPUS_AUTO;
-		int use_vbr = opus_codec_settings.cbr ? !opus_codec_settings.cbr : opus_prefs.use_vbr  ;
+		int use_vbr = opus_codec_settings.cbr ? 0 : opus_prefs.use_vbr  ;
 		int complexity = opus_prefs.complexity;
 		int plpct = opus_prefs.plpct;
 		int err;
@@ -584,9 +580,9 @@ static switch_status_t switch_opus_init(switch_codec_t *codec, switch_codec_flag
 		 * then it should start the encoder at sample rate: min(R1, R4) and the decoder at sample rate: min(R3, R2)*/
 			if (codec_fmtp.private_info) {
 				opus_codec_settings_t *settings = codec_fmtp_only_remote.private_info;
-				if (opus_codec_settings.sprop_maxcapturerate || settings->maxplaybackrate) {
+				if (opus_codec_settings.sprop_maxcapturerate || (settings && settings->maxplaybackrate)) {
 					enc_samplerate = opus_codec_settings.sprop_maxcapturerate; /*R4*/
-					if (settings->maxplaybackrate < enc_samplerate && settings->maxplaybackrate) {
+					if (settings && settings->maxplaybackrate < enc_samplerate && settings->maxplaybackrate) {
 						enc_samplerate = settings->maxplaybackrate; /*R1*/
 						context->enc_frame_size = enc_samplerate * (codec->implementation->microseconds_per_packet / 1000) / 1000;
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Opus encoder will be created at sample rate %d hz\n",enc_samplerate);
@@ -623,8 +619,7 @@ static switch_status_t switch_opus_init(switch_codec_t *codec, switch_codec_flag
 
 			audiobandwidth = switch_opus_encoder_set_audio_bandwidth(context->encoder_object,opus_codec_settings.maxplaybackrate);
 			if (!switch_opus_show_audio_bandwidth(audiobandwidth,audiobandwidth_str)) {
-				memset(audiobandwidth_str,0,sizeof(audiobandwidth_str));
-				strncpy(audiobandwidth_str, "OPUS_AUTO",sizeof(audiobandwidth_str)-1);
+				snprintf(audiobandwidth_str, sizeof(audiobandwidth_str), "%s", "OPUS_AUTO");
 			}
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Opus encoder: set audio bandwidth to [%s] based on maxplaybackrate value found in SDP or local config [%dHz]\n",audiobandwidth_str,opus_codec_settings.maxplaybackrate);
 		}
@@ -647,12 +642,11 @@ static switch_status_t switch_opus_init(switch_codec_t *codec, switch_codec_flag
 
 		if (opus_codec_settings.useinbandfec) {
 			/* FEC on the encoder: start the call with a preconfigured packet loss percentage */
-			int fec_bitrate = opus_codec_settings.maxaveragebitrate;
 			int loss_percent = opus_prefs.plpct ;
 			opus_encoder_ctl(context->encoder_object, OPUS_SET_INBAND_FEC(opus_codec_settings.useinbandfec));
 			opus_encoder_ctl(context->encoder_object, OPUS_SET_PACKET_LOSS_PERC(loss_percent));
 			if (opus_prefs.keep_fec){
-				fec_bitrate = switch_opus_get_fec_bitrate(enc_samplerate,loss_percent);
+				int fec_bitrate = switch_opus_get_fec_bitrate(enc_samplerate,loss_percent);
 				 /* keep a bitrate for which the encoder will always add FEC */
 				if (fec_bitrate != SWITCH_STATUS_FALSE) {
 					opus_encoder_ctl(context->encoder_object, OPUS_SET_BITRATE(fec_bitrate));
@@ -679,9 +673,9 @@ static switch_status_t switch_opus_init(switch_codec_t *codec, switch_codec_flag
 		if (opus_prefs.asymmetric_samplerates) {
 			if (codec_fmtp.private_info) {
 				opus_codec_settings_t *settings = codec_fmtp_only_remote.private_info;
-				if (opus_codec_settings.maxplaybackrate || settings->sprop_maxcapturerate) {
+				if (opus_codec_settings.maxplaybackrate || (settings && settings->sprop_maxcapturerate)) {
 					dec_samplerate = opus_codec_settings.maxplaybackrate; /* R3 */
-					if (dec_samplerate > settings->sprop_maxcapturerate && settings->sprop_maxcapturerate) {
+					if (settings && dec_samplerate > settings->sprop_maxcapturerate && settings->sprop_maxcapturerate) {
 						dec_samplerate = settings->sprop_maxcapturerate; /* R2 */
 						context->dec_frame_size = dec_samplerate*(codec->implementation->microseconds_per_packet / 1000) / 1000;
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Opus decoder will be created at sample rate %d hz\n",dec_samplerate);
@@ -920,7 +914,7 @@ static switch_status_t switch_opus_decode(switch_codec_t *codec,
 	if (samples < 0) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Decoder Error: %s fs:%u plc:%s!\n",
 						  opus_strerror(samples), frame_size, plc ? "true" : "false");
-		return SWITCH_STATUS_GENERR;
+		return SWITCH_STATUS_FALSE;
 	}
 
 	*decoded_data_len = samples * 2 * (!context->codec_settings.sprop_stereo ? codec->implementation->number_of_channels : 2);
@@ -1090,9 +1084,7 @@ static switch_status_t opus_load_config(switch_bool_t reload)
 		}
 	}
 
-	if (xml) {
-		switch_xml_free(xml);
-	}
+	switch_xml_free(xml);
 
 	return status;
 }
@@ -1131,7 +1123,7 @@ static switch_status_t switch_opus_keep_fec_enabled(switch_codec_t *codec)
 	b32 =  ((opus_int32)((0.01) * ((opus_int64)1 << (16)) + 0.5));
 	LBRR_threshold_bitrate =  (a32 >> 16) * (opus_int32)((opus_int16)b32) + (((a32 & 0x0000FFFF) * (opus_int32)((opus_int16)b32)) >> 16);
 
-	if ((!real_target_bitrate || !LBRR_threshold_bitrate)) {
+	if (!real_target_bitrate || !LBRR_threshold_bitrate) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Opus encoder: error while controlling FEC params\n");
 
 		return SWITCH_STATUS_FALSE;
@@ -1191,9 +1183,7 @@ static switch_status_t switch_opus_control(switch_codec_t *codec,
 			if (rtype) {
 				*rtype = reply_type;
 
-				if (reply) {
-					*ret_data = (void *)reply;
-				}
+				*ret_data = (void *)reply;
 			}
 
 		}

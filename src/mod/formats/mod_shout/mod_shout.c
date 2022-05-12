@@ -187,11 +187,11 @@ static inline void free_context(shout_context_t *context)
 			len = lame_encode_buffer(context->gfp, blank, r, sizeof(blank) / 2, mp3buffer, sizeof(mp3buffer));
 
 			if (len) {
-				ret = fwrite(mp3buffer, 1, len, context->fp);
+				fwrite(mp3buffer, 1, len, context->fp);
 			}
 
 			while ((len = lame_encode_flush(context->gfp, mp3buffer, sizeof(mp3buffer))) > 0) {
-				ret = fwrite(mp3buffer, 1, len, context->fp);
+				fwrite(mp3buffer, 1, len, context->fp);
 			}
 
 			lame_mp3_tags_fid(context->gfp, context->fp);
@@ -605,7 +605,7 @@ static void *SWITCH_THREAD_FUNC write_stream_thread(switch_thread_t *thread, voi
 			}
 		} else {
 			memset(mp3buf, 0, 128);
-			ret = shout_send(context->shout, mp3buf, 128);
+			shout_send(context->shout, mp3buf, 128);
 		}
 
 		shout_sync(context->shout);
@@ -736,7 +736,7 @@ static switch_status_t shout_file_open(switch_file_handle_t *handle, const char 
 		mpg123_getformat(context->mh, &rate, &channels, &encoding);
 
 		if (!channels || !rate) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error opening %s (invalid rate or channel count)\n", path);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Error opening %s (invalid rate or channel count)\n", path);
 			goto error;
 		}
 
@@ -1249,6 +1249,7 @@ void do_telecast(switch_stream_handle_t *stream)
 	switch_core_session_t *tsession;
 	char *fname = "stream.mp3";
 
+	switch_assert(uuid);
 	if ((fname = strchr(uuid, '/'))) {
 		*fname++ = '\0';
 	}
@@ -1309,13 +1310,13 @@ void do_telecast(switch_stream_handle_t *stream)
 				switch_buffer_lock(buffer);
 				bytes = switch_buffer_read(buffer, buf, sizeof(buf));
 				switch_buffer_unlock(buffer);
-			} else {
-				if (!bytes) {
-					switch_cond_next();
-					continue;
-				}
-				memset(buf, 0, bytes);
 			}
+
+			if (!bytes) {
+				switch_cond_next();
+				continue;
+			}
+			memset(buf, 0, bytes);
 
 			if ((rlen = lame_encode_buffer(gfp, (void *) buf, NULL, (int)(bytes / 2), mp3buf, sizeof(mp3buf))) < 0) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "MP3 encode error %d!\n", rlen);

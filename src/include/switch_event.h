@@ -215,7 +215,7 @@ SWITCH_DECLARE(int) switch_event_add_array(switch_event_t *event, const char *va
   \param event pointer to the pointer to event to destroy
 */
 SWITCH_DECLARE(void) switch_event_destroy(switch_event_t **event);
-#define switch_event_safe_destroy(_event) if (_event) switch_event_destroy(_event)
+#define switch_event_safe_destroy(_event) if (_event) switch_event_destroy(&_event)
 
 /*!
   \brief Duplicate an event
@@ -428,8 +428,9 @@ SWITCH_DECLARE(void) switch_json_add_presence_data_cols(switch_event_t *event, c
 SWITCH_DECLARE(void) switch_event_launch_dispatch_threads(uint32_t max);
 
 SWITCH_DECLARE(switch_status_t) switch_event_channel_broadcast(const char *event_channel, cJSON **json, const char *key, switch_event_channel_id_t id);
-SWITCH_DECLARE(uint32_t) switch_event_channel_unbind(const char *event_channel, switch_event_channel_func_t func);
-SWITCH_DECLARE(switch_status_t) switch_event_channel_bind(const char *event_channel, switch_event_channel_func_t func, switch_event_channel_id_t *id);
+SWITCH_DECLARE(switch_status_t) switch_event_channel_deliver(const char *event_channel, cJSON **json, const char *key, switch_event_channel_id_t id);
+SWITCH_DECLARE(uint32_t) switch_event_channel_unbind(const char *event_channel, switch_event_channel_func_t func, void *user_data);
+SWITCH_DECLARE(switch_status_t) switch_event_channel_bind(const char *event_channel, switch_event_channel_func_t func, switch_event_channel_id_t *id, void *user_data);
 
 
 typedef void (*switch_live_array_command_handler_t)(switch_live_array_t *la, const char *cmd, const char *sessid, cJSON *jla, void *user_data);

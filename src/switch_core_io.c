@@ -669,7 +669,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 					continue;
 				}
 
-				if (ok && switch_test_flag(bp, SMBF_READ_REPLACE)) {
+				if (switch_test_flag(bp, SMBF_READ_REPLACE)) {
 					do_bugs = 0;
 					if (bp->callback) {
 						bp->read_replace_frame_in = read_frame;
@@ -720,7 +720,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 					continue;
 				}
 
-				if (ok && bp->ready && switch_test_flag(bp, SMBF_READ_STREAM)) {
+				if (bp->ready && switch_test_flag(bp, SMBF_READ_STREAM)) {
 					switch_mutex_lock(bp->read_mutex);
 					if (bp->read_demux_frame) {
 						uint8_t data[SWITCH_RECOMMENDED_BUFFER_SIZE];
@@ -755,7 +755,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 			}
 		}
 
-		if (do_bugs || tap_only) {
+		if (do_bugs) {
 			goto done;
 		}
 
@@ -985,11 +985,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_recv_dtmf(switch_core_sessio
 		return SWITCH_STATUS_FALSE;
 	}
 
+	switch_assert(dtmf);
+
 	if (switch_test_flag(dtmf, DTMF_FLAG_SENSITIVE)) {
 		return SWITCH_STATUS_SUCCESS;
 	}
-
-	switch_assert(dtmf);
 
 	new_dtmf = *dtmf;
 
@@ -1127,6 +1127,9 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_send_dtmf_string(switch_core
 	int i, argc;
 	char *argv[256];
 	int dur_total = 0;
+	int rate_mult = 8;
+
+	switch_codec_implementation_t write_impl = { 0 };
 
 	switch_assert(session != NULL);
 
@@ -1156,13 +1159,19 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_send_dtmf_string(switch_core
 		switch_channel_pre_answer(session->channel);
 	}
 
+	switch_core_session_get_write_impl(session, &write_impl);
+
+	if (write_impl.actual_samples_per_second >= 1000) {
+		rate_mult = (write_impl.actual_samples_per_second / 1000);
+	} 
+
 	for (i = 0; i < argc; i++) {
 		dtmf.duration = switch_core_default_dtmf_duration(0);
-		dur = switch_core_default_dtmf_duration(0) / 8;
+		dur = switch_core_default_dtmf_duration(0) / rate_mult;
 		if ((p = strchr(argv[i], '@'))) {
 			*p++ = '\0';
-			if ((dur = atoi(p)) > (int)switch_core_min_dtmf_duration(0) / 8) {
-				dtmf.duration = dur * 8;
+			if ((dur = atoi(p)) > (int)switch_core_min_dtmf_duration(0) / rate_mult) {
+				dtmf.duration = dur * rate_mult;
 			}
 		}
 
@@ -1192,14 +1201,14 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_send_dtmf_string(switch_core
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "%s send dtmf\ndigit=%c ms=%u samples=%u\n",
 									  switch_channel_get_name(session->channel), dtmf.digit, dur, dtmf.duration);
 					sent++;
-					dur_total += dtmf.duration + 2000;	/* account for 250ms pause */
+					dur_total += dtmf.duration + (250 * rate_mult);	/* account for 250ms pause */
 				}
 			}
 		}
 
 		if (dur_total) {
 			char tmp[32] = "";
-			switch_snprintf(tmp, sizeof(tmp), "%d", dur_total / 8);
+			switch_snprintf(tmp, sizeof(tmp), "%d", dur_total / rate_mult);
 			switch_channel_set_variable(session->channel, "last_dtmf_duration", tmp);
 		}
 

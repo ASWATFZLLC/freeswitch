@@ -148,6 +148,7 @@ static const char *EVENT_NAMES[] = {
 	"CALL_DETAIL",
 	"DEVICE_STATE",
 	"TEXT",
+	"SHUTDOWN_REQUESTED",
 	"ALL"
 };
 
@@ -549,6 +550,7 @@ static esl_status_t esl_event_base_add_header(esl_event_t *event, esl_stack_t st
 	redraw:
 		len = 0;
 		for(j = 0; j < header->idx; j++) {
+			esl_assert(header->array[j]);
 			len += strlen(header->array[j]) + 2;
 		}
 
@@ -835,12 +837,10 @@ ESL_DECLARE(esl_status_t) esl_event_serialize(esl_event_t *event, char **str, es
 
 		if ((len + llen) > dlen) {
 			char *m;
-			char *old = buf;
 			dlen += (blocksize + (len + llen));
 			if ((m = realloc(buf, dlen))) {
 				buf = m;
 			} else {
-				buf = old;
 				abort();
 			}
 		}
@@ -864,12 +864,10 @@ ESL_DECLARE(esl_status_t) esl_event_serialize(esl_event_t *event, char **str, es
 
 		if ((len + llen) > dlen) {
 			char *m;
-			char *old = buf;
 			dlen += (blocksize + (len + llen));
 			if ((m = realloc(buf, dlen))) {
 				buf = m;
 			} else {
-				buf = old;
 				abort();
 			}
 		}

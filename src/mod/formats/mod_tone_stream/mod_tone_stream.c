@@ -142,7 +142,7 @@ static switch_status_t tone_stream_file_open(switch_file_handle_t *handle, const
 	if ((tmp = (char *)switch_stristr(";loops=", tonespec))) {
 		*tmp = '\0';
 		tmp += 7;
-		if (tmp) {
+		if (*tmp) {
 			loops = atoi(tmp);
 			switch_buffer_set_loops(audio_buffer, loops);
 		}
@@ -176,7 +176,6 @@ static switch_status_t tone_stream_file_open(switch_file_handle_t *handle, const
 			teletone_run(&ts, buf);
 		}
 		close(fd);
-		fd = -1;
 	} else {
 		teletone_run(&ts, tonespec);
 	}

@@ -28,6 +28,7 @@
  * Joseph Sullivan <jossulli@amazon.com>
  * Raymond Chandler <intralanman@freeswitch.org>
  * Emmanuel Schmidbauer <e.schmidbauer@gmail.com>
+ * Andrey Volk <andywolk@gmail.com>
  *
  * switch_types.h -- Data Types
  *
@@ -224,6 +225,10 @@ SWITCH_BEGIN_EXTERN_C
 #define SWITCH_EXEC_AFTER_BRIDGE_APP_VARIABLE "exec_after_bridge_app"
 #define SWITCH_EXEC_AFTER_BRIDGE_ARG_VARIABLE "exec_after_bridge_arg"
 #define SWITCH_MAX_FORWARDS_VARIABLE "max_forwards"
+#define SWITCH_RFC7989_SESSION_ID_VARIABLE "session_uuid"
+#define SWITCH_RFC7989_REMOTE_SESSION_ID_VARIABLE "remote_session_uuid"
+#define SWITCH_RFC7989_APP_SESSION_ID_VARIABLE "app_session_uuid"
+#define SWITCH_RFC7989_GENERIC_PARAM_VARIABLE "generic_param_session_uuid"
 #define SWITCH_MAX_SESSION_TRANSFERS_VARIABLE "max_session_transfers"
 #define SWITCH_DISABLE_APP_LOG_VARIABLE "disable_app_log"
 #define SWITCH_SPEECH_KEY "speech"
@@ -346,7 +351,9 @@ typedef enum {
 	ED_DTMF = (1 << 2),
 	ED_COPY_DISPLAY = (1 << 3),
 	ED_BRIDGE_READ = (1 << 4),
-	ED_BRIDGE_WRITE = (1 << 5)
+	ED_BRIDGE_WRITE = (1 << 5),
+	ED_TAP_READ = (1 << 6),
+	ED_TAP_WRITE = (1 << 7)
 } switch_eavesdrop_flag_enum_t;
 typedef uint32_t switch_eavesdrop_flag_t;
 
@@ -377,7 +384,13 @@ typedef enum {
 	SCF_DEBUG_SQL = (1 << 21),
 	SCF_API_EXPANSION = (1 << 22),
 	SCF_SESSION_THREAD_POOL = (1 << 23),
-	SCF_DIALPLAN_TIMESTAMPS = (1 << 24)
+	SCF_DIALPLAN_TIMESTAMPS = (1 << 24),
+	SCF_CPF_SOFT_PREFIX = (1 << 25),
+	SCF_CPF_SOFT_LOOKUP = (1 << 26),
+	SCF_EVENT_CHANNEL_ENABLE_HIERARCHY_DELIVERY = (1 << 27),
+	SCF_EVENT_CHANNEL_HIERARCHY_DELIVERY_ONCE = (1 << 28),
+	SCF_EVENT_CHANNEL_LOG_UNDELIVERABLE_JSON = (1 << 29),
+	SCF_LOG_DISABLE = (1 << 30)
 } switch_core_flag_enum_t;
 typedef uint32_t switch_core_flag_t;
 
@@ -398,7 +411,20 @@ typedef enum {
 	SWITCH_LIMIT_INTERFACE,
 	SWITCH_CHAT_APPLICATION_INTERFACE,
 	SWITCH_JSON_API_INTERFACE,
+	SWITCH_DATABASE_INTERFACE,
 } switch_module_interface_name_t;
+
+/*!
+  \enum switch_database_flag_t
+  \brief Database flags
+<pre>
+SWITCH_DATABASE_FLAG_ROW_SIZE_LIMIT = (1 <<  0) - Indicates that database has got row-size limit for the combined sizes of all columns.
+</pre>
+ */
+typedef enum {
+	SWITCH_DATABASE_FLAG_ROW_SIZE_LIMIT = (1 << 0)
+} switch_database_flag_enum_t;
+typedef uint32_t switch_database_flag_t;
 
 typedef enum {
 	SUF_NONE = 0,
@@ -554,7 +580,7 @@ struct switch_filenames {
 typedef struct switch_filenames switch_filenames;
 SWITCH_DECLARE_DATA extern switch_filenames SWITCH_GLOBAL_filenames;
 
-#define SWITCH_MAX_STACKS 16
+#define SWITCH_MAX_STACKS 32
 #define SWITCH_THREAD_STACKSIZE 240 * 1024
 #define SWITCH_SYSTEM_THREAD_STACKSIZE 8192 * 1024
 #define SWITCH_MAX_INTERVAL 120	/* we only do up to 120ms */
@@ -578,7 +604,9 @@ typedef enum {
 	SWITCH_CPF_NONE = 0,
 	SWITCH_CPF_SCREEN = (1 << 0),
 	SWITCH_CPF_HIDE_NAME = (1 << 1),
-	SWITCH_CPF_HIDE_NUMBER = (1 << 2)
+	SWITCH_CPF_HIDE_NUMBER = (1 << 2),
+	SWITCH_CPF_SOFT_PREFIX = (1 << 3),
+	SWITCH_CPF_SOFT_LOOKUP = (1 << 4)
 } switch_caller_profile_flag_enum_t;
 typedef uint32_t switch_caller_profile_flag_t;
 
@@ -712,6 +740,21 @@ typedef struct {
 	uint32_t last_recv_lsr_peer;  /* RTT calculation, When receiving an SR we extract the middle 32bits of the remote NTP timestamp to include it in the next SR LSR */
 	uint32_t init;
 } switch_rtcp_numbers_t;
+
+typedef struct {
+	uint16_t nack_count; 
+	uint16_t fir_count;
+	uint16_t pli_count;
+	uint16_t sr_count;
+	uint16_t rr_count;
+} switch_rtcp_video_counters_t;
+
+typedef struct {
+	/* counters and stats for the incoming video stream and outgoing RTCP*/
+	switch_rtcp_video_counters_t video_in;
+	/* counters and stats for the outgoing video stream and incoming RTCP*/
+	switch_rtcp_video_counters_t video_out;
+} switch_rtcp_video_stats_t;
 
 typedef struct {
 	switch_rtp_numbers_t inbound;
@@ -1126,6 +1169,7 @@ typedef enum {
 	SWITCH_MESSAGE_RING_EVENT,
 	SWITCH_MESSAGE_RESAMPLE_EVENT,
 	SWITCH_MESSAGE_HEARTBEAT_EVENT,
+	SWITCH_MESSAGE_INDICATE_SESSION_ID,
 	SWITCH_MESSAGE_INVALID
 } switch_core_session_message_types_t;
 
@@ -1250,8 +1294,9 @@ typedef enum {
 	SWITCH_LOG_CRIT = 2,
 	SWITCH_LOG_ALERT = 1,
 	SWITCH_LOG_CONSOLE = 0,
+	SWITCH_LOG_DISABLE = -1,
 	SWITCH_LOG_INVALID = 64,
-	SWITCH_LOG_UNINIT = 1000,
+	SWITCH_LOG_UNINIT = 1000
 } switch_log_level_t;
 
 
@@ -1573,6 +1618,8 @@ typedef enum {
 	CF_STREAM_CHANGED,
 	CF_ARRANGED_BRIDGE,
 	CF_STATE_REPEAT,
+	CF_WANT_DTLSv1_2,
+	CF_RFC7329_COMPAT,
 	/* WARNING: DO NOT ADD ANY FLAGS BELOW THIS LINE */
 	/* IF YOU ADD NEW ONES CHECK IF THEY SHOULD PERSIST OR ZERO THEM IN switch_core_session.c switch_core_session_request_xml() */
 	CF_FLAG_MAX
@@ -1586,6 +1633,11 @@ typedef struct switch_vid_params_s {
 	uint32_t d_height;
 } switch_vid_params_t;
 
+typedef struct switch_fps_s {
+	float fps;
+	int ms;
+	int samples;
+} switch_fps_t;
 
 
 typedef enum {
@@ -1844,7 +1896,8 @@ typedef enum {
 	SMBF_SPY_VIDEO_STREAM = (1 << 22),
 	SMBF_SPY_VIDEO_STREAM_BLEG = (1 << 23),
 	SMBF_READ_VIDEO_PATCH = (1 << 24),
-	SMBF_READ_TEXT_STREAM = (1 << 25)
+	SMBF_READ_TEXT_STREAM = (1 << 25),
+	SMBF_FIRST = (1 << 26)
 } switch_media_bug_flag_enum_t;
 typedef uint32_t switch_media_bug_flag_t;
 
@@ -1887,7 +1940,8 @@ typedef enum {
 	SWITCH_FILE_NOMUX = (1 << 17),
 	SWITCH_FILE_BREAK_ON_CHANGE = (1 << 18),
 	SWITCH_FILE_FLAG_VIDEO = (1 << 19),
-	SWITCH_FILE_FLAG_VIDEO_EOF = (1 << 20)
+	SWITCH_FILE_FLAG_VIDEO_EOF = (1 << 20),
+	SWITCH_FILE_PRE_CLOSED = (1 << 21)
 } switch_file_flag_enum_t;
 typedef uint32_t switch_file_flag_t;
 
@@ -1997,6 +2051,7 @@ typedef uint32_t switch_io_flag_t;
     SWITCH_EVENT_CALL_SETUP_RESULT
     SWITCH_EVENT_CALL_DETAIL
     SWITCH_EVENT_DEVICE_STATE
+    SWITCH_EVENT_SHUTDOWN_REQUESTED		- Shutdown of the system has been requested
     SWITCH_EVENT_ALL				- All events at once
 </pre>
 
@@ -2092,6 +2147,7 @@ typedef enum {
 	SWITCH_EVENT_CALL_DETAIL,
 	SWITCH_EVENT_DEVICE_STATE,
 	SWITCH_EVENT_TEXT,
+	SWITCH_EVENT_SHUTDOWN_REQUESTED,
 	SWITCH_EVENT_ALL
 } switch_event_types_t;
 
@@ -2170,7 +2226,13 @@ typedef enum {
 	SWITCH_CAUSE_INVALID_URL = 610,
 	SWITCH_CAUSE_INVALID_PROFILE = 611,
 	SWITCH_CAUSE_NO_PICKUP = 612,
-	SWITCH_CAUSE_SRTP_READ_ERROR = 613
+	SWITCH_CAUSE_SRTP_READ_ERROR = 613,
+	SWITCH_CAUSE_BOWOUT = 614,
+	SWITCH_CAUSE_BUSY_EVERYWHERE = 615,
+	SWITCH_CAUSE_DECLINE = 616,
+	SWITCH_CAUSE_DOES_NOT_EXIST_ANYWHERE = 617,
+	SWITCH_CAUSE_NOT_ACCEPTABLE = 618,
+	SWITCH_CAUSE_UNWANTED = 619
 } switch_call_cause_t;
 
 typedef enum {
@@ -2261,9 +2323,9 @@ typedef struct switch_codec_implementation switch_codec_implementation_t;
 typedef struct switch_buffer switch_buffer_t;
 typedef union  switch_codec_settings switch_codec_settings_t;
 typedef struct switch_codec_fmtp switch_codec_fmtp_t;
+typedef struct switch_coredb_handle switch_coredb_handle_t;
 typedef struct switch_odbc_handle switch_odbc_handle_t;
-typedef struct switch_pgsql_handle switch_pgsql_handle_t;
-typedef struct switch_pgsql_result switch_pgsql_result_t;
+typedef struct switch_database_interface_handle switch_database_interface_handle_t;
 
 typedef struct switch_io_routines switch_io_routines_t;
 typedef struct switch_speech_handle switch_speech_handle_t;
@@ -2287,6 +2349,7 @@ typedef struct switch_management_interface switch_management_interface_t;
 typedef struct switch_core_port_allocator switch_core_port_allocator_t;
 typedef struct switch_media_bug switch_media_bug_t;
 typedef struct switch_limit_interface switch_limit_interface_t;
+typedef struct switch_database_interface switch_database_interface_t;
 
 typedef void (*hashtable_destructor_t)(void *ptr);
 
@@ -2566,7 +2629,7 @@ struct switch_media_handle_s;
 typedef struct switch_media_handle_s switch_media_handle_t;
 
 typedef uint32_t switch_event_channel_id_t;
-typedef void (*switch_event_channel_func_t)(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id);
+typedef void (*switch_event_channel_func_t)(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data);
 
 struct switch_live_array_s;
 typedef struct switch_live_array_s switch_live_array_t;
@@ -2579,7 +2642,9 @@ typedef enum {
 
 typedef enum {
 	AEAD_AES_256_GCM_8,
+	AEAD_AES_256_GCM,
 	AEAD_AES_128_GCM_8,
+	AEAD_AES_128_GCM,
 	AES_CM_256_HMAC_SHA1_80,
 	AES_CM_192_HMAC_SHA1_80,
 	AES_CM_128_HMAC_SHA1_80,
@@ -2642,7 +2707,8 @@ typedef enum {
 typedef enum {
 	ICE_GOOGLE_JINGLE = (1 << 0),
 	ICE_VANILLA = (1 << 1),
-	ICE_CONTROLLED = (1 << 2)
+	ICE_CONTROLLED = (1 << 2),
+	ICE_LITE = (1 << 3)
 } switch_core_media_ice_type_t;
 
 typedef enum {

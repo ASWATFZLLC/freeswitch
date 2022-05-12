@@ -48,6 +48,8 @@ SWITCH_BEGIN_EXTERN_C
 //#define SWITCH_RTP_CRYPTO_KEY_32 "AES_CM_128_HMAC_SHA1_32"
 #define SWITCH_RTP_CRYPTO_KEY_80 "AES_CM_128_HMAC_SHA1_80"
 
+#define SWITCH_RTP_BUNDLE_INTERNAL_PT 21
+
 typedef struct {
 	switch_rtp_hdr_t header;
 	char body[SWITCH_RTP_MAX_BUF_LEN+4+sizeof(char *)];
@@ -248,6 +250,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_create(switch_rtp_t **new_rtp_session
   \param timer_name timer interface to use
   \param err a pointer to resolve error messages
   \param pool a memory pool to use for the session
+  \param bundle_port port used by bundled stream locally, for video thread this is the port where it will forward audio (internal bundle port on which audio is listening), and for audio this is the port where it will send RTP (external bundle port where video is listening)
   \return the new RTP session or NULL on failure
 */
 SWITCH_DECLARE(switch_rtp_t *) switch_rtp_new(const char *rx_host,
@@ -257,7 +260,7 @@ SWITCH_DECLARE(switch_rtp_t *) switch_rtp_new(const char *rx_host,
 											  switch_payload_t payload,
 											  uint32_t samples_per_interval,
 											  uint32_t ms_per_packet,
-											  switch_rtp_flag_t flags[], char *timer_name, const char **err, switch_memory_pool_t *pool);
+											  switch_rtp_flag_t flags[], char *timer_name, const char **err, switch_memory_pool_t *pool, switch_port_t bundle_internal_ports, switch_port_t bundle_external_port);
 
 
 /*!
@@ -275,6 +278,7 @@ SWITCH_DECLARE(char *) switch_rtp_get_remote_host(switch_rtp_t *rtp_session);
 SWITCH_DECLARE(switch_port_t) switch_rtp_get_remote_port(switch_rtp_t *rtp_session);
 SWITCH_DECLARE(void) switch_rtp_reset_media_timer(switch_rtp_t *rtp_session);
 SWITCH_DECLARE(void) switch_rtp_set_max_missed_packets(switch_rtp_t *rtp_session, uint32_t max);
+SWITCH_DECLARE(void) switch_rtp_set_media_timeout(switch_rtp_t *rtp_session, uint32_t ms);
 
 SWITCH_DECLARE(switch_status_t) switch_rtp_udptl_mode(switch_rtp_t *rtp_session);
 SWITCH_DECLARE(void) switch_rtp_reset(switch_rtp_t *rtp_session);
@@ -578,7 +582,7 @@ SWITCH_DECLARE(switch_rtp_stats_t *) switch_rtp_get_stats(switch_rtp_t *rtp_sess
 SWITCH_DECLARE(switch_byte_t) switch_rtp_check_auto_adj(switch_rtp_t *rtp_session);
 SWITCH_DECLARE(void) switch_rtp_set_interdigit_delay(switch_rtp_t *rtp_session, uint32_t delay);
 
-SWITCH_DECLARE(switch_status_t) switch_rtp_add_dtls(switch_rtp_t *rtp_session, dtls_fingerprint_t *local_fp, dtls_fingerprint_t *remote_fp, dtls_type_t type);
+SWITCH_DECLARE(switch_status_t) switch_rtp_add_dtls(switch_rtp_t *rtp_session, dtls_fingerprint_t *local_fp, dtls_fingerprint_t *remote_fp, dtls_type_t type, uint8_t want_DTLSv1_2);
 SWITCH_DECLARE(switch_status_t) switch_rtp_del_dtls(switch_rtp_t *rtp_session, dtls_type_t type);
 SWITCH_DECLARE(dtls_state_t) switch_rtp_dtls_state(switch_rtp_t *rtp_session, dtls_type_t type);
 
@@ -589,6 +593,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_ack_bitrate(switch_rtp_t *rtp_session
 SWITCH_DECLARE(void) switch_rtp_video_refresh(switch_rtp_t *rtp_session);
 SWITCH_DECLARE(void) switch_rtp_video_loss(switch_rtp_t *rtp_session);
 
+SWITCH_DECLARE(switch_core_session_t*) switch_rtp_get_core_session(switch_rtp_t *rtp_session);
 /*!
   \}
 */

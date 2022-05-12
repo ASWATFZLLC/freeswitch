@@ -142,7 +142,6 @@ typedef struct private_object private_object_t;
 #include <sofia-sip/msg_addr.h>
 #include <sofia-sip/tport_tag.h>
 #include <sofia-sip/sip_extra.h>
-#include "nua_stack.h"
 #include "sofia-sip/msg_parser.h"
 #include "sofia-sip/sip_parser.h"
 #include "sofia-sip/tport_tag.h"
@@ -154,12 +153,6 @@ typedef enum {
 	SOFIA_CONFIG_RESCAN,
 	SOFIA_CONFIG_RESPAWN
 } sofia_config_t;
-
-typedef enum {
-	FILTER_UNKOWN = 0,
-	FILTER_BEGIN = 1,
-	FILTER_END = 2
-} filter_packet_state_t;
 
 typedef struct sofia_dispatch_event_s {
 	nua_saved_event_t event[1];
@@ -192,6 +185,7 @@ struct sofia_private {
 	int is_call;
 	int is_static;
 	switch_time_t ping_sent;
+	char *rfc7989_uuid;
 };
 
 #define set_param(ptr,val) if (ptr) {free(ptr) ; ptr = NULL;} if (val) {ptr = strdup(val);}
@@ -303,12 +297,18 @@ typedef enum {
 	PFLAG_MAKE_EVERY_TRANSFER_A_NIGHTMARE,
 	PFLAG_FIRE_TRANFER_EVENTS,
 	PFLAG_BLIND_AUTH_ENFORCE_RESULT,
+	PFLAG_BLIND_AUTH_REPLY_403,
 	PFLAG_PROXY_HOLD,
 	PFLAG_PROXY_INFO,
 	PFLAG_PROXY_MESSAGE,
 	PFLAG_FIRE_BYE_RESPONSE_EVENTS,
 	PFLAG_AUTO_INVITE_100,
 	PFLAG_UPDATE_REFRESHER,
+	PFLAG_RFC7989_SESSION_ID,
+	PFLAG_RFC7989_FORCE_OLD,
+	PFLAG_AUTH_REQUIRE_USER,
+	PFLAG_AUTH_CALLS_ACL_ONLY,
+	PFLAG_USE_PORT_FOR_ACL_CHECK,
 
 	/* No new flags below this line */
 	PFLAG_MAX
@@ -404,9 +404,7 @@ struct mod_sofia_globals {
 	uint32_t max_reg_threads;
 	time_t presence_epoch;
 	int presence_year;
-	char filter_expression[100];
-	switch_regex_t *filter_re;
-	switch_bool_t filtering;
+	int abort_on_empty_external_ip;
 };
 extern struct mod_sofia_globals mod_sofia_globals;
 
@@ -534,6 +532,7 @@ struct sofia_gateway {
 	int pinging;
 	sofia_gateway_status_t status;
 	switch_time_t uptime;
+	uint32_t contact_in_ping;
 	uint32_t ping_freq;
 	int ping_count;
 	int ping_max;
@@ -786,6 +785,9 @@ struct sofia_profile {
 	int bind_attempt_interval;
 	char *proxy_notify_events;
 	char *proxy_info_content_types;
+	char *rfc7989_filter;
+	char *acl_inbound_x_token_header;
+	char *acl_proxy_x_token_header;
 };
 
 
@@ -964,6 +966,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 switch_status_t sofia_proxy_sip_i_message(nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, switch_core_session_t *session, sip_t const *sip,
 										  sofia_dispatch_event_t *de, tagi_t tags[]);
 void sofia_handle_sip_i_invite(switch_core_session_t *session, nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sofia_private_t *sofia_private, sip_t const *sip, sofia_dispatch_event_t *de, tagi_t tags[]);
+void sofia_handle_sip_i_invite_replaces(switch_core_session_t *session, switch_channel_t *channel, switch_channel_t *b_channel, char* uuid, private_object_t *tech_pvt, sip_call_info_t *call_info, sofia_profile_t *profile, char *is_nat, sip_t const *sip);
 
 
 void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sofia_private_t **sofia_private, sip_t const *sip,
@@ -982,6 +985,13 @@ void launch_sofia_profile_thread(sofia_profile_t *profile);
 
 switch_status_t sofia_presence_chat_send(switch_event_t *message_event);
 
+#define RFC7989_SESSION_UUID_LEN 32
+#define RFC7989_SESSION_UUID_NULL "00000000000000000000000000000000"
+
+int sofia_glue_is_valid_session_id(const char *session_id);
+void sofia_glue_store_session_id(switch_core_session_t *session, sofia_profile_t *profile, sip_t const *sip, switch_bool_t is_reply);
+char *sofia_glue_session_id_header(switch_core_session_t *session, sofia_profile_t *profile);
+
 /*
  * \brief Sets the "ep_codec_string" channel variable, parsing r_sdp and taing codec_string in consideration
  * \param channel Current channel
@@ -989,7 +999,7 @@ switch_status_t sofia_presence_chat_send(switch_event_t *message_event);
  * \param sdp The parsed SDP content
  */
 void sofia_media_set_r_sdp_codec_string(switch_core_session_t *session, const char *codec_string, sdp_session_t *sdp);
-switch_status_t sofia_media_tech_media(private_object_t *tech_pvt, const char *r_sdp);
+switch_status_t sofia_media_tech_media(private_object_t *tech_pvt, const char *r_sdp, switch_sdp_type_t type);
 char *sofia_reg_find_reg_url(sofia_profile_t *profile, const char *user, const char *host, char *val, switch_size_t len);
 void event_handler(switch_event_t *event);
 void sofia_presence_event_handler(switch_event_t *event);
@@ -1123,8 +1133,8 @@ void sofia_reg_release_gateway__(const char *file, const char *func, int line, s
 			}															\
 		}																\
 																		\
-		if (_session) break;											\
-	} while(!_session)
+		break;											\
+	} while (0)
 
 
 /*
@@ -1162,6 +1172,11 @@ void sofia_reg_send_reboot(sofia_profile_t *profile, const char *callid, const c
 void sofia_glue_restart_all_profiles(void);
 const char *sofia_state_string(int state);
 void sofia_wait_for_reply(struct private_object *tech_pvt, nua_event_t event, uint32_t timeout);
+
+/* sofia api */
+switch_status_t cmd_json_status(char **argv, int argc, switch_stream_handle_t *stream);
+uint32_t sofia_profile_reg_count(sofia_profile_t *profile);
+void add_sofia_json_apis(switch_loadable_module_interface_t **module_interface);
 
 /*
  * Logging control functions

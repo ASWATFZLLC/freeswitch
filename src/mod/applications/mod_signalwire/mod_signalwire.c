@@ -76,6 +76,7 @@ static struct {
 	char adoption_service[1024];
 	char stun_server[1024];
 	char adoption_token[64];
+	char override_context[64];
 	ks_size_t adoption_backoff;
 	ks_time_t adoption_next;
 
@@ -302,7 +303,7 @@ static ks_status_t mod_signalwire_adoption_post(void)
 			status = KS_STATUS_FAIL;
 			goto done;
 		}
-		strncpy(globals.adoption_data_external_ip, external_ip, sizeof(globals.adoption_data_external_ip));
+		snprintf(globals.adoption_data_external_ip, sizeof(globals.adoption_data_external_ip), "%s", external_ip);
 	}
 
 	if (!globals.adoption_data_uname[0]) {
@@ -458,7 +459,7 @@ SWITCH_STANDARD_API(mod_signalwire_api_function)
 					"  /____/_/\\__, /_/ /_/\\__,_/_/  |__/|__/_/_/   \\___/\n"
 					"         /____/\n"
 					"\n /=====================================================================\\\n"
-					"| Connection Token: %s               |\n"
+					"  Connection Token: %s\n"
 					" \\=====================================================================/\n"
 					" Go to https://signalwire.com to set up your Connector now!\n", globals.adoption_token);
 			} else {
@@ -609,7 +610,7 @@ static switch_status_t mod_signalwire_load_or_generate_token(void)
 			token[len - 1] = '\0';
 		}
 
-		strncpy(globals.adoption_token, token, sizeof(globals.adoption_token) - 1);
+		snprintf(globals.adoption_token, sizeof(globals.adoption_token), "%s", token);
 	}
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO,
@@ -657,6 +658,8 @@ static switch_status_t load_config()
 					switch_set_string(globals.stun_server, val);
 				} else if (!strcasecmp(var, "ssl-verify")) {
 					globals.ssl_verify = switch_true(val) ? 1 : 0;
+				} else if (!strcasecmp(var, "override-context") && !ks_zstr(val)) {
+					switch_set_string(globals.override_context, val);
 				}
 			}
 			if ((tmp = switch_xml_child(settings, "authentication"))) {
@@ -674,7 +677,7 @@ static switch_status_t load_config()
 	}
 
 	if ((data = getenv("SW_ADOPTION_SERVICE"))) {
-		strncpy(globals.adoption_service, data, sizeof(globals.adoption_service));
+	        snprintf(globals.adoption_service, sizeof(globals.adoption_service), "%s", data);
 	}
 
 	swclt_config_load_from_env(globals.config);
@@ -747,6 +750,11 @@ SWITCH_STANDARD_DIALPLAN(dialplan_hunt)
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Error obtaining caller profile!\n");
 			goto done;
 		}
+	}
+
+	if (globals.override_context[0] != '\0') {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO, "Overriding dialplan context from %s to %s\n",caller_profile->context,globals.override_context);
+		caller_profile->context = globals.override_context;
 	}
 
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO, "Processing %s <%s>->%s in context %s\n",
@@ -1032,7 +1040,7 @@ static void mod_signalwire_state_online(void)
 static void mod_signalwire_state_configure(void)
 {
 	switch_memory_pool_t *pool = NULL;
-	char local_ip[256];
+	char local_ip[64];
 	switch_port_t local_port = 6050;
 	char local_endpoint[256];
 	char *external_ip;

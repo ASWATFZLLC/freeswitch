@@ -119,13 +119,6 @@
 
 /* STRUCTS */
 
-struct conference_fps {
-	float fps;
-	int ms;
-	int samples;
-};
-
-
 typedef enum {
 	CONF_SILENT_REQ = (1 << 0),
 	CONF_SILENT_DONE = (1 << 1)
@@ -577,6 +570,7 @@ typedef struct mcu_canvas_s {
 	int overlay_video_file;
 	codec_set_t *write_codecs[MAX_MUX_CODECS];
 	int write_codecs_count;
+	switch_bool_t disable_auto_clear;
 } mcu_canvas_t;
 
 /* Record Node */
@@ -749,7 +743,7 @@ typedef struct conference_obj {
 	switch_mutex_t *canvas_mutex;
 	switch_hash_t *layout_hash;
 	switch_hash_t *layout_group_hash;
-	struct conference_fps video_fps;
+	switch_fps_t video_fps;
 	int recording_members;
 	uint32_t video_floor_packets;
 	video_layout_t *new_personal_vlayout;
@@ -765,6 +759,7 @@ typedef struct conference_obj {
 	uint32_t floor_holder_score_iir;
 	char *default_layout_name;
 	int mux_paused;
+	char *video_codec_config_profile_name;
 } conference_obj_t;
 
 /* Relationship with another member */
@@ -1135,7 +1130,9 @@ switch_status_t conference_outcall(conference_obj_t *conference,
 								   char *cid_num,
 								   char *profile,
 								   switch_call_cause_t *cause,
-								   switch_call_cause_t *cancel_cause, switch_event_t *var_event);
+								   switch_call_cause_t *cancel_cause,
+								   switch_event_t *var_event,
+								   char** peer_uuid);
 switch_status_t conference_outcall_bg(conference_obj_t *conference,
 									  char *conference_name,
 									  switch_core_session_t *session, char *bridgeto, uint32_t timeout, const char *flags, const char *cid_name,
@@ -1170,14 +1167,15 @@ void conference_cdr_del(conference_member_t *member);
 void conference_cdr_add(conference_member_t *member);
 void conference_cdr_rejected(conference_obj_t *conference, switch_channel_t *channel, cdr_reject_reason_t reason);
 void conference_cdr_render(conference_obj_t *conference);
-void conference_event_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id);
-void conference_event_la_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id);
-void conference_event_mod_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id);
-void conference_event_chat_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id);
+void conference_event_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data);
+void conference_event_la_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data);
+void conference_event_mod_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data);
+void conference_event_chat_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data);
 
 void conference_member_itterator(conference_obj_t *conference, switch_stream_handle_t *stream, uint8_t non_mod, conference_api_member_cmd_t pfncallback, void *data);
 int conference_video_flush_queue(switch_queue_t *q, int min);
 
+switch_status_t conference_api_sub_canvas_auto_clear(conference_obj_t *conference, switch_stream_handle_t *stream, int argc, char **argv);
 switch_status_t conference_api_sub_mute(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_tmute(conference_member_t *member, switch_stream_handle_t *stream, void *data);
 switch_status_t conference_api_sub_unmute(conference_member_t *member, switch_stream_handle_t *stream, void *data);

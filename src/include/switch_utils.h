@@ -46,6 +46,16 @@ SWITCH_BEGIN_EXTERN_C
 
 #define SWITCH_URL_UNSAFE "\r\n #%&+:;<=>?@[\\]^`{|}\""
 
+#define MAX_NETWORK_PORTS 10
+
+struct switch_network_port_range {
+	int port;
+	int ports[MAX_NETWORK_PORTS];
+	int min_port;
+	int max_port;
+};
+typedef struct switch_network_port_range switch_network_port_range_t;
+typedef switch_network_port_range_t* switch_network_port_range_p;
 
 static inline char *switch_get_hex_bytes(switch_byte_t *buf, switch_size_t datalen, char *new_buf, switch_size_t new_datalen)
 {
@@ -294,7 +304,9 @@ SWITCH_DECLARE(char *) switch_print_host(switch_sockaddr_t *addr, char *buf, swi
 */
 _Check_return_ static inline int _zstr(_In_opt_z_ const char *s)
 {
-	return !s || *s == '\0';
+	if (!s) return 1;
+	if (*s == '\0') return 1;
+	return 0;
 }
 #ifdef _PREFAST_
 #define zstr(x) (_zstr(x) ? 1 : __analysis_assume(x),0)
@@ -1044,21 +1056,42 @@ SWITCH_DECLARE(char *) switch_util_quote_shell_arg_pool(const char *string, swit
 #define SWITCH_READ_ACCEPTABLE(status) (status == SWITCH_STATUS_SUCCESS || status == SWITCH_STATUS_BREAK || status == SWITCH_STATUS_INUSE)
 
 
-static inline int32_t switch_calc_bitrate(int w, int h, int quality, double fps)
-{
-	int r;
+static inline int32_t switch_calc_bitrate(int w, int h, float quality, double fps)
+{   
+    int r;
 
-	/* KUSH GAUGE*/
+    if (quality == 0) {
+        quality = 1;
+    }
 
-	if (!fps) fps = 15;
+    /* KUSH GAUGE*/
 
-	r = (int32_t)((double)(w * h * fps * (quality ? quality : 1)) * 0.07) / 1000;
+    if (!fps) fps = 15;
 
-	if (!quality) r /= 2;
+    r = (int32_t)((double)(w * h * fps * quality) * 0.07) / 1000;
 
-	return r;
+    if (!quality) r /= 2;
+
+    if (quality < 0.0f) {
+        r = (int) ((float)r * quality);
+    }
+
+    return r;
 
 }
+
+static inline void switch_calc_fps(switch_fps_t *fpsP, float fps, int samplerate)
+{
+	/*
+	  implicit/truncf() - leave us with equal-or-smaller ms and thus equal-or-bigger fps, which is better for quality (than roundf()).
+	  also equal-or-bigger fps is better for things like (int)fps
+	*/
+	fpsP->ms = (int)(1000.0f / fps);
+	fpsP->fps = 1000.0f / fpsP->ms;
+	fpsP->samples = (int)(samplerate / 1000 * fpsP->ms); // samplerate 99.99% is a factor of 1000, so we safe here with integer div by 1000
+	return;
+}
+#define switch_calc_video_fps(fpsP, fps) switch_calc_fps(fpsP, fps, 90000)
 
 static inline int32_t switch_parse_bandwidth_string(const char *bwv)
 {
@@ -1128,7 +1161,7 @@ static inline uint32_t switch_parse_cpu_string(const char *cpu)
 	} else {
 		ncpu = atoi(cpu);
 
-		if (cpu && strrchr(cpu, '%')) {
+		if (strrchr(cpu, '%')) {
 			ncpu = (int) (cpu_count * ((float)ncpu / 100));
 		}
 	}
@@ -1183,6 +1216,7 @@ static inline void switch_separate_file_params(const char *file, char **file_por
 	char *e = NULL;
 	char *space = strdup(file);
 
+	switch_assert(space);
 	file = space;
 
 	*file_portion = NULL;
@@ -1270,6 +1304,12 @@ SWITCH_DECLARE(switch_status_t) switch_network_list_add_cidr_token(switch_networ
 
 SWITCH_DECLARE(char *) switch_network_ipv4_mapped_ipv6_addr(const char* ip_str);
 SWITCH_DECLARE(switch_status_t) switch_network_list_add_host_mask(switch_network_list_t *list, const char *host, const char *mask_str, switch_bool_t ok);
+
+SWITCH_DECLARE(switch_status_t) switch_network_list_add_cidr_port_token(switch_network_list_t *list, const char *cidr_str, switch_bool_t ok, const char *token, switch_network_port_range_p port);
+SWITCH_DECLARE(switch_status_t) switch_network_list_add_host_port_mask(switch_network_list_t *list, const char *host, const char *mask_str, switch_bool_t ok, switch_network_port_range_p port);
+
+SWITCH_DECLARE(switch_bool_t) switch_network_list_validate_ip_port_token(switch_network_list_t *list, uint32_t ip, int port, const char **token);
+SWITCH_DECLARE(switch_bool_t) switch_network_list_validate_ip6_port_token(switch_network_list_t *list, ip_t ip, int port, const char **token);
 SWITCH_DECLARE(switch_bool_t) switch_network_list_validate_ip_token(switch_network_list_t *list, uint32_t ip, const char **token);
 SWITCH_DECLARE(switch_bool_t) switch_network_list_validate_ip6_token(switch_network_list_t *list, ip_t ip, const char **token);
 #define switch_network_list_validate_ip(_list, _ip) switch_network_list_validate_ip_token(_list, _ip, NULL);
@@ -1298,6 +1338,12 @@ SWITCH_DECLARE(void) switch_split_time(const char *exp, int *hour, int *min, int
 */
 SWITCH_DECLARE(int) switch_split_user_domain(char *in, char **user, char **domain);
 
+SWITCH_DECLARE(void *) switch_calloc(size_t nmemb, size_t size);
+
+#ifdef __clang_analyzer__
+#define calloc switch_calloc
+#endif
+
 /* malloc or DIE macros */
 #ifdef NDEBUG
 #define switch_malloc(ptr, len) (void)( (!!(ptr = malloc(len))) || (fprintf(stderr,"ABORT! Malloc failure at: %s:%d", __FILE__, __LINE__),abort(), 0), ptr )
@@ -1308,14 +1354,14 @@ SWITCH_DECLARE(int) switch_split_user_domain(char *in, char **user, char **domai
 #define switch_strdup(ptr, s) (void)( (!!(ptr = strdup(s))) || (fprintf(stderr,"ABORT! Malloc failure at: %s:%d", __FILE__, __LINE__),abort(), 0), ptr)
 #endif
 #else
-#if (_MSC_VER >= 1500)			// VC9+
+#if (_MSC_VER >= 1500)            // VC9+
 #define switch_malloc(ptr, len) (void)(assert(((ptr) = malloc((len)))),ptr);__analysis_assume( ptr )
 #define switch_zmalloc(ptr, len) (void)(assert((ptr = calloc(1, (len)))),ptr);__analysis_assume( ptr )
 #define switch_strdup(ptr, s) (void)(assert(((ptr) = _strdup(s))),ptr);__analysis_assume( ptr )
 #else
-#define switch_malloc(ptr, len) (void)(assert(((ptr) = malloc((len)))),ptr)
-#define switch_zmalloc(ptr, len) (void)(assert((ptr = calloc(1, (len)))),ptr)
-#define switch_strdup(ptr, s) (void)(assert(((ptr) = strdup((s)))),ptr)
+#define switch_malloc(ptr, len) (void)(switch_assert(((ptr) = malloc((len)))),ptr)
+#define switch_zmalloc(ptr, len) (void)(switch_assert((ptr = calloc(1, (len)))),ptr)
+#define switch_strdup(ptr, s) (void)(switch_assert(((ptr) = strdup((s)))),ptr)
 #endif
 #endif
 
@@ -1399,7 +1445,8 @@ SWITCH_DECLARE(switch_status_t) switch_frame_buffer_push(switch_frame_buffer_t *
 SWITCH_DECLARE(switch_status_t) switch_frame_buffer_trypush(switch_frame_buffer_t *fb, void *ptr);
 SWITCH_DECLARE(switch_status_t) switch_frame_buffer_pop(switch_frame_buffer_t *fb, void **ptr);
 SWITCH_DECLARE(switch_status_t) switch_frame_buffer_trypop(switch_frame_buffer_t *fb, void **ptr);
-
+SWITCH_DECLARE(int) switch_frame_buffer_size(switch_frame_buffer_t *fb);
+								
 typedef struct {
 	int64_t userms;
 	int64_t kernelms;
@@ -1410,6 +1457,8 @@ typedef struct {
 SWITCH_DECLARE(void) switch_getcputime(switch_cputime *t);
 
 SWITCH_DECLARE(char *)switch_html_strip(const char *str);
+
+SWITCH_DECLARE(unsigned long) switch_getpid(void);
 
 SWITCH_END_EXTERN_C
 #endif

@@ -53,6 +53,8 @@ static char *REQUEST_ATOMS[] = {
 	"nixevent",
 	"sendevent",
 	"sendmsg",
+	"commands",
+	"command",
 	"bind",
 	"getpid",
 	"version",
@@ -62,7 +64,8 @@ static char *REQUEST_ATOMS[] = {
 	"fetch_reply",
 	"config",
 	"bgapi4",
-	"api4"
+	"api4",
+	"json_api"
 };
 
 typedef enum {
@@ -72,6 +75,8 @@ typedef enum {
 	REQUEST_NIXEVENT,
 	REQUEST_SENDEVENT,
 	REQUEST_SENDMSG,
+	REQUEST_COMMANDS,
+	REQUEST_COMMAND,
 	REQUEST_BIND,
 	REQUEST_GETPID,
 	REQUEST_VERSION,
@@ -82,11 +87,13 @@ typedef enum {
 	REQUEST_CONFIG,
 	REQUEST_BGAPI4,
 	REQUEST_API4,
+	REQUEST_JSON_API,
 	REQUEST_MAX
 } request_atoms_t;
 
 static switch_status_t find_request(char *atom, int *request) {
-	for (int i = 0; i < REQUEST_MAX; i++) {
+	int i;
+	for (i = 0; i < REQUEST_MAX; i++) {
 		if(!strncmp(atom, REQUEST_ATOMS[i], MAXATOMLEN)) {
 			*request = i;
 			return SWITCH_STATUS_SUCCESS;
@@ -99,6 +106,7 @@ static switch_status_t find_request(char *atom, int *request) {
 static void destroy_node_handler(ei_node_t *ei_node) {
 	int pending = 0;
 	void *pop;
+	switch_memory_pool_t *pool = ei_node->pool;
 
 	switch_clear_flag(ei_node, LFLAG_RUNNING);
 
@@ -138,7 +146,7 @@ static void destroy_node_handler(ei_node_t *ei_node) {
 
 	switch_mutex_destroy(ei_node->event_streams_mutex);
 
-	switch_core_destroy_memory_pool(&ei_node->pool);
+	switch_core_destroy_memory_pool(&pool);
 }
 
 static switch_status_t add_to_ei_nodes(ei_node_t *this_ei_node) {
@@ -200,14 +208,19 @@ SWITCH_DECLARE(switch_status_t) kazoo_api_execute(const char *cmd, const char *a
 	char *arg_used;
 	char *cmd_used;
 	int  fire_event = 0;
+	char *arg_expanded = NULL;
+	switch_event_t* evt;
 
 	switch_assert(stream != NULL);
 	switch_assert(stream->data != NULL);
 	switch_assert(stream->write_function != NULL);
 
-	cmd_used = (char *) cmd;
-	arg_used = (char *) arg;
+	switch_event_create(&evt, SWITCH_EVENT_GENERAL);
+	arg_expanded = switch_event_expand_headers(evt, arg);
+	switch_event_destroy(&evt);
 
+	cmd_used = (char *) cmd;
+	arg_used = arg_expanded;
 
 	if (!stream->param_event) {
 		switch_event_create(&stream->param_event, SWITCH_EVENT_API);
@@ -220,6 +233,9 @@ SWITCH_DECLARE(switch_status_t) kazoo_api_execute(const char *cmd, const char *a
 		}
 		if (arg_used && *arg_used) {
 			switch_event_add_header_string(stream->param_event, SWITCH_STACK_BOTTOM, "API-Command-Argument", arg_used);
+		}
+		if (arg_expanded && *arg_expanded) {
+			switch_event_add_header_string(stream->param_event, SWITCH_STACK_BOTTOM, "API-Command-Argument-Expanded", arg_expanded);
 		}
 	}
 
@@ -247,8 +263,12 @@ SWITCH_DECLARE(switch_status_t) kazoo_api_execute(const char *cmd, const char *a
 		switch_safe_free(cmd_used);
 	}
 
-	if (arg_used != arg) {
+	if (arg_used != arg_expanded) {
 		switch_safe_free(arg_used);
+	}
+
+	if (arg_expanded != arg) {
+		switch_safe_free(arg_expanded);
 	}
 
 	return status;
@@ -267,7 +287,7 @@ static switch_status_t api_exec_stream(char *cmd, char *arg, switch_stream_handl
                 }
         } else if (!stream->data || !strlen(stream->data)) {
                 *reply = switch_mprintf("%s: Command returned no output", cmd);
-                status = SWITCH_STATUS_FALSE;
+                status = SWITCH_STATUS_SUCCESS;
         } else {
                 *reply = strdup(stream->data);
                 status = SWITCH_STATUS_SUCCESS;
@@ -298,14 +318,14 @@ static void *SWITCH_THREAD_FUNC bgapi3_exec(switch_thread_t *thread, void *obj) 
 	ei_node_t *ei_node = acs->ei_node;
 	ei_send_msg_t *send_msg;
 
-	switch_malloc(send_msg, sizeof(*send_msg));
-	memcpy(&send_msg->pid, &acs->pid, sizeof(erlang_pid));
-
 	if(!switch_test_flag(ei_node, LFLAG_RUNNING) || !switch_test_flag(&kazoo_globals, LFLAG_RUNNING)) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Ignoring command while shuting down\n");
 		switch_atomic_dec(&ei_node->pending_bgapi);
 		return NULL;
 	}
+
+	switch_malloc(send_msg, sizeof(*send_msg));
+	memcpy(&send_msg->pid, &acs->pid, sizeof(erlang_pid));
 
 	ei_x_new_with_version(&send_msg->buf);
 
@@ -357,14 +377,13 @@ static void *SWITCH_THREAD_FUNC bgapi4_exec(switch_thread_t *thread, void *obj) 
 		return NULL;
 	}
 
-        SWITCH_STANDARD_STREAM(stream);
+	SWITCH_STANDARD_STREAM(stream);
 	switch_event_create(&stream.param_event, SWITCH_EVENT_API);
 
-        switch_malloc(send_msg, sizeof(*send_msg));
-        memcpy(&send_msg->pid, &acs->pid, sizeof(erlang_pid));
+	switch_malloc(send_msg, sizeof(*send_msg));
+	memcpy(&send_msg->pid, &acs->pid, sizeof(erlang_pid));
 
 	ei_x_new_with_version(&send_msg->buf);
-
 	ei_x_encode_tuple_header(&send_msg->buf, (stream.param_event ? 4 : 3));
 
 	if (api_exec_stream(cmd, arg, &stream, &reply) == SWITCH_STATUS_SUCCESS) {
@@ -376,9 +395,9 @@ static void *SWITCH_THREAD_FUNC bgapi4_exec(switch_thread_t *thread, void *obj) 
 	_ei_x_encode_string(&send_msg->buf, acs->uuid_str);
 	_ei_x_encode_string(&send_msg->buf, reply);
 
-        if (stream.param_event) {
+	if (stream.param_event) {
 		ei_encode_switch_event_headers_2(&send_msg->buf, stream.param_event, 0);
-        }
+	}
 
 	if (switch_queue_trypush(ei_node->send_msgs, send_msg) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Failed to send bgapi response %s to %s <%d.%d.%d>\n"
@@ -393,9 +412,9 @@ static void *SWITCH_THREAD_FUNC bgapi4_exec(switch_thread_t *thread, void *obj) 
 
 	switch_atomic_dec(&ei_node->pending_bgapi);
 
-        if (stream.param_event) {
-                switch_event_fire(&stream.param_event);
-        }
+	if (stream.param_event) {
+		switch_event_fire(&stream.param_event);
+	}
 
 	switch_safe_free(reply);
 	switch_safe_free(acs->arg);
@@ -412,11 +431,10 @@ static void log_sendmsg_request(char *uuid, switch_event_t *event)
 	switch_ssize_t hlen = -1;
 	unsigned long CMD_EXECUTE = switch_hashfunc_default("execute", &hlen);
 	unsigned long CMD_XFEREXT = switch_hashfunc_default("xferext", &hlen);
-	//	unsigned long CMD_HANGUP = switch_hashfunc_default("hangup", &hlen);
-	//	unsigned long CMD_NOMEDIA = switch_hashfunc_default("nomedia", &hlen);
-	//	unsigned long CMD_UNICAST = switch_hashfunc_default("unicast", &hlen);
 
 	if (zstr(cmd)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "log|%s|invalid \n", uuid);
+		DUMP_EVENT(event);
 		return;
 	}
 
@@ -445,6 +463,7 @@ static void log_sendmsg_request(char *uuid, switch_event_t *event)
 				}
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "log|%s|building xferext extension: %s %s\n", uuid, app_name, app_arg);
+				switch_safe_free(app_name);
 			}
 		}
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "log|%s|transfered call to xferext extension\n", uuid);
@@ -453,6 +472,7 @@ static void log_sendmsg_request(char *uuid, switch_event_t *event)
 
 static switch_status_t build_event(switch_event_t *event, ei_x_buff * buf) {
 	int propslist_length, arity;
+	int n=0;
 
 	if(!event) {
 		return SWITCH_STATUS_FALSE;
@@ -462,7 +482,7 @@ static switch_status_t build_event(switch_event_t *event, ei_x_buff * buf) {
 		return SWITCH_STATUS_FALSE;
 	}
 
-	while (!ei_decode_tuple_header(buf->buff, &buf->index, &arity)) {
+	while (!ei_decode_tuple_header(buf->buff, &buf->index, &arity) && n < propslist_length) {
 		char key[1024];
 		char *value;
 
@@ -482,9 +502,21 @@ static switch_status_t build_event(switch_event_t *event, ei_x_buff * buf) {
 			switch_safe_free(event->body);
 			event->body = value;
 		} else	{
+			if(!strcasecmp(key, "Call-ID")) {
+				switch_core_session_t *session = NULL;
+				if(!zstr(value)) {
+					if ((session = switch_core_session_locate(value)) != NULL) {
+						switch_channel_t *channel = switch_core_session_get_channel(session);
+						switch_channel_event_set_data(channel, event);
+						switch_core_session_rwunlock(session);
+					}
+				}
+			}
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM | SWITCH_STACK_NODUP, key, value);
 		}
+		n++;
 	}
+	ei_skip_term(buf->buff, &buf->index);
 
 	return SWITCH_STATUS_SUCCESS;
 }
@@ -525,6 +557,16 @@ static switch_status_t erlang_response_ok(ei_x_buff *rbuf) {
 	return SWITCH_STATUS_SUCCESS;
 }
 
+static switch_status_t erlang_response_ok_uuid(ei_x_buff *rbuf, const char * uuid) {
+	if (rbuf) {
+		ei_x_encode_tuple_header(rbuf, 2);
+		ei_x_encode_atom(rbuf, "ok");
+		ei_x_encode_binary(rbuf, uuid, strlen(uuid));
+	}
+
+	return SWITCH_STATUS_SUCCESS;
+}
+
 static switch_status_t handle_request_noevents(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
 	ei_event_stream_t *event_stream;
 
@@ -554,6 +596,7 @@ static switch_status_t handle_request_nixevent(ei_node_t *ei_node, erlang_pid *p
 	switch_event_types_t event_type;
 	ei_event_stream_t *event_stream;
 	int custom = 0, length = 0;
+	int i;
 
 	if (ei_decode_list_header(buf->buff, &buf->index, &length)
 		|| length == 0) {
@@ -566,7 +609,7 @@ static switch_status_t handle_request_nixevent(ei_node_t *ei_node, erlang_pid *p
 		return erlang_response_ok(rbuf);
 	}
 
-	for (int i = 1; i <= length; i++) {
+	for (i = 1; i <= length; i++) {
 		if (ei_decode_atom_safe(buf->buff, &buf->index, event_name)) {
 			switch_mutex_unlock(ei_node->event_streams_mutex);
 			return erlang_response_badarg(rbuf);
@@ -576,16 +619,22 @@ static switch_status_t handle_request_nixevent(ei_node_t *ei_node, erlang_pid *p
 			remove_event_binding(event_stream, SWITCH_EVENT_CUSTOM, event_name);
 		} else if (switch_name_event(event_name, &event_type) == SWITCH_STATUS_SUCCESS) {
 			switch (event_type) {
+
 			case SWITCH_EVENT_CUSTOM:
 				custom++;
 				break;
+
 			case SWITCH_EVENT_ALL:
-				for (switch_event_types_t type = 0; type < SWITCH_EVENT_ALL; type++) {
+			{
+				switch_event_types_t type;
+				for (type = 0; type < SWITCH_EVENT_ALL; type++) {
 					if(type != SWITCH_EVENT_CUSTOM) {
 						remove_event_binding(event_stream, type, NULL);
 					}
 				}
 				break;
+			}
+
 			default:
 				remove_event_binding(event_stream, event_type, NULL);
 			}
@@ -632,6 +681,85 @@ static switch_status_t handle_request_sendevent(ei_node_t *ei_node, erlang_pid *
 	return erlang_response_badarg(rbuf);
 }
 
+static switch_status_t handle_request_command(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
+	switch_core_session_t *session;
+	switch_event_t *event = NULL;
+	char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+	switch_uuid_t cmd_uuid;
+	char cmd_uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+
+	if (ei_decode_string_or_binary_limited(buf->buff, &buf->index, sizeof(uuid_str), uuid_str)) {
+		return erlang_response_badarg(rbuf);
+	}
+
+	if (zstr_buf(uuid_str) || !(session = switch_core_session_locate(uuid_str))) {
+		return erlang_response_baduuid(rbuf);
+	}
+
+	switch_uuid_get(&cmd_uuid);
+	switch_uuid_format(cmd_uuid_str, &cmd_uuid);
+
+	switch_event_create(&event, SWITCH_EVENT_COMMAND);
+	if (build_event(event, buf) != SWITCH_STATUS_SUCCESS) {
+		switch_core_session_rwunlock(session);
+		return erlang_response_badarg(rbuf);
+	}
+
+	log_sendmsg_request(uuid_str, event);
+	switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "event-uuid", cmd_uuid_str);
+
+	switch_core_session_queue_private_event(session, &event, SWITCH_FALSE);
+	switch_core_session_rwunlock(session);
+
+	return erlang_response_ok_uuid(rbuf, cmd_uuid_str);
+}
+
+static switch_status_t handle_request_commands(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
+	switch_core_session_t *session;
+	char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+	int propslist_length, n;
+	switch_uuid_t cmd_uuid;
+	char cmd_uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+
+	if (ei_decode_string_or_binary_limited(buf->buff, &buf->index, sizeof(uuid_str), uuid_str)) {
+		return erlang_response_badarg(rbuf);
+	}
+
+	if (zstr_buf(uuid_str) || !(session = switch_core_session_locate(uuid_str))) {
+		return erlang_response_baduuid(rbuf);
+	}
+
+	switch_uuid_get(&cmd_uuid);
+	switch_uuid_format(cmd_uuid_str, &cmd_uuid);
+
+	if (ei_decode_list_header(buf->buff, &buf->index, &propslist_length)) {
+		switch_core_session_rwunlock(session);
+		return SWITCH_STATUS_FALSE;
+	}
+
+	for(n = 0; n < propslist_length; n++) {
+		switch_event_t *event = NULL;
+		switch_event_create(&event, SWITCH_EVENT_COMMAND);
+		if (build_event(event, buf) != SWITCH_STATUS_SUCCESS) {
+			switch_core_session_rwunlock(session);
+			return erlang_response_badarg(rbuf);
+		}
+		log_sendmsg_request(uuid_str, event);
+		if(n == (propslist_length - 1)) {
+			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "event-uuid", cmd_uuid_str);
+		} else {
+			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "event-uuid", "null");
+//			switch_event_del_header_val(event, "event-uuid-name", NULL);
+		}
+		switch_core_session_queue_private_event(session, &event, SWITCH_FALSE);
+	}
+
+	switch_core_session_rwunlock(session);
+
+	return erlang_response_ok_uuid(rbuf, cmd_uuid_str);
+
+}
+
 static switch_status_t handle_request_sendmsg(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
 	switch_core_session_t *session;
 	switch_event_t *event = NULL;
@@ -641,16 +769,18 @@ static switch_status_t handle_request_sendmsg(ei_node_t *ei_node, erlang_pid *pi
 		return erlang_response_badarg(rbuf);
 	}
 
+	if (zstr_buf(uuid_str) || !(session = switch_core_session_locate(uuid_str))) {
+		return erlang_response_baduuid(rbuf);
+	}
+
 	switch_event_create(&event, SWITCH_EVENT_SEND_MESSAGE);
 	if (build_event(event, buf) != SWITCH_STATUS_SUCCESS) {
+		switch_core_session_rwunlock(session);
 		return erlang_response_badarg(rbuf);
 	}
 
 	log_sendmsg_request(uuid_str, event);
 
-	if (zstr_buf(uuid_str) || !(session = switch_core_session_locate(uuid_str))) {
-		return erlang_response_baduuid(rbuf);
-	}
 	switch_core_session_queue_private_event(session, &event, SWITCH_FALSE);
 	switch_core_session_rwunlock(session);
 
@@ -659,8 +789,8 @@ static switch_status_t handle_request_sendmsg(ei_node_t *ei_node, erlang_pid *pi
 
 static switch_status_t handle_request_config(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
 
-	fetch_config_filters();
-        return erlang_response_ok(rbuf);
+	fetch_config();
+	return erlang_response_ok(rbuf);
 }
 
 static switch_status_t handle_request_bind(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
@@ -675,8 +805,10 @@ static switch_status_t handle_request_bind(ei_node_t *ei_node, erlang_pid *pid, 
 	switch(section) {
 	case SWITCH_XML_SECTION_CONFIG:
 		add_fetch_handler(ei_node, pid, kazoo_globals.config_fetch_binding);
-		if(!kazoo_globals.config_filters_fetched)
-			fetch_config_filters();
+		if(!kazoo_globals.config_fetched) {
+			kazoo_globals.config_fetched = 1;
+			fetch_config();
+		}
 		break;
 	case SWITCH_XML_SECTION_DIRECTORY:
 		add_fetch_handler(ei_node, pid, kazoo_globals.directory_fetch_binding);
@@ -684,11 +816,14 @@ static switch_status_t handle_request_bind(ei_node_t *ei_node, erlang_pid *pid, 
 	case SWITCH_XML_SECTION_DIALPLAN:
 		add_fetch_handler(ei_node, pid, kazoo_globals.dialplan_fetch_binding);
 		break;
-	case SWITCH_XML_SECTION_CHATPLAN:
-		add_fetch_handler(ei_node, pid, kazoo_globals.chatplan_fetch_binding);
-		break;
 	case SWITCH_XML_SECTION_CHANNELS:
 		add_fetch_handler(ei_node, pid, kazoo_globals.channels_fetch_binding);
+		break;
+	case SWITCH_XML_SECTION_LANGUAGES:
+		add_fetch_handler(ei_node, pid, kazoo_globals.languages_fetch_binding);
+		break;
+	case SWITCH_XML_SECTION_CHATPLAN:
+		add_fetch_handler(ei_node, pid, kazoo_globals.chatplan_fetch_binding);
 		break;
 	default:
 		return erlang_response_badarg(rbuf);
@@ -772,34 +907,34 @@ static switch_status_t handle_request_bgapi4(ei_node_t *ei_node, erlang_pid *pid
 }
 
 static switch_status_t handle_request_api4(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
-        char cmd[MAXATOMLEN + 1];
-        char *arg;
+	char cmd[MAXATOMLEN + 1];
+	char *arg;
 	switch_stream_handle_t stream = { 0 };
 
 	SWITCH_STANDARD_STREAM(stream);
 	switch_event_create(&stream.param_event, SWITCH_EVENT_API);
 
-        if (ei_decode_atom_safe(buf->buff, &buf->index, cmd)) {
-                return erlang_response_badarg(rbuf);
-        }
+	if (ei_decode_atom_safe(buf->buff, &buf->index, cmd)) {
+		return erlang_response_badarg(rbuf);
+	}
 
-        if (ei_decode_string_or_binary(buf->buff, &buf->index, &arg)) {
-                return erlang_response_badarg(rbuf);
-        }
+	if (ei_decode_string_or_binary(buf->buff, &buf->index, &arg)) {
+		return erlang_response_badarg(rbuf);
+	}
 
-        switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "exec: %s(%s)\n", cmd, arg);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "exec: %s(%s)\n", cmd, arg);
 
-        if (rbuf) {
-                char *reply;
+	if (rbuf) {
+		char *reply;
 		switch_status_t status;
 
 		status = api_exec_stream(cmd, arg, &stream, &reply);
 
 		if (status == SWITCH_STATUS_SUCCESS) {
-			ei_x_encode_tuple_header(buf, 2);
+			ei_x_encode_tuple_header(rbuf, 2);
 			ei_x_encode_atom(rbuf, "ok");
 		} else {
-			ei_x_encode_tuple_header(buf, (stream.param_event ? 3 : 2));
+			ei_x_encode_tuple_header(rbuf, (stream.param_event ? 3 : 2));
 			ei_x_encode_atom(rbuf, "error");
 		}
 
@@ -809,17 +944,75 @@ static switch_status_t handle_request_api4(ei_node_t *ei_node, erlang_pid *pid, 
 			ei_encode_switch_event_headers(rbuf, stream.param_event);
 		}
 
-                switch_safe_free(reply);
-        }
+		switch_safe_free(reply);
+	}
 
 	if (stream.param_event) {
 		switch_event_fire(&stream.param_event);
 	}
 
-        switch_safe_free(arg);
+	switch_safe_free(arg);
 	switch_safe_free(stream.data);
 
-        return SWITCH_STATUS_SUCCESS;
+	return SWITCH_STATUS_SUCCESS;
+}
+
+static switch_status_t handle_request_json_api(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf)
+{
+    char *arg;
+	cJSON *jcmd = NULL;
+	switch_core_session_t *session = NULL;
+	const char *uuid = NULL;
+	char *response = NULL;
+	const char *parse_end = NULL;
+	switch_status_t status = SWITCH_STATUS_SUCCESS;
+
+    if (ei_decode_string_or_binary(buf->buff, &buf->index, &arg)) {
+            return erlang_response_badarg(rbuf);
+    }
+
+    jcmd = cJSON_ParseWithOpts(arg, &parse_end, 0);
+
+	if (!jcmd) {
+	    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "json api error: %s\n", parse_end);
+   		ei_x_encode_tuple_header(rbuf, 2);
+   		ei_x_encode_atom(rbuf, "error");
+   		ei_x_encode_tuple_header(rbuf, 2);
+   		ei_x_encode_atom(rbuf, "parse_error");
+   		_ei_x_encode_string(rbuf, parse_end);
+		switch_safe_free(arg);
+   		return status;
+	}
+
+	if ((uuid = cJSON_GetObjectCstr(jcmd, "uuid"))) {
+		if (!(session = switch_core_session_locate(uuid))) {
+			cJSON_Delete(jcmd);
+			switch_safe_free(arg);
+			return erlang_response_baduuid(rbuf);
+		}
+	}
+
+	status = switch_json_api_execute(jcmd, session, NULL);
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "json api (%i): %s\n", status , arg);
+
+   	response = cJSON_PrintUnformatted(jcmd);
+	ei_x_encode_tuple_header(rbuf, 2);
+	if (status == SWITCH_STATUS_SUCCESS) {
+		ei_x_encode_atom(rbuf, "ok");
+	} else {
+		ei_x_encode_atom(rbuf, "error");
+	}
+	_ei_x_encode_string(rbuf, response);
+	switch_safe_free(response);
+
+    cJSON_Delete(jcmd);
+    switch_safe_free(arg);
+
+	if (session) {
+		switch_core_session_rwunlock(session);
+	}
+
+    return SWITCH_STATUS_SUCCESS;
 }
 
 static switch_status_t handle_request_api(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
@@ -834,7 +1027,7 @@ static switch_status_t handle_request_api(ei_node_t *ei_node, erlang_pid *pid, e
 		return erlang_response_badarg(rbuf);
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "exec: %s(%s)\n", cmd, arg);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "exec: %s(%s)\n", cmd, arg);
 
 	if (rbuf) {
 		char *reply;
@@ -858,9 +1051,9 @@ static switch_status_t handle_request_api(ei_node_t *ei_node, erlang_pid *pid, e
 
 static switch_status_t handle_request_event(ei_node_t *ei_node, erlang_pid *pid, ei_x_buff *buf, ei_x_buff *rbuf) {
 	char event_name[MAXATOMLEN + 1];
-	switch_event_types_t event_type;
 	ei_event_stream_t *event_stream;
-	int custom = 0, length = 0;
+	int length = 0;
+	int i;
 
 	if (ei_decode_list_header(buf->buff, &buf->index, &length) || !length) {
 		return erlang_response_badarg(rbuf);
@@ -868,38 +1061,17 @@ static switch_status_t handle_request_event(ei_node_t *ei_node, erlang_pid *pid,
 
 	switch_mutex_lock(ei_node->event_streams_mutex);
 	if (!(event_stream = find_event_stream(ei_node->event_streams, pid))) {
-		event_stream = new_event_stream(&ei_node->event_streams, pid);
+		event_stream = new_event_stream(ei_node, pid);
 		/* ensure we are notified if the requesting processes dies so we can clean up */
 		ei_link(ei_node, ei_self(&kazoo_globals.ei_cnode), pid);
 	}
 
-	for (int i = 1; i <= length; i++) {
+	for (i = 1; i <= length; i++) {
 		if (ei_decode_atom_safe(buf->buff, &buf->index, event_name)) {
 			switch_mutex_unlock(ei_node->event_streams_mutex);
 			return erlang_response_badarg(rbuf);
 		}
-
-		if (custom) {
-			add_event_binding(event_stream, SWITCH_EVENT_CUSTOM, event_name);
-		} else if (switch_name_event(event_name, &event_type) == SWITCH_STATUS_SUCCESS) {
-			switch (event_type) {
-			case SWITCH_EVENT_CUSTOM:
-				custom++;
-				break;
-			case SWITCH_EVENT_ALL:
-				for (switch_event_types_t type = 0; type < SWITCH_EVENT_ALL; type++) {
-					if(type != SWITCH_EVENT_CUSTOM) {
-						add_event_binding(event_stream, type, NULL);
-					}
-				}
-				break;
-			default:
-				add_event_binding(event_stream, event_type, NULL);
-			}
-		} else {
-			switch_mutex_unlock(ei_node->event_streams_mutex);
-			return erlang_response_badarg(rbuf);
-		}
+		add_event_binding(event_stream, event_name);
 	}
 	switch_mutex_unlock(ei_node->event_streams_mutex);
 
@@ -935,13 +1107,13 @@ static switch_status_t handle_request_fetch_reply(ei_node_t *ei_node, erlang_pid
 	}
 
 	if (ei_decode_string_or_binary(buf->buff, &buf->index, &xml_str)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Ignoring a fetch reply without XML\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Ignoring a fetch reply without XML : %s \n", uuid_str);
 		return erlang_response_badarg(rbuf);
 	}
 
 	if (zstr(xml_str)) {
 		switch_safe_free(xml_str);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Ignoring an empty fetch reply\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Ignoring an empty fetch reply : %s\n", uuid_str);
 		return erlang_response_badarg(rbuf);
 	}
 
@@ -955,21 +1127,24 @@ static switch_status_t handle_request_fetch_reply(ei_node_t *ei_node, erlang_pid
 	case SWITCH_XML_SECTION_DIALPLAN:
 		result = fetch_reply(uuid_str, xml_str, kazoo_globals.dialplan_fetch_binding);
 		break;
-	case SWITCH_XML_SECTION_CHATPLAN:
-		result = fetch_reply(uuid_str, xml_str, kazoo_globals.chatplan_fetch_binding);
-		break;
 	case SWITCH_XML_SECTION_CHANNELS:
 		result = fetch_reply(uuid_str, xml_str, kazoo_globals.channels_fetch_binding);
 		break;
+	case SWITCH_XML_SECTION_LANGUAGES:
+		result = fetch_reply(uuid_str, xml_str, kazoo_globals.languages_fetch_binding);
+		break;
+	case SWITCH_XML_SECTION_CHATPLAN:
+		result = fetch_reply(uuid_str, xml_str, kazoo_globals.chatplan_fetch_binding);
+		break;
 	default:
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved fetch reply for an unknown configuration section: %s\n", section_str);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received fetch reply %s for an unknown configuration section: %s : %s\n", uuid_str, section_str, xml_str);
 		return erlang_response_badarg(rbuf);
 	}
 
 	if (result == SWITCH_STATUS_SUCCESS) {
 		return erlang_response_ok(rbuf);
 	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved fetch reply for an unknown/expired UUID: %s\n", uuid_str);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received fetch reply %s is unknown or has expired : %s\n", uuid_str, xml_str);
 		return erlang_response_baduuid(rbuf);
 	}
 }
@@ -988,12 +1163,12 @@ static switch_status_t handle_kazoo_request(ei_node_t *ei_node, erlang_pid *pid,
 	}
 
 	if (ei_decode_atom_safe(buf->buff, &buf->index, atom)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved mod_kazoo message that did not contain a command (ensure you are using Kazoo v2.14+).\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received mod_kazoo message that did not contain a command (ensure you are using Kazoo v2.14+).\n");
 		return erlang_response_badarg(rbuf);
 	}
 
 	if (find_request(atom, &request) != SWITCH_STATUS_SUCCESS) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved mod_kazoo message for unimplemented feature (ensure you are using Kazoo v2.14+): %s\n", atom);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received mod_kazoo message for unimplemented feature (ensure you are using Kazoo v2.14+): %s\n", atom);
 		return erlang_response_badarg(rbuf);
 	}
 
@@ -1010,6 +1185,10 @@ static switch_status_t handle_kazoo_request(ei_node_t *ei_node, erlang_pid *pid,
 		return handle_request_sendevent(ei_node, pid, buf, rbuf);
 	case REQUEST_SENDMSG:
 		return handle_request_sendmsg(ei_node, pid, buf, rbuf);
+	case REQUEST_COMMAND:
+		return handle_request_command(ei_node, pid, buf, rbuf);
+	case REQUEST_COMMANDS:
+		return handle_request_commands(ei_node, pid, buf, rbuf);
 	case REQUEST_BIND:
 		return handle_request_bind(ei_node, pid, buf, rbuf);
 	case REQUEST_GETPID:
@@ -1024,12 +1203,14 @@ static switch_status_t handle_kazoo_request(ei_node_t *ei_node, erlang_pid *pid,
 		return handle_request_event(ei_node, pid, buf, rbuf);
 	case REQUEST_FETCH_REPLY:
 		return handle_request_fetch_reply(ei_node, pid, buf, rbuf);
-        case REQUEST_CONFIG:
-                return handle_request_config(ei_node, pid, buf, rbuf);
-        case REQUEST_BGAPI4:
-                return handle_request_bgapi4(ei_node, pid, buf, rbuf);
+	case REQUEST_CONFIG:
+		return handle_request_config(ei_node, pid, buf, rbuf);
+	case REQUEST_BGAPI4:
+		return handle_request_bgapi4(ei_node, pid, buf, rbuf);
 	case REQUEST_API4:
 		return handle_request_api4(ei_node, pid, buf, rbuf);
+	case REQUEST_JSON_API:
+		return handle_request_json_api(ei_node, pid, buf, rbuf);
 	default:
 		return erlang_response_notimplemented(rbuf);
 	}
@@ -1052,7 +1233,7 @@ static switch_status_t handle_mod_kazoo_request(ei_node_t *ei_node, erlang_msg *
 	ei_decode_tuple_header(buf->buff, &buf->index, &arity);
 
 	if (ei_decode_atom_safe(buf->buff, &buf->index, atom)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved erlang message tuple that did not start with an atom (ensure you are using Kazoo v2.14+).\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received erlang message tuple that did not start with an atom (ensure you are using Kazoo v2.14+).\n");
 		return SWITCH_STATUS_GENERR;
 	}
 
@@ -1062,13 +1243,10 @@ static switch_status_t handle_mod_kazoo_request(ei_node_t *ei_node, erlang_msg *
         /* {'$gen_call', {_, _}, {_, _}} = Buf */
 	} else if (arity == 3 && !strncmp(atom, "$gen_call", 9)) {
 		switch_status_t status;
-		ei_send_msg_t *send_msg;
+		ei_send_msg_t *send_msg = NULL;
 		erlang_ref ref;
 
 		switch_malloc(send_msg, sizeof(*send_msg));
-
-		ei_x_new(&send_msg->buf);
-
 		ei_x_new_with_version(&send_msg->buf);
 
 		/* ...{_, _}, {_, _}} = Buf */
@@ -1077,6 +1255,8 @@ static switch_status_t handle_mod_kazoo_request(ei_node_t *ei_node, erlang_msg *
 		/* is_tuple(Type) */
 		if (type != ERL_SMALL_TUPLE_EXT) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received erlang call message of an unexpected type (ensure you are using Kazoo v2.14+).\n");
+			ei_x_free(&send_msg->buf);
+			switch_safe_free(send_msg);
 			return SWITCH_STATUS_GENERR;
 		}
 
@@ -1086,12 +1266,16 @@ static switch_status_t handle_mod_kazoo_request(ei_node_t *ei_node, erlang_msg *
 		/* ...pid(), _}, {_, _}} = Buf */
 		if (ei_decode_pid(buf->buff, &buf->index, &send_msg->pid)) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received erlang call without a reply pid (ensure you are using Kazoo v2.14+).\n");
+			ei_x_free(&send_msg->buf);
+			switch_safe_free(send_msg);
 			return SWITCH_STATUS_GENERR;
 		}
 
 		/* ...ref()}, {_, _}} = Buf */
 		if (ei_decode_ref(buf->buff, &buf->index, &ref)) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received erlang call without a reply tag (ensure you are using Kazoo v2.14+).\n");
+			ei_x_free(&send_msg->buf);
+			switch_safe_free(send_msg);
 			return SWITCH_STATUS_GENERR;
 		}
 
@@ -1102,13 +1286,14 @@ static switch_status_t handle_mod_kazoo_request(ei_node_t *ei_node, erlang_msg *
 		status = handle_kazoo_request(ei_node, &msg->from, buf, &send_msg->buf);
 
 		if (switch_queue_trypush(ei_node->send_msgs, send_msg) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "error queuing reply\n");
 			ei_x_free(&send_msg->buf);
 			switch_safe_free(send_msg);
 		}
 
 		return status;
 	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved inappropriate erlang message (ensure you are using Kazoo v2.14+)\n");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received inappropriate erlang message (ensure you are using Kazoo v2.14+)\n");
 		return SWITCH_STATUS_GENERR;
 	}
 }
@@ -1117,14 +1302,13 @@ static switch_status_t handle_mod_kazoo_request(ei_node_t *ei_node, erlang_msg *
 static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg *msg, ei_x_buff *buf) {
 	int version, size, type, arity;
 	char atom[MAXATOMLEN + 1];
-	ei_send_msg_t *send_msg;
+	ei_send_msg_t *send_msg = NULL;
 	erlang_ref ref;
 
-	switch_malloc(send_msg, sizeof(*send_msg));
-
-	ei_x_new(&send_msg->buf);
-
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Received net_kernel message, attempting to reply\n");
+
+	switch_malloc(send_msg, sizeof(*send_msg));
+	ei_x_new_with_version(&send_msg->buf);
 
 	buf->index = 0;
 	ei_decode_version(buf->buff, &buf->index, &version);
@@ -1133,7 +1317,7 @@ static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg 
 	/* is_tuple(Buff) */
 	if (type != ERL_SMALL_TUPLE_EXT) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Received net_kernel message of an unexpected type\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	ei_decode_tuple_header(buf->buff, &buf->index, &arity);
@@ -1141,13 +1325,13 @@ static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg 
 	/* {_, _, _} = Buf */
 	if (arity != 3) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Received net_kernel tuple has an unexpected arity\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	/* {'$gen_call', _, _} = Buf */
 	if (ei_decode_atom_safe(buf->buff, &buf->index, atom) || strncmp(atom, "$gen_call", 9)) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Received net_kernel message tuple does not begin with the atom '$gen_call'\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	ei_get_type(buf->buff, &buf->index, &type, &size);
@@ -1155,7 +1339,7 @@ static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg 
 	/* {_, Sender, _}=Buff, is_tuple(Sender) */
 	if (type != ERL_SMALL_TUPLE_EXT) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Second element of the net_kernel tuple is an unexpected type\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	ei_decode_tuple_header(buf->buff, &buf->index, &arity);
@@ -1163,13 +1347,13 @@ static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg 
 	/* {_, _}=Sender */
 	if (arity != 2) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Second element of the net_kernel message has an unexpected arity\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	/* {Pid, Ref}=Sender */
 	if (ei_decode_pid(buf->buff, &buf->index, &send_msg->pid) || ei_decode_ref(buf->buff, &buf->index, &ref)) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Unable to decode erlang pid or ref of the net_kernel tuple second element\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	ei_get_type(buf->buff, &buf->index, &type, &size);
@@ -1177,7 +1361,7 @@ static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg 
 	/* {_, _, Request}=Buff, is_tuple(Request) */
 	if (type != ERL_SMALL_TUPLE_EXT) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Third element of the net_kernel message is an unexpected type\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	ei_decode_tuple_header(buf->buff, &buf->index, &arity);
@@ -1185,27 +1369,31 @@ static switch_status_t handle_net_kernel_request(ei_node_t *ei_node, erlang_msg 
 	/* {_, _}=Request */
 	if (arity != 2) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Third element of the net_kernel message has an unexpected arity\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	/* {is_auth, _}=Request */
 	if (ei_decode_atom_safe(buf->buff, &buf->index, atom) || strncmp(atom, "is_auth", MAXATOMLEN)) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "The net_kernel message third element does not begin with the atom 'is_auth'\n");
-		return SWITCH_STATUS_GENERR;
+		goto error;
 	}
 
 	/* To ! {Tag, Reply} */
-	ei_x_new_with_version(&send_msg->buf);
 	ei_x_encode_tuple_header(&send_msg->buf, 2);
 	ei_x_encode_ref(&send_msg->buf, &ref);
 	ei_x_encode_atom(&send_msg->buf, "yes");
 
 	if (switch_queue_trypush(ei_node->send_msgs, send_msg) != SWITCH_STATUS_SUCCESS) {
-		ei_x_free(&send_msg->buf);
-		switch_safe_free(send_msg);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "unable to queue net kernel message\n");
+		goto error;
 	}
 
 	return SWITCH_STATUS_SUCCESS;
+
+error:
+	ei_x_free(&send_msg->buf);
+	switch_safe_free(send_msg);
+	return SWITCH_STATUS_GENERR;
 }
 
 static switch_status_t handle_erl_send(ei_node_t *ei_node, erlang_msg *msg, ei_x_buff *buf) {
@@ -1214,7 +1402,7 @@ static switch_status_t handle_erl_send(ei_node_t *ei_node, erlang_msg *msg, ei_x
 	} else if (!strncmp(msg->toname, "mod_kazoo", MAXATOMLEN)) {
 		return handle_mod_kazoo_request(ei_node, msg, buf);
 	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Recieved erlang message to unknown process \"%s\" (ensure you are using Kazoo v2.14+).\n", msg->toname);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received erlang message to unknown process \"%s\" (ensure you are using Kazoo v2.14+).\n", msg->toname);
 		return SWITCH_STATUS_GENERR;
 	}
 }
@@ -1260,9 +1448,9 @@ static void *SWITCH_THREAD_FUNC receive_handler(switch_thread_t *thread, void *o
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Starting erlang receive handler %p: %s (%s:%d)\n", (void *)ei_node, ei_node->peer_nodename, ei_node->remote_ip, ei_node->remote_port);
 
 	while (switch_test_flag(ei_node, LFLAG_RUNNING) && switch_test_flag(&kazoo_globals, LFLAG_RUNNING)) {
-		void *pop;
+		void *pop = NULL;
 
-		if (switch_queue_pop_timeout(ei_node->received_msgs, &pop, 500000) == SWITCH_STATUS_SUCCESS) {
+		if (ei_queue_pop(ei_node->received_msgs, &pop, ei_node->receiver_queue_timeout) == SWITCH_STATUS_SUCCESS) {
 			ei_received_msg_t *received_msg = (ei_received_msg_t *) pop;
 			handle_erl_msg(ei_node, &received_msg->msg, &received_msg->buf);
 			ei_x_free(&received_msg->buf);
@@ -1294,13 +1482,13 @@ static void *SWITCH_THREAD_FUNC handle_node(switch_thread_t *thread, void *obj) 
 	while (switch_test_flag(ei_node, LFLAG_RUNNING) && switch_test_flag(&kazoo_globals, LFLAG_RUNNING)) {
 		int status;
 		int send_msg_count = 0;
-		void *pop;
+		void *pop = NULL;
 
 		if (!received_msg) {
 			switch_malloc(received_msg, sizeof(*received_msg));
 			/* create a new buf for the erlang message and a rbuf for the reply */
 			if(kazoo_globals.receive_msg_preallocate > 0) {
-				received_msg->buf.buff = malloc(kazoo_globals.receive_msg_preallocate);
+				switch_malloc(received_msg->buf.buff, kazoo_globals.receive_msg_preallocate);
 				received_msg->buf.buffsz = kazoo_globals.receive_msg_preallocate;
 				received_msg->buf.index = 0;
 				if(received_msg->buf.buff == NULL) {
@@ -1310,10 +1498,12 @@ static void *SWITCH_THREAD_FUNC handle_node(switch_thread_t *thread, void *obj) 
 			} else {
 				ei_x_new(&received_msg->buf);
 			}
+		} else {
+			received_msg->buf.index = 0;
 		}
 
 		while (++send_msg_count <= kazoo_globals.send_msg_batch
-			   && switch_queue_trypop(ei_node->send_msgs, &pop) == SWITCH_STATUS_SUCCESS) {
+			   && ei_queue_pop(ei_node->send_msgs, &pop, ei_node->sender_queue_timeout) == SWITCH_STATUS_SUCCESS) {
 			ei_send_msg_t *send_msg = (ei_send_msg_t *) pop;
 			ei_helper_send(ei_node, &send_msg->pid, &send_msg->buf);
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Sent erlang message to %s <%d.%d.%d>\n"
@@ -1326,22 +1516,24 @@ static void *SWITCH_THREAD_FUNC handle_node(switch_thread_t *thread, void *obj) 
 		}
 
 		/* wait for a erlang message, or timeout to check if the module is still running */
-		status = ei_xreceive_msg_tmo(ei_node->nodefd, &received_msg->msg, &received_msg->buf, kazoo_globals.receive_timeout);
+		status = ei_xreceive_msg_tmo(ei_node->nodefd, &received_msg->msg, &received_msg->buf, kazoo_globals.ei_receive_timeout);
 
 		switch (status) {
 		case ERL_TICK:
 			/* erlang nodes send ticks to eachother to validate they are still reachable, we dont have to do anything here */
+			fault_count = 0;
 			break;
 		case ERL_MSG:
 			fault_count = 0;
 
-			if (switch_queue_trypush(ei_node->received_msgs, received_msg) != SWITCH_STATUS_SUCCESS) {
-				ei_x_free(&received_msg->buf);
-				switch_safe_free(received_msg);
-			}
-
 			if (kazoo_globals.receive_msg_preallocate > 0 && received_msg->buf.buffsz > kazoo_globals.receive_msg_preallocate) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "increased received message buffer size to %d\n", received_msg->buf.buffsz);
+			}
+
+			if (switch_queue_trypush(ei_node->received_msgs, received_msg) != SWITCH_STATUS_SUCCESS) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "failed to push erlang received message from %s <%d.%d.%d> into queue\n", received_msg->msg.from.node, received_msg->msg.from.creation, received_msg->msg.from.num, received_msg->msg.from.serial);
+				ei_x_free(&received_msg->buf);
+				switch_safe_free(received_msg);
 			}
 
 			received_msg = NULL;
@@ -1352,6 +1544,7 @@ static void *SWITCH_THREAD_FUNC handle_node(switch_thread_t *thread, void *obj) 
 			case EAGAIN:
 				/* if ei_xreceive_msg_tmo just timed out, ignore it and let the while loop check if we are still running */
 				/* the erlang lib just wants us to try to receive again, so we will! */
+				fault_count = 0;
 				break;
 			case EMSGSIZE:
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Erlang communication fault with node %p %s (%s:%d): my spoon is too big\n", (void *)ei_node, ei_node->peer_nodename, ei_node->remote_ip, ei_node->remote_port);
@@ -1362,6 +1555,8 @@ static void *SWITCH_THREAD_FUNC handle_node(switch_thread_t *thread, void *obj) 
 
 				if (fault_count >= kazoo_globals.io_fault_tolerance) {
 					switch_clear_flag(ei_node, LFLAG_RUNNING);
+				} else {
+					switch_sleep(kazoo_globals.io_fault_tolerance_sleep);
 				}
 
 				break;
@@ -1398,6 +1593,9 @@ static void *SWITCH_THREAD_FUNC handle_node(switch_thread_t *thread, void *obj) 
 	destroy_node_handler(ei_node);
 
 	switch_atomic_dec(&kazoo_globals.threads);
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Shutdown Complete for erlang node handler %p: %s (%s:%d)\n", (void *)ei_node, ei_node->peer_nodename, ei_node->remote_ip, ei_node->remote_port);
+
 	return NULL;
 }
 
@@ -1431,16 +1629,22 @@ switch_status_t new_kazoo_node(int nodefd, ErlConnect *conn) {
 	ei_node->nodefd = nodefd;
 	ei_node->peer_nodename = switch_core_strdup(ei_node->pool, conn->nodename);
 	ei_node->created_time = switch_micro_time_now();
+	ei_node->legacy = kazoo_globals.legacy_events;
+	ei_node->event_stream_framing = kazoo_globals.event_stream_framing;
+	ei_node->event_stream_keepalive = kazoo_globals.event_stream_keepalive;
+	ei_node->event_stream_queue_timeout = kazoo_globals.event_stream_queue_timeout;
+	ei_node->receiver_queue_timeout = kazoo_globals.node_receiver_queue_timeout;
+	ei_node->sender_queue_timeout = kazoo_globals.node_sender_queue_timeout;
 
 	/* store the IP and node name we are talking with */
 	switch_os_sock_put(&ei_node->socket, (switch_os_socket_t *)&nodefd, pool);
 
 	switch_socket_addr_get(&sa, SWITCH_TRUE, ei_node->socket);
-	ei_node->local_port = switch_sockaddr_get_port(sa);
+	ei_node->remote_port = switch_sockaddr_get_port(sa);
 	switch_get_addr(ei_node->remote_ip, sizeof (ei_node->remote_ip), sa);
 
 	switch_socket_addr_get(&sa, SWITCH_FALSE, ei_node->socket);
-	ei_node->remote_port = switch_sockaddr_get_port(sa);
+	ei_node->local_port = switch_sockaddr_get_port(sa);
 	switch_get_addr(ei_node->local_ip, sizeof (ei_node->local_ip), sa);
 
 	switch_queue_create(&ei_node->send_msgs, MAX_QUEUE_LEN, pool);
@@ -1451,10 +1655,9 @@ switch_status_t new_kazoo_node(int nodefd, ErlConnect *conn) {
 	/* when we start we are running */
 	switch_set_flag(ei_node, LFLAG_RUNNING);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "New erlang connection from node %s (%s:%d)\n", ei_node->peer_nodename, ei_node->remote_ip, ei_node->remote_port);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "New erlang connection to node %s (%s:%d)\n", ei_node->peer_nodename, ei_node->local_ip, ei_node->local_port);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "New erlang connection from node %s (%s:%d) -> (%s:%d)\n", ei_node->peer_nodename, ei_node->remote_ip, ei_node->remote_port, ei_node->local_ip, ei_node->local_port);
 
-	for(i = 0; i < kazoo_globals.num_worker_threads; i++) {
+	for(i = 0; i < kazoo_globals.node_worker_threads; i++) {
 		switch_threadattr_create(&thd_attr, ei_node->pool);
 		switch_threadattr_detach_set(thd_attr, 1);
 		switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);

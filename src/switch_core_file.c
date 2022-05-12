@@ -43,6 +43,8 @@ static switch_status_t get_file_size(switch_file_handle_t *fh, const char **stri
 	switch_file_t *newfile;
 	switch_size_t size = 0;
 
+	switch_assert(string);
+
 	status = switch_file_open(&newfile, fh->spool_path ? fh->spool_path : fh->file_path, SWITCH_FOPEN_READ, SWITCH_FPROT_OS_DEFAULT, fh->memory_pool);
 
 	if (status != SWITCH_STATUS_SUCCESS) {
@@ -74,6 +76,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_perform_file_open(const char *file, 
 	char *fp = NULL;
 	int to = 0;
 	int force_channels = 0;
+	uint32_t core_channel_limit;
 
 	if (switch_test_flag(fh, SWITCH_FILE_OPEN)) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Handle already open\n");
@@ -359,6 +362,19 @@ SWITCH_DECLARE(switch_status_t) switch_core_perform_file_open(const char *file, 
 		goto fail;
 	}
 
+	if (fh->channels > 2) {
+		/* just show a warning for more than 2 channels, no matter if we allow them or not */
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "File [%s] has more than 2 channels: [%u]\n", file_path, fh->channels);
+	}
+
+	core_channel_limit = switch_core_max_audio_channels(0);
+	if (core_channel_limit && fh->channels > core_channel_limit) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "File [%s] has more channels (%u) than limit (%u). Closing.\n", file_path, fh->channels, core_channel_limit);
+		fh->file_interface->file_close(fh);
+		UNPROTECT_INTERFACE(fh->file_interface);
+		switch_goto_status(SWITCH_STATUS_FALSE, fail);
+	}
+
 	if (!force_channels && !fh->real_channels) {
 		fh->real_channels = fh->channels;
 
@@ -404,6 +420,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_perform_file_open(const char *file, 
 
 
 	if (fh->real_channels != fh->channels && (flags & SWITCH_FILE_FLAG_READ) && !(fh->flags & SWITCH_FILE_NOMUX)) {
+		fh->cur_channels = fh->real_channels;
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "File has %d channels, muxing to %d channel%s will occur.\n", fh->real_channels, fh->channels, fh->channels == 1 ? "" : "s");
 	}
 
@@ -479,7 +496,6 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 				if (status != SWITCH_STATUS_SUCCESS || !rlen) {
 					switch_set_flag_locked(fh, SWITCH_FILE_BUFFER_DONE);
 				} else {
-					fh->samples_in += rlen;
 					if (fh->real_channels != fh->channels && !switch_test_flag(fh, SWITCH_FILE_NOMUX)) {
 						switch_mux_channels((int16_t *) fh->pre_buffer_data, rlen, fh->real_channels, fh->channels);
 					}
@@ -489,6 +505,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 		}
 
 		rlen = switch_buffer_read(fh->pre_buffer, data, asis ? *len : *len * 2 * fh->channels);
+		fh->samples_in += rlen;
 		*len = asis ? rlen : rlen / 2 / fh->channels;
 
 		if (*len == 0) {
@@ -586,15 +603,17 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 
 
 	if (fh->real_channels != fh->channels && !switch_test_flag(fh, SWITCH_FILE_NOMUX)) {
-		int need = *len * 2 * fh->real_channels;
+		int need = *len * 2 * (fh->real_channels > fh->channels ? fh->real_channels : fh->channels);
 
 		if (need > fh->muxlen) {
 			fh->muxbuf = realloc(fh->muxbuf, need);
 			switch_assert(fh->muxbuf);
 			fh->muxlen = need;
-			memcpy(fh->muxbuf, data, fh->muxlen);
-			data = fh->muxbuf;
+		}
 
+		if (fh->muxbuf) {
+			memcpy(fh->muxbuf, data, *len * 2);
+			data = fh->muxbuf;
 		}
 
 		switch_mux_channels((int16_t *) data, *len, fh->real_channels, fh->channels);
@@ -639,6 +658,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 
 	if (fh->pre_buffer) {
 		switch_size_t rlen, blen;
+		switch_size_t datalen_adj = fh->pre_buffer_datalen;
 		switch_status_t status = SWITCH_STATUS_SUCCESS;
 		int asis = switch_test_flag(fh, SWITCH_FILE_NATIVE);
 
@@ -646,8 +666,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 
 		rlen = switch_buffer_inuse(fh->pre_buffer);
 
-		if (rlen >= fh->pre_buffer_datalen) {
-			if ((blen = switch_buffer_read(fh->pre_buffer, fh->pre_buffer_data, fh->pre_buffer_datalen))) {
+		if (fh->pre_buffer_datalen % fh->channels) {
+			datalen_adj = fh->pre_buffer_datalen - (fh->pre_buffer_datalen % fh->channels);
+		}
+
+		if (rlen >= datalen_adj) {
+			if ((blen = switch_buffer_read(fh->pre_buffer, fh->pre_buffer_data, datalen_adj))) {
 				if (!asis)
 					blen /= 2;
 				if (fh->channels > 1)
@@ -907,6 +931,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_pre_close(switch_file_handle_t 
 	}
 
 	switch_clear_flag_locked(fh, SWITCH_FILE_OPEN);
+	switch_set_flag_locked(fh, SWITCH_FILE_PRE_CLOSED);
 
 	if (fh->file_interface->file_pre_close) {
 		status = fh->file_interface->file_pre_close(fh);
@@ -921,7 +946,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_close(switch_file_handle_t *fh)
 
 	if (switch_test_flag(fh, SWITCH_FILE_OPEN)) {
 		status = switch_core_file_pre_close(fh);
+	} else if (!switch_test_flag(fh, SWITCH_FILE_PRE_CLOSED)) {
+		return SWITCH_STATUS_FALSE;
 	}
+
+	switch_clear_flag_locked(fh, SWITCH_FILE_PRE_CLOSED);
 
 	fh->file_interface->file_close(fh);
 

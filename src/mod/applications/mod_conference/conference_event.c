@@ -57,7 +57,8 @@ static cJSON *get_canvas_info(mcu_canvas_t *canvas)
 	return obj;
 }
 
-void conference_event_mod_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id)
+
+void conference_event_mod_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data)
 {
 	cJSON *data, *addobj = NULL;
 	const char *action = NULL;
@@ -107,7 +108,7 @@ void conference_event_mod_channel_handler(const char *event_channel, cJSON *json
 		}
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "conf %s CMD %s [%s] %s\n", conference_name, key, action, cid);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "conf %s CMD %s [%s] %s\n", conference_name, key, action ? action : "N/A", cid);
 
 	if (zstr(action)) {
 		goto end;
@@ -398,7 +399,7 @@ void conference_event_mod_channel_handler(const char *event_channel, cJSON *json
 	} else if (exec) {
 		cJSON_AddItemToObject(jdata, "conf-command", cJSON_CreateString(exec));
 		cJSON_AddItemToObject(jdata, "response", cJSON_CreateString((char *)stream.data));
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ALERT,"RES [%s][%s]\n", exec, (char *)stream.data);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"RES [%s][%s]\n", exec, (char *)stream.data);
 	} else {
 		cJSON_AddItemToObject(jdata, "error", cJSON_CreateString("Invalid Command"));
 	}
@@ -413,7 +414,7 @@ void conference_event_mod_channel_handler(const char *event_channel, cJSON *json
 
 }
 
-void conference_event_chat_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id)
+void conference_event_chat_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data)
 {
 	cJSON *data;
 	cJSON *jid = 0;
@@ -475,12 +476,12 @@ void conference_event_chat_channel_handler(const char *event_channel, cJSON *jso
 	switch_safe_free(conference_name);
 }
 
-void conference_event_la_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id)
+void conference_event_la_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data)
 {
 	switch_live_array_parse_json(json, conference_globals.event_channel_id);
 }
 
-void conference_event_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id)
+void conference_event_channel_handler(const char *event_channel, cJSON *json, const char *key, switch_event_channel_id_t id, void *user_data)
 {
 	char *domain = NULL, *name = NULL;
 	conference_obj_t *conference = NULL;
@@ -650,6 +651,7 @@ void conference_event_adv_la(conference_obj_t *conference, conference_member_t *
 		cJSON_AddItemToObject(msg, "eventChannel", cJSON_CreateString(event_channel));
 		cJSON_AddItemToObject(msg, "eventType", cJSON_CreateString("channelPvtData"));
 
+		cJSON_AddStringToObject(data, "callID", switch_core_session_get_uuid(member->session));
 		cJSON_AddItemToObject(data, "action", cJSON_CreateString(join ? "conference-liveArray-join" : "conference-liveArray-part"));
 		cJSON_AddItemToObject(data, "laChannel", cJSON_CreateString(conference->la_event_channel));
 		cJSON_AddItemToObject(data, "laName", cJSON_CreateString(conference->la_name));
@@ -741,10 +743,12 @@ switch_status_t conference_event_add_data(conference_obj_t *conference, switch_e
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
 
 	switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Conference-Name", conference->name);
+	switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Conference-Domain", conference->domain);
 	switch_event_add_header(event, SWITCH_STACK_BOTTOM, "Conference-Size", "%u", conference->count);
 	switch_event_add_header(event, SWITCH_STACK_BOTTOM, "Conference-Ghosts", "%u", conference->count_ghosts);
 	switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Conference-Profile-Name", conference->profile_name);
 	switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Conference-Unique-ID", conference->uuid_str);
+	switch_event_merge(event, conference->variables);
 
 	return status;
 }
@@ -1017,7 +1021,7 @@ switch_status_t chat_send(switch_event_t *message_event)
 
 	SWITCH_STANDARD_STREAM(stream);
 
-	if (body != NULL && (lbuf = strdup(body))) {
+	if ((lbuf = strdup(body))) {
 		/* special case list */
 		if (conference->broadcast_chat_messages) {
 			conference_event_chat_message_broadcast(conference, message_event);
@@ -1025,17 +1029,18 @@ switch_status_t chat_send(switch_event_t *message_event)
 			conference_list_pretty(conference, &stream);
 			/* provide help */
 		} else {
-			return SWITCH_STATUS_SUCCESS;
+			goto done;
 		}
 	}
-
-	switch_safe_free(lbuf);
 
 	if (!conference->broadcast_chat_messages) {
 		switch_core_chat_send_args(proto, CONF_CHAT_PROTO, to, hint && strchr(hint, '/') ? hint : from, "", stream.data, NULL, NULL, SWITCH_FALSE);
 	}
 
+done:
+	switch_safe_free(lbuf);
 	switch_safe_free(stream.data);
+
 	switch_thread_rwlock_unlock(conference->rwlock);
 
 	return SWITCH_STATUS_SUCCESS;

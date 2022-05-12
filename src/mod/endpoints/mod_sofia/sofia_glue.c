@@ -230,6 +230,8 @@ switch_status_t sofia_glue_ext_address_lookup(sofia_profile_t *profile, char **i
 
 		stun_ip = strdup(sourceip + 5);
 
+		switch_assert(stun_ip);
+
 		if ((p = strchr(stun_ip, ':'))) {
 			int iport;
 			*p++ = '\0';
@@ -336,6 +338,316 @@ enum tport_tls_verify_policy sofia_glue_str2tls_verify_policy(const char * str){
 		ptr_cur = ptr_next;
 	}
 	return ret;
+}
+
+/* create "local-uuid" */
+int sofia_glue_is_valid_session_uuid(const char *session_uuid)
+{
+	int i;
+	if (zstr(session_uuid) || strlen(session_uuid) != RFC7989_SESSION_UUID_LEN) {
+		return 0;
+	}
+	for (i = 0; i < RFC7989_SESSION_UUID_LEN; i++) {
+		char c = session_uuid[i];
+		if ((c < '0' || c > '9') && (c < 'a' || c > 'f')) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/* NIL session-uuid: 00000000000000000000000000000000 */
+int sofia_glue_is_nil_session_uuid(const char *session_uuid)
+{
+	if (zstr(session_uuid)) {
+		return 0;
+	}
+	if (!memcmp(session_uuid, RFC7989_SESSION_UUID_NULL, RFC7989_SESSION_UUID_LEN)) {
+		return 1;
+	}
+	return 0;
+}
+
+const char *sofia_glue_uuid_to_session_uuid(switch_memory_pool_t *pool, const char *uuid)
+{
+	char *session_uuid = NULL; /*"local-uuid", per rfc7989*/
+	if (zstr(uuid) || strlen(uuid) != 36) return NULL;
+
+	session_uuid = switch_core_alloc(pool, RFC7989_SESSION_UUID_LEN + 1);
+	memcpy(session_uuid, uuid, 8);
+	memcpy(session_uuid + 8, uuid + 9, 4);
+	memcpy(session_uuid + 12, uuid + 14, 4);
+	memcpy(session_uuid + 16, uuid + 19, 4);
+	memcpy(session_uuid + 20, uuid + 24, 12);
+
+	if (!sofia_glue_is_valid_session_uuid(session_uuid)) return NULL;
+
+	return session_uuid;
+}
+
+/* rfc7989 generic params, return 0 if param is disabled from config or invalid. ALL params allowed by default. */
+/* save updated generic params list in chan var. */
+int sofia_glue_check_filter_generic_params(switch_core_session_t *session, sofia_profile_t *profile, char *param)
+{
+
+	char *tmp = NULL;
+	switch_channel_t *channel = switch_core_session_get_channel(session);
+
+	if (zstr(param)) {
+		return 0;
+	}
+	if (profile->rfc7989_filter) {
+		char *found = NULL; char *end = NULL; 
+		char *token_array[100] = { 0 };
+		int tokens = switch_separate_string(profile->rfc7989_filter, ',', token_array, (sizeof(token_array) / sizeof(token_array[0])));
+		tmp = switch_core_session_strdup(session, param);
+		if (tokens) {
+			int i;
+			for (i = 0; i < tokens && token_array[i]; i++) {
+				while ((found = strstr(tmp, token_array[i]))) {
+					end = strchr(found, ';');
+					if (!end) end = strchr(found, '\0');
+					*found = '\0';
+					strcat(tmp, found + (end - found));
+					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, 
+						"Session-ID: Dropped generic param: %s\n", token_array[i]); 
+				}
+			}
+		}
+	}
+
+	if (tmp) {
+		switch_channel_set_variable(channel, SWITCH_RFC7989_GENERIC_PARAM_VARIABLE, tmp);
+	} else {
+		switch_channel_set_variable(channel, SWITCH_RFC7989_GENERIC_PARAM_VARIABLE, param);
+	}
+
+	return 1;
+}
+/* check and store Session-ID header. */
+/* retrieve "local-uuid" and "remote-uuid" of the remote party. */
+void sofia_glue_store_session_id(switch_core_session_t *session, sofia_profile_t *profile, sip_t const *sip, switch_bool_t is_reply)
+{
+	char *a_id, *b_id, *duped, *p, *remote_param;
+	const char *header = sofia_glue_get_unknown_header(sip, "Session-ID");
+	switch_channel_t *channel = switch_core_session_get_channel(session);
+
+	if (!sofia_test_pflag(profile, PFLAG_RFC7989_SESSION_ID)) return;
+
+	if (!header) {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Session-ID: missing header.");
+		return;
+	}
+
+	duped = switch_core_session_strdup(session, header);
+
+	if (zstr(duped)) return;
+
+	a_id = switch_strip_whitespace(duped);
+
+	if (zstr(a_id)) return;
+
+	p = strchr(a_id, ';');
+	if (p) *p = '\0';
+
+	if (!sofia_glue_is_valid_session_uuid(a_id)) {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Session-ID: Ignoring \"%s\" parsed as \"%s\"\n", header, a_id);
+		return;
+	}
+
+	/* RFC7329 compatibility */
+	if (is_reply) {
+		const char *temp_id = switch_channel_get_variable(channel, SWITCH_RFC7989_APP_SESSION_ID_VARIABLE);
+		if (!zstr(temp_id) && !memcmp(a_id, temp_id, RFC7989_SESSION_UUID_LEN) ) {
+			/* 'If a SIP response only contains the "local-uuid" that was sent
+			 *  originally, this comes from a pre-standard implementation and MUST
+			 *  NOT be discarded for removing the nil "remote-uuid". In this
+			 *  case, all future transactions within this dialog MUST contain only
+			 *  the UUID received in the first SIP response" */
+			switch_channel_set_flag(channel, CF_RFC7329_COMPAT);
+			switch_channel_set_flag_partner(channel, CF_RFC7329_COMPAT);
+		}
+	}
+
+	/* "local-uuid" field retrieved from remote party will become 
+	 * SWITCH_RFC7989_APP_SESSION_ID_VARIABLE in a b2bua role. */
+	if (!zstr(a_id)) {
+		struct private_object *tech_pvt = switch_core_session_get_private(session);
+		switch_channel_set_variable(channel, SWITCH_RFC7989_SESSION_ID_VARIABLE, a_id);
+		if (tech_pvt && tech_pvt->sofia_private && !tech_pvt->sofia_private->rfc7989_uuid) {
+			tech_pvt->sofia_private->rfc7989_uuid = su_strdup(nua_handle_get_home(tech_pvt->nh), a_id);
+		}
+	}
+
+	if (!p) {
+		switch_channel_set_flag(channel, CF_RFC7329_COMPAT);
+		switch_channel_set_flag_partner(channel, CF_RFC7329_COMPAT);
+		return;
+	}
+	p++;
+	remote_param = strstr(p, "remote=");
+	if (!remote_param) {
+		switch_channel_set_flag(channel, CF_RFC7329_COMPAT);
+		switch_channel_set_flag_partner(channel, CF_RFC7329_COMPAT);
+		sofia_glue_check_filter_generic_params(session, profile, p);
+		return;
+	} 
+	b_id = remote_param + 7;
+	if (!zstr(b_id) && strlen(b_id) == RFC7989_SESSION_UUID_LEN /*32*/) {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Session-ID: Set remote-uuid: %s\n", b_id);
+		/*using chan var as placeholder only when UAS or when answer() was called in the dialplan */
+		switch_channel_set_variable(channel, SWITCH_RFC7989_REMOTE_SESSION_ID_VARIABLE, b_id);
+		switch_channel_set_variable_partner(channel, SWITCH_RFC7989_REMOTE_SESSION_ID_VARIABLE, b_id);
+
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Session-ID: invalid uuid, ignored.\n");
+	}
+}
+
+/* add "Session-ID:" header */
+char *sofia_glue_session_id_header(switch_core_session_t *session, sofia_profile_t *profile)
+{
+	switch_channel_t *channel;
+	const char *b_id = NULL;
+	const char *a_id = NULL;
+	const char *temp_id = NULL;
+	const char *generic = NULL;
+
+	if (!session) return NULL;
+
+	if (!profile) return NULL;
+
+	if (!sofia_test_pflag(profile, PFLAG_RFC7989_SESSION_ID)) return NULL;
+
+	channel = switch_core_session_get_channel(session);
+
+	a_id = switch_channel_get_variable_partner(channel, SWITCH_RFC7989_SESSION_ID_VARIABLE);
+
+	if (zstr(a_id)) {
+		a_id = switch_channel_get_variable(channel, SWITCH_RFC7989_APP_SESSION_ID_VARIABLE);
+		if (!zstr(a_id) && strlen(a_id) == 36) {
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO, "Reformatting app Session-ID: %s\n", a_id);
+			a_id = sofia_glue_uuid_to_session_uuid(switch_core_session_get_pool(session), a_id);
+			if (!zstr(a_id)) {
+				struct private_object *tech_pvt = switch_core_session_get_private(session);
+				switch_channel_set_variable(channel, SWITCH_RFC7989_APP_SESSION_ID_VARIABLE, a_id);
+				if (tech_pvt && tech_pvt->sofia_private && !tech_pvt->sofia_private->rfc7989_uuid) {
+					tech_pvt->sofia_private->rfc7989_uuid = su_strdup(nua_handle_get_home(tech_pvt->nh), a_id);
+				}
+			}
+		}
+	}
+
+	if (zstr(a_id)) {
+		const char *partner_uuid = switch_channel_get_partner_uuid(channel);
+		if (!zstr(partner_uuid)) {
+			const char *partner_session_id = sofia_glue_uuid_to_session_uuid(switch_core_session_get_pool(session), partner_uuid);
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO, "Setting \"Session-ID: %s\" from partner leg\n", partner_session_id);
+			switch_channel_set_variable_partner(channel, SWITCH_RFC7989_SESSION_ID_VARIABLE, partner_session_id);
+			a_id = partner_session_id;
+		}
+	}
+
+	if (((switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND) && zstr(a_id) &&
+				switch_channel_get_state(channel) == CS_INIT) && switch_channel_test_flag(channel, CF_ORIGINATING)) {
+		/*outbound initial request*/
+		char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+
+		switch_uuid_str(uuid_str, sizeof(uuid_str));
+		a_id = sofia_glue_uuid_to_session_uuid(switch_core_session_get_pool(session), uuid_str);
+		if (!zstr(a_id)) {
+			struct private_object *tech_pvt = switch_core_session_get_private(session);
+			switch_channel_set_variable(channel, SWITCH_RFC7989_APP_SESSION_ID_VARIABLE, a_id);
+			if (tech_pvt && tech_pvt->sofia_private && !tech_pvt->sofia_private->rfc7989_uuid) {
+				tech_pvt->sofia_private->rfc7989_uuid = su_strdup(nua_handle_get_home(tech_pvt->nh), a_id);
+			}
+		}
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, 
+				"Session-ID: Outbound initial request. local-uuid: %s", a_id);
+		if (sofia_test_pflag(profile, PFLAG_RFC7989_FORCE_OLD)) {
+			/*for old (and obsolete) Session-ID RFC7329 */
+			return switch_core_session_sprintf(session, "Session-ID: %s", a_id);
+		}
+
+		b_id = RFC7989_SESSION_UUID_NULL;
+		return switch_core_session_sprintf(session, "Session-ID: %s;remote=%s", a_id, b_id);
+	}
+
+	temp_id = switch_channel_get_variable(channel, SWITCH_RFC7989_REMOTE_SESSION_ID_VARIABLE);
+	if ((switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_INBOUND) && 
+			((switch_channel_get_state(channel) == CS_INIT) || (switch_channel_get_state(channel) == CS_EXECUTE)) &&
+			zstr(temp_id)) {
+		/* fallback to RFC7329 - "old". */
+		/* inbound initial request, no "remote" param. section 11 of RFC7989. */
+		a_id = switch_channel_get_variable(channel, SWITCH_RFC7989_SESSION_ID_VARIABLE);
+		if (zstr(a_id)) {
+			a_id = RFC7989_SESSION_UUID_NULL;
+		} else {
+			switch_channel_set_variable(channel, SWITCH_RFC7989_APP_SESSION_ID_VARIABLE, a_id);
+		}
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Session-ID: Fallback to RFC7329");
+		switch_channel_set_flag(channel, CF_RFC7329_COMPAT);
+		return switch_core_session_sprintf(session, "Session-ID: %s", a_id);
+	}
+	if ((switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_INBOUND) &&
+			((switch_channel_get_state(channel) == CS_INIT) || (switch_channel_get_state(channel) == CS_EXECUTE)) && 
+			sofia_glue_is_nil_session_uuid(temp_id)) {
+		/*inbound initial request*/
+		char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+
+		switch_uuid_str(uuid_str, sizeof(uuid_str));
+		a_id = sofia_glue_uuid_to_session_uuid(switch_core_session_get_pool(session), uuid_str);
+		if (!zstr(a_id)) {
+			struct private_object *tech_pvt = switch_core_session_get_private(session);
+			switch_channel_set_variable(channel, SWITCH_RFC7989_APP_SESSION_ID_VARIABLE, a_id);
+			if (tech_pvt && tech_pvt->sofia_private) {
+				tech_pvt->sofia_private->rfc7989_uuid = su_strdup(nua_handle_get_home(tech_pvt->nh), a_id);
+			}
+		}
+		b_id = switch_channel_get_variable(channel, SWITCH_RFC7989_SESSION_ID_VARIABLE);
+		if (zstr(b_id)) {
+			b_id = RFC7989_SESSION_UUID_NULL;
+		}
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, 
+				"Session-ID: Inbound initial request. local-uuid: %s", a_id);
+		return switch_core_session_sprintf(session, "Session-ID: %s;remote=%s", a_id, b_id);
+	}
+
+	if (zstr(a_id)) {
+		struct private_object *tech_pvt = switch_core_session_get_private(session);
+		/* setting NIL local-uuid should never happen, 
+		 * but in case we don't get to set it properly by here, just set it to NIL */
+		if (tech_pvt && tech_pvt->sofia_private && tech_pvt->sofia_private->rfc7989_uuid) {
+			/* handle BYE after REFER or other cases where the channel is destroyed already and we can't get the chan var */
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Session-ID: retrieved local-uuid ");
+			a_id = tech_pvt->sofia_private->rfc7989_uuid;
+		} else {
+			a_id = RFC7989_SESSION_UUID_NULL;
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Session-ID: NIL local-uuid ");
+		}
+	}
+
+	b_id = switch_channel_get_variable(channel, SWITCH_RFC7989_SESSION_ID_VARIABLE);
+
+	if (zstr(b_id) && switch_channel_test_flag(channel, CF_RFC7329_COMPAT)) {
+		/* fallback to RFC7329 , only one uuid*/
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING ,"Session-ID: Fallback to RFC7329, use one uuid");
+		return switch_core_session_sprintf(session, "Session-ID: %s", a_id);
+	} else if (zstr(b_id)) {
+		b_id = RFC7989_SESSION_UUID_NULL;
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Session-ID: set NIL remote-uuid");
+	}
+
+	/* B2B: handle generic params*/
+	generic = switch_channel_get_variable_partner(channel, SWITCH_RFC7989_GENERIC_PARAM_VARIABLE);
+	if (!zstr(generic)) {
+		/* copy generic param (name and val) */
+		return switch_core_session_sprintf(session, "Session-ID: %s;%s", a_id, generic);
+	}
+	if (switch_channel_test_flag(channel, CF_RFC7329_COMPAT)) {
+		return switch_core_session_sprintf(session, "Session-ID: %s", a_id);
+	}
+	return switch_core_session_sprintf(session, "Session-ID: %s;remote=%s", a_id, b_id);
 }
 
 char *sofia_glue_find_parameter_value(switch_core_session_t *session, const char *str, const char *param)
@@ -484,11 +796,13 @@ char *sofia_glue_strip_uri(const char *str)
 	if ((p = strchr(str, '<'))) {
 		p++;
 		r = strdup(p);
+		switch_assert(r);
 		if ((p = strchr(r, '>'))) {
 			*p = '\0';
 		}
 	} else {
 		r = strdup(str);
+		switch_assert(r);
 	}
 
 	return r;
@@ -538,7 +852,7 @@ char *sofia_overcome_sip_uri_weakness(switch_core_session_t *session, const char
 
 	stripped = sofia_glue_get_url_from_contact(stripped, 0);
 
-	/* remove our params so we don't make any whiny moronic device piss it's pants and forget who it is for a half-hour */
+	/* remove our params so we don't make any whiny moronic device piss its pants and forget who it is for a half-hour */
 	if ((p = (char *) switch_stristr(";fs_", stripped))) {
 		*p = '\0';
 	}
@@ -548,23 +862,12 @@ char *sofia_overcome_sip_uri_weakness(switch_core_session_t *session, const char
 		if (switch_stristr("port=", stripped)) {
 			new_uri = switch_core_session_sprintf(session, "%s%s%s", uri_only ? "" : "<", stripped, uri_only ? "" : ">");
 		} else {
-
-			if (strchr(stripped, ';')) {
-				if (params) {
-					new_uri = switch_core_session_sprintf(session, "%s%s;transport=%s;%s%s",
-														  uri_only ? "" : "<", stripped, sofia_glue_transport2str(transport), params, uri_only ? "" : ">");
-				} else {
-					new_uri = switch_core_session_sprintf(session, "%s%s;transport=%s%s",
-														  uri_only ? "" : "<", stripped, sofia_glue_transport2str(transport), uri_only ? "" : ">");
-				}
+			if (params) {
+				new_uri = switch_core_session_sprintf(session, "%s%s;transport=%s;%s%s",
+													  uri_only ? "" : "<", stripped, sofia_glue_transport2str(transport), params, uri_only ? "" : ">");
 			} else {
-				if (params) {
-					new_uri = switch_core_session_sprintf(session, "%s%s;transport=%s;%s%s",
-														  uri_only ? "" : "<", stripped, sofia_glue_transport2str(transport), params, uri_only ? "" : ">");
-				} else {
-					new_uri = switch_core_session_sprintf(session, "%s%s;transport=%s%s",
-														  uri_only ? "" : "<", stripped, sofia_glue_transport2str(transport), uri_only ? "" : ">");
-				}
+				new_uri = switch_core_session_sprintf(session, "%s%s;transport=%s%s",
+													  uri_only ? "" : "<", stripped, sofia_glue_transport2str(transport), uri_only ? "" : ">");
 			}
 		}
 	} else {
@@ -678,7 +981,9 @@ char *sofia_glue_get_extra_headers_from_event(switch_event_t *event, const char 
 	for (hp = event->headers; hp; hp = hp->next) {
 		if (!zstr(hp->name) && !zstr(hp->value) && !strncasecmp(hp->name, prefix, strlen(prefix))) {
 			char *name = strdup(hp->name);
-			const char *hname = name + strlen(prefix);
+			const char *hname;
+			switch_assert(name);
+			hname = name + strlen(prefix);
 			stream.write_function(&stream, "%s: %s\r\n", hname, (char *)hp->value);
 			free(name);
 		}
@@ -733,7 +1038,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	const char *holdstr = "";
 	char *extra_headers = NULL;
 	switch_status_t status = SWITCH_STATUS_FALSE;
-	uint32_t session_timeout = 0;
+	uint32_t session_timeout = tech_pvt->profile->session_timeout;
 	const char *val;
 	const char *rep;
 	const char *call_id = NULL;
@@ -757,6 +1062,8 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	int require_timer = 1;
 	uint8_t is_t38 = 0;
 	const char *hold_char = "*";
+	const char *session_id_header = sofia_glue_session_id_header(session, tech_pvt->profile);
+
 
 	if (sofia_test_flag(tech_pvt, TFLAG_SIP_HOLD_INACTIVE) ||
 		switch_true(switch_channel_get_variable_dup(tech_pvt->channel, "sofia_hold_inactive", SWITCH_FALSE, -1))) {
@@ -790,7 +1097,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 	if (!caller_profile) {
 		switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
-		return SWITCH_STATUS_FALSE;
+		switch_goto_status(SWITCH_STATUS_FALSE, end);
 	}
 
 
@@ -819,7 +1126,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 	if ((status = switch_core_media_choose_port(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO, 0)) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "Port Error!\n");
-		return status;
+		goto end;
 	}
 
 	if (!switch_channel_get_private(tech_pvt->channel, "t38_options") || zstr(tech_pvt->mparams.local_sdp_str)) {
@@ -853,7 +1160,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 		if (zstr(tech_pvt->dest)) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "URL Error!\n");
-			return SWITCH_STATUS_FALSE;
+			switch_goto_status(SWITCH_STATUS_FALSE, end);
 		}
 
 		if ((d_url = sofia_glue_get_url_from_contact(tech_pvt->dest, 1))) {
@@ -861,8 +1168,6 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		} else {
 			url = tech_pvt->dest;
 		}
-
-		url_str = url;
 
 		if (!tech_pvt->from_str) {
 			const char *sipip;
@@ -926,12 +1231,21 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 			rpid_domain = "cluecon.com";
 		}
 
+		if (!zstr(tech_pvt->dest)) {
+			dst = sofia_glue_get_destination(tech_pvt->dest);
+		}
+
 		/*
 		 * Ignore transport chanvar and uri parameter for gateway connections
 		 * since all of them have been already taken care of in mod_sofia.c:sofia_outgoing_channel()
 		 */
 		if (tech_pvt->transport == SOFIA_TRANSPORT_UNKNOWN && zstr(tech_pvt->gateway_name)) {
-			if ((p = (char *) switch_stristr("port=", url))) {
+			if (dst && dst->route_uri) {
+				p = dst->route_uri;
+			} else {
+				p = url;
+			}
+			if ((p = (char *) switch_stristr("port=", p))) {
 				p += 5;
 				tech_pvt->transport = sofia_glue_str2transport(p);
 			} else {
@@ -951,7 +1265,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 		if (!sofia_test_pflag(tech_pvt->profile, PFLAG_TLS) && sofia_glue_transport_has_tls(tech_pvt->transport)) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "TLS not supported by profile\n");
-			return SWITCH_STATUS_FALSE;
+			switch_goto_status(SWITCH_STATUS_FALSE, end);
 		}
 
 		if (zstr(tech_pvt->invite_contact)) {
@@ -995,7 +1309,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 			use_from_str = switch_core_session_sprintf(session, "sip:%s", use_from_str);
 		}
 
-		if (!from_display && !strcasecmp(tech_pvt->caller_profile->caller_id_name, "_undef_")) {
+		if (!from_display && (!strcasecmp(tech_pvt->caller_profile->caller_id_name, "_undef_") || zstr(tech_pvt->caller_profile->caller_id_name))) {
 			from_str = switch_core_session_sprintf(session, "<%s>", use_from_str);
 		} else {
 			char *name = switch_core_session_strdup(session, from_display ? from_display : tech_pvt->caller_profile->caller_id_name);
@@ -1046,7 +1360,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 			if (!strncasecmp(url_str, "tel:", 4)) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session),
 								  SWITCH_LOG_ERROR, "URL Error! tel: uri's not supported at this time\n");
-				return SWITCH_STATUS_FALSE;
+				switch_goto_status(SWITCH_STATUS_FALSE, end);
 			}
 			if (!s) {
 				s = url_str;
@@ -1072,14 +1386,16 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 							  invite_contact);
 
 			switch_safe_free(d_url);
-			return SWITCH_STATUS_FALSE;
+			switch_goto_status(SWITCH_STATUS_FALSE, end);
 		}
 
 		if (tech_pvt->dest && (strstr(tech_pvt->dest, ";fs_nat") || strstr(tech_pvt->dest, ";received")
 							   || ((val = switch_channel_get_variable(channel, "sip_sticky_contact")) && switch_true(val)))) {
 			sofia_set_flag(tech_pvt, TFLAG_NAT);
 			tech_pvt->record_route = switch_core_session_strdup(tech_pvt->session, url_str);
-			route_uri = tech_pvt->record_route;
+			if (!dst || !dst->route_uri) {
+				route_uri = tech_pvt->record_route;
+			}
 			session_timeout = SOFIA_NAT_SESSION_TIMEOUT;
 			switch_channel_set_variable(channel, "sip_nat_detected", "true");
 		}
@@ -1184,7 +1500,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 		switch_safe_free(d_url);
 
-		if (!(sofia_private = su_alloc(tech_pvt->nh->nh_home, sizeof(*sofia_private)))) {
+		if (!(sofia_private = su_alloc(nua_handle_get_home(tech_pvt->nh), sizeof(*sofia_private)))) {
 			abort();
 		}
 
@@ -1236,8 +1552,6 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 	extra_headers = sofia_glue_get_extra_headers(channel, SOFIA_SIP_HEADER_PREFIX);
 
-	session_timeout = tech_pvt->profile->session_timeout;
-
 	if ((val = switch_channel_get_variable(channel, SOFIA_SESSION_TIMEOUT))) {
 		int v_session_timeout = atoi(val);
 		if (v_session_timeout >= 0) {
@@ -1251,7 +1565,9 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	}
 
 	if (!zstr(tech_pvt->dest)) {
-		dst = sofia_glue_get_destination(tech_pvt->dest);
+		if (!dst) {
+			dst = sofia_glue_get_destination(tech_pvt->dest);
+		}
 
 		if (dst->route_uri) {
 			route_uri = sofia_overcome_sip_uri_weakness(tech_pvt->session, dst->route_uri, tech_pvt->transport, SWITCH_TRUE, NULL, NULL);
@@ -1276,14 +1592,14 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 	if ((val = switch_channel_get_variable(tech_pvt->channel, "sip_invite_cseq"))) {
 		uint32_t callsequence = (uint32_t) strtoul(val, NULL, 10);
-		cseq = sip_cseq_create(tech_pvt->nh->nh_home, callsequence, SIP_METHOD_INVITE);
+		cseq = sip_cseq_create(nua_handle_get_home(tech_pvt->nh), callsequence, SIP_METHOD_INVITE);
 	}
 
 
 	switch_channel_clear_flag(channel, CF_MEDIA_ACK);
 
 	if (handle_full_from) {
-		tech_pvt->nh->nh_has_invite = 1;
+		nua_handle_set_has_invite(tech_pvt->nh, 1);
 	}
 
 	if ((mp = sofia_media_get_multipart(session, "sip_multipart", tech_pvt->mparams.local_sdp_str, &mp_type))) {
@@ -1313,6 +1629,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		is_t38 = 1;
     }
 
+
 	if (sofia_use_soa(tech_pvt)) {
 		nua_invite(tech_pvt->nh,
 				   NUTAG_AUTOANSWER(0),
@@ -1323,6 +1640,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				   NUTAG_SESSION_TIMER(tech_pvt->session_timeout),
 				   NUTAG_SESSION_REFRESHER(tech_pvt->session_refresher),
 				   NUTAG_UPDATE_REFRESH(tech_pvt->update_refresher),
+				   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 				   TAG_IF(sofia_test_flag(tech_pvt, TFLAG_RECOVERED), NUTAG_INVITE_TIMER(UINT_MAX)),
 				   TAG_IF(invite_full_from, SIPTAG_FROM_STR(invite_full_from)),
 				   TAG_IF(invite_full_to, SIPTAG_TO_STR(invite_full_to)),
@@ -1360,6 +1678,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				   NUTAG_SESSION_TIMER(tech_pvt->session_timeout),
 				   NUTAG_SESSION_REFRESHER(tech_pvt->session_refresher),
 				   NUTAG_UPDATE_REFRESH(tech_pvt->update_refresher),
+				   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 				   TAG_IF(sofia_test_flag(tech_pvt, TFLAG_RECOVERED), NUTAG_INVITE_TIMER(UINT_MAX)),
 				   TAG_IF(invite_full_from, SIPTAG_FROM_STR(invite_full_from)),
 				   TAG_IF(invite_full_to, SIPTAG_TO_STR(invite_full_to)),
@@ -1386,12 +1705,19 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				   SIPTAG_PAYLOAD_STR(mp ? mp : tech_pvt->mparams.local_sdp_str), TAG_IF(rep, SIPTAG_REPLACES_STR(rep)), SOATAG_HOLD(holdstr), TAG_END());
 	}
 
-	sofia_glue_free_destination(dst);
 	switch_safe_free(extra_headers);
 	switch_safe_free(mp);
 	tech_pvt->redirected = NULL;
 
-	return SWITCH_STATUS_SUCCESS;
+	status = SWITCH_STATUS_SUCCESS;
+
+end:
+
+	if (dst) {
+		sofia_glue_free_destination(dst);
+	}
+
+	return status;
 }
 
 void sofia_glue_do_xfer_invite(switch_core_session_t *session)
@@ -1449,6 +1775,7 @@ switch_call_cause_t sofia_glue_sip_cause_to_freeswitch(int status)
 	case 403:
 	case 407:
 	case 603:
+	case 607:
 		return SWITCH_CAUSE_CALL_REJECTED;
 	case 404:
 		return SWITCH_CAUSE_UNALLOCATED_NUMBER;
@@ -1587,6 +1914,7 @@ char *sofia_glue_get_url_from_contact(char *buf, uint8_t to_dup)
 		url++;
 		if (to_dup) {
 			url = strdup(url);
+			switch_assert(url);
 			e = strchr(url, '>');
 		}
 
@@ -2004,9 +2332,7 @@ int sofia_recover_callback(switch_core_session_t *session)
 
 	r++;
 
-	if (profile) {
-		sofia_glue_release_profile(profile);
-	}
+	sofia_glue_release_profile(profile);
 
 
 	return r;
@@ -2580,6 +2906,8 @@ char *sofia_glue_get_register_host(const char *uri)
 
 	register_host = strdup(s);
 
+	switch_assert(register_host);
+
 	/* remove port for register_host for testing nat acl take into account
 	   ipv6 addresses which are required to have brackets around the addr
 	*/
@@ -2973,7 +3301,7 @@ char *sofia_glue_gen_contact_str(sofia_profile_t *profile, sip_t const *sip, nua
 		}
 	}
 
-	if (!np->is_nat && sip && sip->sip_via && sip->sip_via->v_port &&
+	if (!np->is_nat && sip->sip_via && sip->sip_via->v_port &&
 		atoi(sip->sip_via->v_port) == 5060 && np->network_port != 5060 ) {
 		np->is_nat = "via port";
 	}
@@ -3005,8 +3333,8 @@ char *sofia_glue_gen_contact_str(sofia_profile_t *profile, sip_t const *sip, nua
 	}
 
 	if (sip->sip_record_route) {
-		char *full_contact = sip_header_as_string(nh->nh_home, (void *) contact);
-		char *route = sofia_glue_strip_uri(sip_header_as_string(nh->nh_home, (void *) sip->sip_record_route));
+		char *full_contact = sip_header_as_string(nua_handle_get_home(nh), (void *) contact);
+		char *route = sofia_glue_strip_uri(sip_header_as_string(nua_handle_get_home(nh), (void *) sip->sip_record_route));
 		char *full_contact_dup;
 		char *route_encoded;
 		int route_encoded_len;
@@ -3015,11 +3343,12 @@ char *sofia_glue_gen_contact_str(sofia_profile_t *profile, sip_t const *sip, nua
 		switch_zmalloc(route_encoded, route_encoded_len);
 		switch_url_encode(route, route_encoded, route_encoded_len);
 		contact_str = switch_mprintf("%s <%s;fs_path=%s>", display, full_contact_dup, route_encoded);
+		free(route);
 		free(full_contact_dup);
 		free(route_encoded);
 	}
 	else if (np->is_nat && np->fs_path) {
-		char *full_contact = sip_header_as_string(nh->nh_home, (void *) contact);
+		char *full_contact = sip_header_as_string(nua_handle_get_home(nh), (void *) contact);
 		char *full_contact_dup;
 		char *path_encoded;
 		int path_encoded_len;

@@ -507,6 +507,16 @@ static void free_proc_chain(struct process_chain *procs);
 static void pool_destroy_debug(apr_pool_t *pool, const char *file_line);
 #endif
 
+
+#if APR_HAS_THREADS
+APR_DECLARE(void) apr_pool_mutex_set(apr_pool_t *pool,
+                                     apr_thread_mutex_t *mutex)
+{
+    pool->user_mutex = mutex;
+}
+#endif
+
+
 #if !APR_POOL_DEBUG
 /*
  * Initialization
@@ -729,14 +739,6 @@ APR_DECLARE(void) apr_pool_clear(apr_pool_t *pool)
 #endif
 }
 
-#if APR_HAS_THREADS
-APR_DECLARE(void) apr_pool_mutex_set(apr_pool_t *pool,
-									 apr_thread_mutex_t *mutex)
-{
-    pool->user_mutex = mutex;
-}
-#endif
-
 APR_DECLARE(void) apr_pool_destroy(apr_pool_t *pool)
 {
     apr_memnode_t *active;
@@ -819,8 +821,17 @@ APR_DECLARE(apr_status_t) apr_pool_create_ex(apr_pool_t **newpool,
     if (!abort_fn && parent)
         abort_fn = parent->abort_fn;
 
-    if (allocator == NULL)
+    if (allocator == NULL) {
+        if (!parent) {
+            /* There is no way to continue without an allocator when no parent */
+            if (abort_fn)
+                abort_fn(APR_EINVAL);
+
+            return APR_EINVAL;
+        }
+
         allocator = parent->allocator;
+    }
 
     if ((node = allocator_alloc(allocator,
                                 MIN_ALLOC - APR_MEMNODE_T_SIZE)) == NULL) {
@@ -1122,6 +1133,22 @@ static int apr_pool_walk_tree(apr_pool_t *pool,
 #endif /* APR_HAS_THREADS */
 
     return rv;
+}
+
+APR_DECLARE(int) apr_pool_walk_tree_debug(apr_pool_t *pool,
+	int(*fn)(apr_pool_t *pool, void *data),
+	void *data)
+{
+	return apr_pool_walk_tree(pool, fn, data);
+}
+
+APR_DECLARE(void) apr_pool_get_stats(apr_pool_t *pool, unsigned int *alloc, unsigned int *total_alloc, unsigned int *clear)
+{
+	if (pool) {
+		*alloc = pool->stat_alloc;
+		*total_alloc = pool->stat_total_alloc;
+		*clear = pool->stat_clear;
+	}
 }
 
 #if (APR_POOL_DEBUG & APR_POOL_DEBUG_VERBOSE_ALL)
@@ -1430,7 +1457,7 @@ static void pool_clear_debug(apr_pool_t *pool, const char *file_line)
 
         for (index = 0; index < node->index; index++) {
             memset(node->beginp[index], POOL_POISON_BYTE,
-                   node->endp[index] - node->beginp[index]);
+                   (char *)node->endp[index] - (char *)node->beginp[index]);
             free(node->beginp[index]);
         }
 

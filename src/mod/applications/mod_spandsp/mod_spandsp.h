@@ -110,7 +110,7 @@ typedef enum {
  * TONE DETECTION WITH CADENCE
  */
 
-#define MAX_TONES 32
+#define MAX_TONES 128
 #define STRLEN 128
 /**
  * Tone descriptor
@@ -133,6 +133,7 @@ typedef struct tone_descriptor tone_descriptor_t;
 
 
 switch_status_t tone_descriptor_create(tone_descriptor_t **descriptor, const char *name, switch_memory_pool_t *memory_pool);
+void tone_descriptor_destroy(tone_descriptor_t *descriptor);
 int tone_descriptor_add_tone(tone_descriptor_t *descriptor, const char *name);
 switch_status_t tone_descriptor_add_tone_element(tone_descriptor_t *descriptor, int tone_id, int freq1, int freq2, int min, int max);
 
