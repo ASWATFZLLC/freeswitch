@@ -324,6 +324,8 @@ struct globals_s {
 	uint32_t detached;
 	uint32_t detach_timeout;
 
+	uint32_t tcp_keepalive_probes;
+
 	switch_event_channel_id_t event_channel_id;
 };
 

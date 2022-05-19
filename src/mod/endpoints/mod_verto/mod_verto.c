@@ -4323,6 +4323,11 @@ static int start_jsock(verto_profile_t *profile, ws_socket_t sock, int family)
 #if defined(TCP_KEEPINTVL)
 	setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&flag, sizeof(flag));
 #endif
+#if defined(TCP_KEEPCNT)
+	if (verto_globals.tcp_keepalive_probes > 0) {
+		setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&verto_globals.tcp_keepalive_probes, sizeof(verto_globals.tcp_keepalive_probes));
+	}
+#endif
 
 	td = switch_core_alloc(jsock->pool, sizeof(*td));
 
@@ -5019,6 +5024,11 @@ static switch_status_t parse_config(const char *cf)
 				}
 			} else if (!strcasecmp(var, "disable-multiple-sessions")) {
 				verto_globals.disable_multiple_sessions = switch_true(val);
+			} else if (!strcasecmp(var, "tcp-keepalive-probes") && val) {
+				int tmp = atoi(val);
+				if (tmp > 0) {
+					verto_globals.tcp_keepalive_probes = tmp;
+				}
 			} else if (!strcasecmp(var, "enable-presence") && val) {
 				verto_globals.enable_presence = switch_true(val);
 			} else if (!strcasecmp(var, "enable-fs-events") && val) {
@@ -6431,6 +6441,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	switch_mutex_init(&verto_globals.detach2_mutex, SWITCH_MUTEX_NESTED, verto_globals.pool);
 	switch_thread_cond_create(&verto_globals.detach_cond, verto_globals.pool);
 	verto_globals.detach_timeout = 120;
+	verto_globals.tcp_keepalive_probes = 0;
 
 
 
