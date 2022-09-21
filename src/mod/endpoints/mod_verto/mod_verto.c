@@ -1016,7 +1016,7 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		}
 
 		switch_event_add_header_string(req_params, SWITCH_STACK_BOTTOM, "action", "jsonrpc-authenticate");
-		switch_event_add_header_string(req_params, SWITCH_STACH_BOTTOM, "client_ip", jsock->name);
+		switch_event_add_header_string(req_params, SWITCH_STACK_BOTTOM, "client_ip", jsock->name);
 
 		if (switch_xml_locate_user_merged("id", id, domain, NULL, &x_user, req_params) != SWITCH_STATUS_SUCCESS && !jsock->profile->blind_reg) {
 			*code = CODE_AUTH_FAILED;
