@@ -1025,6 +1025,7 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		} else {
 			switch_xml_t x_param, x_params;
 			const char *use_passwd = NULL, *verto_context = NULL, *verto_dialplan = NULL;
+			const char *error_code = NULL;
 
 			jsock->id = switch_core_strdup(jsock->pool, id);
 			jsock->domain = switch_core_strdup(jsock->pool, domain);
@@ -1035,6 +1036,10 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 				switch_event_destroy(&req_params);
 				r = SWITCH_TRUE;
 				goto end;
+			}
+
+			if ((x_param = switch_xml_child(x_user, "error"))) {
+				error_code = switch_xml_attr_soft(x_param, "code");
 			}
 
 			if ((x_params = switch_xml_child(x_user, "params"))) {
@@ -1080,8 +1085,13 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 				jsock->context = switch_core_strdup(jsock->pool, verto_context);
 			}
 
-
-			if (zstr(use_passwd) || strcmp(a1_hash ? a1_hash : passwd, use_passwd)) {
+			if (!strcasecmp(error_code, "ip-rejected")) {
+				r = SWITCH_FALSE;
+				*code = CODE_IP_REJECTED;
+				switch_snprintf(message, mlen, "IP Rejected");
+				jsock->uid = NULL;
+				login_fire_custom_event(jsock, params, 0, "IP Rejected");
+			} else if (zstr(use_passwd) || strcmp(a1_hash ? a1_hash : passwd, use_passwd)) {
 				r = SWITCH_FALSE;
 				*code = CODE_AUTH_FAILED;
 				switch_snprintf(message, mlen, "Authentication Failure");
