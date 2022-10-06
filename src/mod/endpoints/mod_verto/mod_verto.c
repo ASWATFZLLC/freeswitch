@@ -1038,8 +1038,15 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 				goto end;
 			}
 
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s Scanning for error block.\n", jsock->name);
 			if ((x_param = switch_xml_child(x_user, "error"))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s Inside error block.\n", jsock->name);
 				error_code = switch_xml_attr_soft(x_param, "code");
+				if (!zstr(error_code)) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s Found error code: %s.\n", jsock->name, error_code);
+				} else {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s Could not found the error code.\n", jsock->name);
+				}
 			}
 
 			if ((x_params = switch_xml_child(x_user, "params"))) {
@@ -1086,6 +1093,7 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 			}
 
 			if (!zstr(error_code) && !strcasecmp(error_code, "ip-rejected")) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "%s Action on error.\n", jsock->name);
 				r = SWITCH_FALSE;
 				*code = CODE_IP_REJECTED;
 				switch_snprintf(message, mlen, "IP Rejected");
