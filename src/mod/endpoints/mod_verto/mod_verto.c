@@ -1085,7 +1085,7 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 				jsock->context = switch_core_strdup(jsock->pool, verto_context);
 			}
 
-			if (!strcasecmp(error_code, "ip-rejected")) {
+			if (!zstr(error_code) && !strcasecmp(error_code, "ip-rejected")) {
 				r = SWITCH_FALSE;
 				*code = CODE_IP_REJECTED;
 				switch_snprintf(message, mlen, "IP Rejected");
