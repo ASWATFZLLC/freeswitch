@@ -954,6 +954,29 @@ static void login_fire_custom_event(jsock_t *jsock, cJSON *params, int success, 
 	}
 }
 
+static switch_bool_t client_exists(const char *id)
+{
+	switch_bool_t r = SWITCH_FALSE;
+	verto_profile_t *profile;
+	jsock_t *jsock;
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Dupliacte session check %s == %s.\n", jsock->id, id);
+			if (!zstr(jsock->id) && !strcmp(jsock->id, id)) {
+				r = SWITCH_TRUE;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	return r;
+}
+
 static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *message, switch_size_t mlen)
 {
 	switch_bool_t r = SWITCH_FALSE;
@@ -1016,6 +1039,13 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 		if (!(id && domain)) {
 			*code = CODE_AUTH_FAILED;
 			switch_snprintf(message, mlen, "Missing or improper credentials");
+			goto end;
+		}
+
+		if (verto_globals.disable_multiple_sessions && client_exists(id)) {
+			*code = CODE_DUPLICATE_SESSION;
+			switch_snprintf(message, mlen, "Duplicate Session");
+			login_fire_custom_event(jsock, params, 0, "Duplicate Session");
 			goto end;
 		}
 
@@ -4731,6 +4761,11 @@ static int start_jsock(verto_profile_t *profile, ks_socket_t sock, int family)
 #if defined(TCP_KEEPINTVL)
 	setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&flag, sizeof(flag));
 #endif
+#if defined(TCP_KEEPCNT)
+	if (verto_globals.tcp_keepalive_probes > 0) {
+		setsockopt(jsock->client_socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&verto_globals.tcp_keepalive_probes, sizeof(verto_globals.tcp_keepalive_probes));
+	}
+#endif
 
 	td = switch_core_alloc(jsock->pool, sizeof(*td));
 
@@ -5430,6 +5465,13 @@ static switch_status_t parse_config(const char *cf)
 				if (val) {
 					verto_globals.debug = atoi(val);
 				}
+			} else if (!strcasecmp(var, "disable-multiple-sessions")) {
+				verto_globals.disable_multiple_sessions = switch_true(val);
+			} else if (!strcasecmp(var, "tcp-keepalive-probes") && val) {
+				int tmp = atoi(val);
+				if (tmp > 0) {
+					verto_globals.tcp_keepalive_probes = tmp;
+				}
 			} else if (!strcasecmp(var, "enable-presence") && val) {
 				verto_globals.enable_presence = switch_true(val);
 			} else if (!strcasecmp(var, "send-auth-password") && !zstr(val)) {
@@ -6035,6 +6077,233 @@ SWITCH_STANDARD_API(verto_contact_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
+SWITCH_STANDARD_API(verto_pickup_function)
+{
+	int success = 0;
+	char *uuid = (char *) cmd;
+	switch_core_session_t *lsession = NULL;
+
+	if (uuid && (lsession = switch_core_session_locate(uuid))) {
+		verto_pvt_t *tech_pvt = NULL;
+		if ((tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) {
+			cJSON *jmsg = NULL, *params = NULL;
+			jsock_t *jsock = NULL;
+			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
+				jmsg = jrpc_new_req("verto.pickup", tech_pvt->call_id, &params);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+
+				switch_thread_rwlock_unlock(jsock->rwlock);
+
+				success = 1;
+			}
+		}
+		switch_core_session_rwunlock(lsession);
+	}
+
+	if (success) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERROR\n");
+	}
+
+	return SWITCH_STATUS_SUCCESS;
+}
+
+#define VERTO_DIAL_SYNTAX "<uuid> <position_name> <number_to_dial>"
+SWITCH_STANDARD_API(verto_dial_function)
+{
+	int success = 0;
+	int argc = 0;
+	char *mycmd = NULL;
+	char *argv[3];
+	verto_profile_t *profile = NULL;
+	jsock_t *jsock;
+	cJSON *jmsg = NULL, *params = NULL;
+	char *position_name, *number_to_dial, *uuid = NULL;
+	switch_core_session_t *lsession = NULL;
+	int tries = 40;
+
+	if (!zstr(cmd) && (mycmd = strdup(cmd))) {
+		argc = switch_separate_string(mycmd, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
+	}
+
+	if (!argc || argc != 3) {
+		stream->write_function(stream, "-ERR Invalid args. USAGE: %s\n", VERTO_DIAL_SYNTAX);
+		goto end;
+	}
+
+	uuid = argv[0];
+	position_name = argv[1];
+	number_to_dial = argv[2];	
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				jmsg = jrpc_new_req("verto.dial", NULL, &params);
+				cJSON_AddItemToObject(params, "number", cJSON_CreateString(number_to_dial));
+				cJSON_AddItemToObject(params, "uuid", cJSON_CreateString(uuid));
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				success = 1;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	/* wait till 20 seconds for call to start */
+	if (success == 1) {
+		while(--tries > 0) {
+			if ((lsession = switch_core_session_locate(uuid))) {
+				success = 2;
+				switch_core_session_rwunlock(lsession);
+				break;
+			}
+			switch_yield(500000); /* timeout for 500 milli seconds */
+		}
+	}
+
+	if (success == 1) {
+		stream->write_function(stream, "-ERR Time out.\n");
+	} else if (success == 2) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERR\n");
+	}
+
+  end:
+	switch_safe_free(mycmd);
+	return SWITCH_STATUS_SUCCESS;
+}
+
+#define VERTO_SEND_SYNTAX "{position_name: <position_name>, data: <json>}"
+SWITCH_STANDARD_API(verto_send_function)
+{
+	int success = 0;
+	verto_profile_t *profile = NULL;
+	jsock_t *jsock;
+	const char *position_name = NULL;
+	cJSON *jmsg = NULL, *params = NULL;
+	cJSON *jcmd = NULL, *jdata = NULL;
+
+	if (!(jcmd = cJSON_Parse(cmd))) {
+		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!(position_name = cJSON_GetObjectCstr(jcmd, "position_name"))) {
+		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
+		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	if (!cJSON_IsObject(jdata)) {
+		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_SYNTAX);
+		goto end;
+	}
+
+	switch_mutex_lock(verto_globals.mutex);
+	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+		switch_mutex_lock(profile->mutex);
+		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
+			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+				jmsg = jrpc_new_req("verto.send", NULL, &params);
+				cJSON_AddItemToObject(params, "data", jdata);
+				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+				success = 1;
+				break;
+			}
+		}
+		switch_mutex_unlock(profile->mutex);
+	}
+	switch_mutex_unlock(verto_globals.mutex);
+
+	if (success == 1) {
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERR\n");
+	}
+
+  end:
+	switch_safe_free(jcmd);
+	return SWITCH_STATUS_SUCCESS;
+}
+
+#define VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX "{uuid: <uuid>, position_name: <position_name>, data: <json>}"
+SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
+{
+	const char *position_name = NULL;
+	const char *uuid = NULL;
+	verto_pvt_t *tech_pvt = NULL;
+	jsock_t *jsock = NULL;
+	cJSON *jmsg = NULL, *params = NULL;
+	cJSON *jcmd = NULL, *jdata = NULL;
+	switch_core_session_t *lsession = NULL;
+
+	if (!(jcmd = cJSON_Parse(cmd))) {
+		stream->write_function(stream, "-ERR parsing json. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		goto end;
+	}
+
+	if (!(uuid = cJSON_GetObjectCstr(jcmd, "uuid"))) {
+		stream->write_function(stream, "-ERR Missing uuid. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		goto end;
+	}
+
+	if (!(position_name = cJSON_GetObjectCstr(jcmd, "position_name"))) {
+		stream->write_function(stream, "-ERR Missing position name. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		goto end;
+	}
+
+	if (!(jdata = cJSON_GetObjectItem(jcmd, "data"))) {
+		stream->write_function(stream, "-ERR Missing json data. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		goto end;
+	}
+
+	if (!cJSON_IsObject(jdata)) {
+		stream->write_function(stream, "-ERR Invalid json data type. USAGE: %s\n", VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
+		goto end;
+	}
+
+	if (!(lsession = switch_core_session_locate(uuid))) {
+		stream->write_function(stream, "-ERR Invalid uuid.\n");
+		goto end;
+	}
+
+	if (!(tech_pvt = switch_core_session_get_private_class(lsession, SWITCH_PVT_SECONDARY))) { 
+		switch_core_session_rwunlock(lsession);
+		stream->write_function(stream, "-ERR Invalid session.\n");
+		goto end;
+	}
+
+	if (!(jsock = get_jsock(tech_pvt->jsock_uuid))) { 
+		switch_core_session_rwunlock(lsession);
+		stream->write_function(stream, "-ERR Failed to find session.\n");
+		goto end;
+	}
+
+	if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
+		jmsg = jrpc_new_req("verto.sendToAgentOnCall", tech_pvt->call_id, &params);
+		cJSON_AddItemToObject(params, "data", jdata);
+		jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
+		stream->write_function(stream, "+OK\n");
+	} else {
+		stream->write_function(stream, "-ERR Failed to find position.\n");
+	}
+
+	switch_thread_rwlock_unlock(jsock->rwlock);
+	switch_core_session_rwunlock(lsession);
+
+  end:
+	switch_safe_free(jcmd);
+	return SWITCH_STATUS_SUCCESS;
+}
 
 static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session,
 												  switch_event_t *var_event,
@@ -6816,6 +7085,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 	switch_mutex_init(&verto_globals.detach2_mutex, SWITCH_MUTEX_NESTED, verto_globals.pool);
 	switch_thread_cond_create(&verto_globals.detach_cond, verto_globals.pool);
 	verto_globals.detach_timeout = 120;
+	verto_globals.tcp_keepalive_probes = 0;
 
 
 
@@ -6857,6 +7127,10 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_verto_load)
 
 	SWITCH_ADD_API(api_interface, "verto", "Verto API", verto_function, "syntax");
 	SWITCH_ADD_API(api_interface, "verto_contact", "Generate a verto endpoint dialstring", verto_contact_function, "user@domain");
+	SWITCH_ADD_API(api_interface, "verto_pickup", "Request client to pickup the call", verto_pickup_function, "<uuid>");
+	SWITCH_ADD_API(api_interface, "verto_dial", "Request client to dial the number", verto_dial_function, VERTO_DIAL_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send", "Send json data to client", verto_send_function, VERTO_SEND_SYNTAX);
+	SWITCH_ADD_API(api_interface, "verto_send_to_position_on_call", "Send json data to agent client position of call", verto_send_to_position_on_call_function, VERTO_SEND_TO_POSITION_ON_CALL_SYNTAX);
 	switch_console_set_complete("add verto help");
 	switch_console_set_complete("add verto debug");
 	switch_console_set_complete("add verto perm");

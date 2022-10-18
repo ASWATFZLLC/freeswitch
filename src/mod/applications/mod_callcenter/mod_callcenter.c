@@ -40,6 +40,7 @@
 #define CC_SQLITE_DB_NAME "callcenter"
 #define CC_APP_KEY "mod_callcenter"
 
+#define CC_OFFERED_AGENT_LIST_SIZE 2048
 
 /* Prototypes */
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_callcenter_shutdown);
@@ -105,7 +106,9 @@ typedef enum {
 	CC_AGENT_STATUS_LOGGED_OUT = 1,
 	CC_AGENT_STATUS_AVAILABLE = 2,
 	CC_AGENT_STATUS_AVAILABLE_ON_DEMAND = 3,
-	CC_AGENT_STATUS_ON_BREAK = 4
+	CC_AGENT_STATUS_ON_BREAK = 4,
+	CC_AGENT_STATUS_OUTGOING = 5,
+    CC_AGENT_STATUS_MEETING = 6
 } cc_agent_status_t;
 
 static struct cc_status_table AGENT_STATUS_CHART[] = {
@@ -114,6 +117,8 @@ static struct cc_status_table AGENT_STATUS_CHART[] = {
 	{"Available", CC_AGENT_STATUS_AVAILABLE},
 	{"Available (On Demand)", CC_AGENT_STATUS_AVAILABLE_ON_DEMAND},
 	{"On Break", CC_AGENT_STATUS_ON_BREAK},
+	{"Outgoing", CC_AGENT_STATUS_OUTGOING},
+    {"Meeting", CC_AGENT_STATUS_MEETING},
 	{NULL, 0}
 
 };
@@ -477,6 +482,7 @@ struct cc_queue {
 	switch_time_t last_agent_exist_check;
 
 	switch_bool_t skip_agents_with_external_calls;
+	switch_bool_t max_wait_time_wait_inflight;
 
 	switch_xml_config_item_t config[CC_QUEUE_CONFIGITEM_COUNT];
 	switch_xml_config_string_options_t config_str_pool;
@@ -582,6 +588,7 @@ cc_queue_t *queue_set_config(cc_queue_t *queue)
 	SWITCH_CONFIG_SET_ITEM(queue->config[i++], "agent-no-answer-status", SWITCH_CONFIG_STRING, 0, &queue->agent_no_answer_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), &queue->config_str_pool, NULL, NULL);
 
 	SWITCH_CONFIG_SET_ITEM(queue->config[i++], "skip-agents-with-external-calls", SWITCH_CONFIG_BOOL, 0, &queue->skip_agents_with_external_calls, SWITCH_TRUE, NULL, NULL, NULL);
+	SWITCH_CONFIG_SET_ITEM(queue->config[i++], "max-wait-time-wait-inflight", SWITCH_CONFIG_BOOL, 0, &queue->max_wait_time_wait_inflight, SWITCH_TRUE, NULL, NULL, NULL);
 
 	switch_assert(i < CC_QUEUE_CONFIGITEM_COUNT);
 
@@ -932,6 +939,16 @@ cc_status_t cc_agent_del(const char *agent)
 	cc_status_t result = CC_STATUS_SUCCESS;
 
 	char *sql;
+
+  char res[256];
+
+  /* Used to stop any active callback */
+  sql = switch_mprintf("SELECT uuid FROM members WHERE serving_agent = '%q' AND serving_system = 'single_box' AND NOT state = 'Answered'", agent);
+  cc_execute_sql2str(NULL, NULL, sql, res, sizeof(res));
+  switch_safe_free(sql);
+  if (!switch_strlen_zero(res)) {
+    switch_core_session_hupall_matching_var("cc_member_pre_answer_uuid", res, SWITCH_CAUSE_ORIGINATOR_CANCEL);
+  }
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Deleted Agent %s\n", agent);
 	sql = switch_mprintf("DELETE FROM agents WHERE name = '%q';"
@@ -2283,6 +2300,7 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	const char *agent_type = argv[16];
 	const char *agent_uuid = argv[17];
 	const char *agent_external_calls_count = argv[18];
+	const char *current_level_offered_agents = NULL;
 
 	switch_bool_t contact_agent = SWITCH_TRUE;
 
@@ -2325,6 +2343,13 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK)))) {
 		contact_agent = SWITCH_FALSE;
 	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_OUTGOING)))) {
+		contact_agent = SWITCH_FALSE;
+	}
+	if (! (strcasecmp(agent_status, cc_agent_status2str(CC_AGENT_STATUS_MEETING)))) {
+		contact_agent = SWITCH_FALSE;
+	}
+
 	/* XXX callcenter_track app can update this counter after we selected this agent on database */
 	if (cbt->skip_agents_with_external_calls && atoi(agent_external_calls_count) > 0) {
 		contact_agent = SWITCH_FALSE;
@@ -2429,6 +2454,32 @@ static int agents_callback(void *pArg, int argc, char **argv, char **columnNames
 						switch_core_session_rwunlock(member_session);
 					}
 				}
+
+				if (!strcasecmp(cbt->strategy, "top-down-level-by-level")) {
+					switch_core_session_t *member_session = switch_core_session_locate(cbt->member_session_uuid);
+
+					if (member_session) {
+						char offered_agent_list[CC_OFFERED_AGENT_LIST_SIZE];
+						const char *last_agent_tier_level = NULL;
+
+						switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
+
+						if ((current_level_offered_agents = switch_channel_get_variable(member_channel, "cc_current_level_offered_agents")) &&
+							(last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level")) &&
+							(last_agent_tier_level != NULL) && 
+							(atoi(agent_tier_level) == atoi(last_agent_tier_level)))
+						{
+							snprintf(offered_agent_list, sizeof offered_agent_list, "%s,'%s'", current_level_offered_agents, h->agent_name);
+						} else {
+							snprintf(offered_agent_list, sizeof offered_agent_list, "'%s'", h->agent_name);
+						}
+
+						switch_channel_set_variable(member_channel, "cc_current_level_offered_agents", offered_agent_list);
+						switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", agent_tier_level);
+						switch_core_session_rwunlock(member_session);
+					}
+				}
+
 				cc_agent_update("state", cc_agent_state2str(CC_AGENT_STATE_RECEIVING), h->agent_name);
 
 				sql = switch_mprintf(
@@ -2635,6 +2686,36 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
 				level
 				);
+	} else	if (!strcasecmp(queue->strategy, "top-down-level-by-level")) {
+		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
+		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
+		const char *current_level_offered_agents = NULL;
+		const char *last_agent_tier_level;
+		int level = 0;
+
+		if (member_session) {
+			switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
+
+			if ((last_agent_tier_level = switch_channel_get_variable(member_channel, "cc_last_agent_tier_level"))) {
+				level = atoi(last_agent_tier_level);
+			}
+
+			current_level_offered_agents = switch_channel_get_variable(member_channel, "cc_current_level_offered_agents");
+			switch_core_session_rwunlock(member_session);
+		}
+
+		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call"
+			" FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
+			" WHERE tiers.queue = '%q'"
+			" AND (agents.status = '%q' OR agents.status = '%q')"
+			" AND tiers.level >= %d"
+			" AND name NOT IN (%s)"
+			" ORDER BY tiers_level ASC, random(), agents_last_offered_call",
+			queue_name,
+			cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
+			level,
+			((current_level_offered_agents != NULL) ? current_level_offered_agents : "''")
+			);
 	} else if (!strcasecmp(queue->strategy, "round-robin")) {
 		sql = switch_mprintf("SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position as tiers_position, tiers.level as tiers_level, agents.type, agents.uuid, external_calls_count, agents.last_offered_call as agents_last_offered_call, 1 as dyn_order FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
 				" WHERE tiers.queue = '%q'"
@@ -2725,6 +2806,14 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 				if (member_session) {
 					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_position", NULL);
+					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
+					switch_core_session_rwunlock(member_session);
+				}
+			} else if (!strcasecmp(queue->strategy, "top-down-level-by-level")) {
+				switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
+				if (member_session) {
+					switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
+					switch_channel_set_variable(member_channel, "cc_current_level_offered_agents", NULL);
 					switch_channel_set_variable(member_channel, "cc_last_agent_tier_level", NULL);
 					switch_core_session_rwunlock(member_session);
 				}
@@ -2855,7 +2944,7 @@ void *SWITCH_THREAD_FUNC cc_member_thread_run(switch_thread_t *thread, void *obj
 		/* Make the Caller Leave if he went over his max wait time */
 		if (queue->max_wait_time > 0 && queue->max_wait_time <=  time_now - m->t_member_called) {
 			/* timeout reached, check if we're originating at this time and give caller a one more chance */
-			if (switch_channel_test_app_flag_key(CC_APP_KEY, member_channel, CC_APP_AGENT_CONNECTING)) {
+			if (queue->max_wait_time_wait_inflight && switch_channel_test_app_flag_key(CC_APP_KEY, member_channel, CC_APP_AGENT_CONNECTING)) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_DEBUG, "Member %s <%s> in queue '%s' reached max wait time and we're connecting, waiting for agent to be connected...\n", m->member_cid_name, m->member_cid_number, m->queue_name);
 				for (;;) {
 					if (!switch_channel_test_app_flag_key(CC_APP_KEY, member_channel, CC_APP_AGENT_CONNECTING)) {
@@ -3201,6 +3290,9 @@ SWITCH_STANDARD_APP(callcenter_function)
 				switch_channel_set_variable(member_channel, "cc_exit_key", buf);
 				h->member_cancel_reason = CC_MEMBER_CANCEL_REASON_EXIT_WITH_KEY;
 				break;
+			} else if (status == SWITCH_STATUS_NOTFOUND) {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member_session), SWITCH_LOG_ERROR, "Music on hold file not found '%s', continuing wait with no audio\n", cur_moh);
+				moh_valid = SWITCH_FALSE;
 			} else if (!SWITCH_READ_ACCEPTABLE(status)) {
 				break;
 			}
