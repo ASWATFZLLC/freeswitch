@@ -21,14 +21,14 @@ steps:
     - git clone https://github.com/ASWATFZLLC/spandsp.git /opt/spandsp
     - cd /opt/spandsp
     - ./bootstrap.sh
-    - ./configure.sh
+    - ./configure
     - make
     - make install 
     - cd /opt
     - git clone https://github.com/ASWATFZLLC/sofia-sip.git /opt/sofia-sip
     - cd /opt/sofia-sip
     - ./bootstrap.sh
-    - ./configure.sh
+    - ./configure
     - make
     - make install 
     - cd /opt  && git clone https://github.com/ASWATFZLLC/freeswitch.git -b v1.10.5.9 /opt/banshee
