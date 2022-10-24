@@ -1,7 +1,7 @@
 ---
 kind: pipeline
 type: kubernetes
-name: default
+name: freeswitch
 service_account_name: drone-runner-aws-privileges
 
 steps:
