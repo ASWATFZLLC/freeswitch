@@ -38,16 +38,14 @@ steps:
     - wget https://gist.githubusercontent.com/soufiane-bouchaara/58a42e334de0849af205772ba22a6eb0/raw/226bcb4838d406e5816913568ba790dd64354931/gistfile1.txt -O /tmp/modules.conf 
     - cp /tmp/modules.conf /opt/banshee/modules.conf
     - make
-
-
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/DEBIAN
-    - cat > /opt/banshee/banshee-v1.10.5.9/DEBIAN/control << EOL
-Package: Banshee\
-Version: 1.10.5.9\
-Architecture: all\
-Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>\
-Description: Banshee AKA Freeswitch Powered by Ziwo\
-EOL
+    - sudo tee -a /opt/banshee/banshee-v1.10.5.9/DEBIAN/control > /dev/null <<EOT
+Package: Banshee
+Version: 1.10.5.9
+Architecture: all
+Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>
+Description: Banshee AKA Freeswitch Powered by Ziwo
+EOT
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib/
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/bin
