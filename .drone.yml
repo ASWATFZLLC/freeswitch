@@ -39,13 +39,7 @@ steps:
     - cp /tmp/modules.conf /opt/banshee/modules.conf
     - make
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/DEBIAN
-    - sudo tee -a /opt/banshee/banshee-v1.10.5.9/DEBIAN/control > /dev/null <<EOT
-Package: Banshee
-Version: 1.10.5.9
-Architecture: all
-Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>
-Description: Banshee AKA Freeswitch Powered by Ziwo
-EOT
+    - echo -en 'Package: Banshee\Version: 1.10.5.9\nArchitecture: all\Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>\nDescription: Banshee AKA Freeswitch Powered by Ziwo' > /opt/banshee/banshee-v1.10.5.9/DEBIAN/control
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib/
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/bin
