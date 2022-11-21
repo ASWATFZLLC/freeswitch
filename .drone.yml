@@ -42,12 +42,12 @@ steps:
 
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/DEBIAN
     - cat > /opt/banshee/banshee-v1.10.5.9/DEBIAN/control << EOL
-     Package: Banshee\
-     Version: 1.10.5.9\
-     Architecture: all\
-     Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>\
-     Description: Banshee AKA Freeswitch Powered by Ziwo\
-     EOL
+Package: Banshee\
+Version: 1.10.5.9\
+Architecture: all\
+Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>\
+Description: Banshee AKA Freeswitch Powered by Ziwo\
+EOL
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib/
     - mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/bin
