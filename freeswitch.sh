@@ -27,7 +27,7 @@ wget https://gist.githubusercontent.com/soufiane-bouchaara/58a42e334de0849af2057
 cp /tmp/modules.conf /opt/banshee/modules.conf
 make
 mkdir -p /opt/banshee/banshee-v1.10.5.9/DEBIAN
-echo -en 'Package: Banshee\Version: 1.10.5.9\nArchitecture: all\Maintainer: Soufiane Bouchaara <soufiane@ziwo.io>\nDescription: Banshee AKA Freeswitch Powered by Ziwo' > /opt/banshee/banshee-v1.10.5.9/DEBIAN/control
+echo -en 'Package: Banshee\nVersion: 1.10.5.9\nArchitecture: all\nMaintainer: Soufiane Bouchaara <soufiane@ziwo.io>\nDescription: Banshee AKA Freeswitch Powered by Ziwo' > /opt/banshee/banshee-v1.10.5.9/DEBIAN/control
 mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local
 mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib/
 mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/bin
