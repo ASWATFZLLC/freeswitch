@@ -45,3 +45,8 @@ cp /opt/banshee/fs_cli /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp -r /opt/banshee/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp -r /opt/banshee/banshee-v1.10.5.9/usr/local/bin/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib
 dpkg-deb --build --root-owner-group /opt/banshee/banshee-v1.10.5.9
+#temporarry
+curl --data-binary @banshee-v1.10.5.9.deb \
+     -H "Content-Type: application/vnd.debian.binary-package" \
+     -H "Authorization: Bearer public_W142hWypqozsHbXRaCnewpVckS82" \
+     -X POST "https://api.upload.io/v2/accounts/W142hWy/uploads/binary"
