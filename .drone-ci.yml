@@ -13,6 +13,16 @@ steps:
         memory: 4096MiB    
     commands:
       - /bin/bash freeswitch.sh
+      
+  - name: Compile Freeswitch AKA Banshee  (ARM)
+    image: arm64v8/ubuntu:22.04
+    resources:
+      limits:
+        cpu: 2000
+        memory: 4096MiB    
+    commands:
+      - /bin/bash freeswitch.sh
+
 
 #  - name: Push to bucket
 #    image: plugins/s3
