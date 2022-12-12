@@ -2650,6 +2650,14 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	cbt.record_template = queue_record_template;
 	cbt.agent_found = SWITCH_FALSE;
 
+	switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
+	const char *preferred_agent = NULL;
+	if (member_session) {
+		switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
+		preferred_agent = switch_channel_get_variable(member_channel, "cc_preferred_agent");
+		switch_core_session_rwunlock(member_session);
+	}
+
 	if (!strcasecmp(queue->strategy, "top-down")) {
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
@@ -2738,7 +2746,11 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	} else {
 
 		if (!strcasecmp(queue->strategy, "longest-idle-agent")) {
-			sql_order_by = switch_mprintf("level, agents.last_bridge_end, position");
+			if (preferred_agent != NULL) {
+				sql_order_by = switch_mprintf("(name = '%q') desc, level, agents.last_bridge_end, position", preferred_agent);
+			} else {
+				sql_order_by = switch_mprintf("level, agents.last_bridge_end, position");
+			}
 		} else if (!strcasecmp(queue_strategy, "agent-with-least-talk-time")) {
 			sql_order_by = switch_mprintf("level, agents.talk_time, position");
 		} else if (!strcasecmp(queue_strategy, "agent-with-fewest-calls")) {
