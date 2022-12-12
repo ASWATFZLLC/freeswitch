@@ -2525,7 +2525,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	const char *member_abandoned_epoch = NULL;
 	const char *serving_agent = NULL;
 	const char *last_originated_call = NULL;
-	switch_core_session_t *member_session = NULL
+	switch_core_session_t *member_session = NULL;
 	const char *preferred_agent = NULL;
 
 	memset(&cbt, 0, sizeof(cbt));
