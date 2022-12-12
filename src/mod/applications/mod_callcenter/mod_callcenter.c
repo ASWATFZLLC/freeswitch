@@ -2657,6 +2657,9 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	if (member_session) {
 		switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 		preferred_agent = switch_channel_get_variable(member_channel, "cc_preferred_agent");
+		// Give this agent a chance only in the first iteration.
+		// otherwise always this agent will be chosen in every interation no matter whatever is the strategy 
+		switch_channel_set_variable(member_channel, "cc_preferred_agent", NULL);
 		switch_core_session_rwunlock(member_session);
 	}
 
