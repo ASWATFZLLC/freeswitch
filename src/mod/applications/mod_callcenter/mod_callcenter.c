@@ -2525,6 +2525,9 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	const char *member_abandoned_epoch = NULL;
 	const char *serving_agent = NULL;
 	const char *last_originated_call = NULL;
+	switch_core_session_t *member_session = NULL
+	const char *preferred_agent = NULL;
+
 	memset(&cbt, 0, sizeof(cbt));
 
 	cbt.queue_name = argv[0];
@@ -2650,8 +2653,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	cbt.record_template = queue_record_template;
 	cbt.agent_found = SWITCH_FALSE;
 
-	switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
-	const char *preferred_agent = NULL;
+	member_session = switch_core_session_locate(cbt.member_session_uuid);
 	if (member_session) {
 		switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
 		preferred_agent = switch_channel_get_variable(member_channel, "cc_preferred_agent");
