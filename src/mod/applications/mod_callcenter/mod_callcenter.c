@@ -2752,8 +2752,10 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 
 		if (!strcasecmp(queue->strategy, "longest-idle-agent")) {
 			if (preferred_agent != NULL) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Preferred agent found: %s \n", preferred_agent);
 				sql_order_by = switch_mprintf("(name = '%q') desc, level, agents.last_bridge_end, position", preferred_agent);
 			} else {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Preferred agent not found \n");
 				sql_order_by = switch_mprintf("level, agents.last_bridge_end, position");
 			}
 		} else if (!strcasecmp(queue_strategy, "agent-with-least-talk-time")) {
