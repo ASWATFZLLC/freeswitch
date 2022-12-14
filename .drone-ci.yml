@@ -1,0 +1,15 @@
+---
+kind: pipeline
+type: kubernetes
+name: freeswitch
+service_account_name: drone-runner-aws-privileges
+
+steps:
+  - name: Compile Freeswitch AKA Banshee 
+    image: ubuntu:22.04
+    resources:
+      limits:
+        cpu: 2000
+        memory: 4096MiB    
+    commands:
+      - /bin/bash freeswitch.sh
