@@ -2795,7 +2795,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 
 	}
 
-	if (!strcasecmp(queue->strategy, "ring-progressively")) {
+	if (preferred_agent == NULL && !strcasecmp(queue->strategy, "ring-progressively")) {
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 
 		if (member_session) {
