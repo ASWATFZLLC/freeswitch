@@ -2324,27 +2324,35 @@ switch_status_t verto_tech_media(verto_pvt_t *tech_pvt, const char *r_sdp, switc
 	switch_assert(tech_pvt != NULL);
 	switch_assert(r_sdp != NULL);
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya20 verto_tech_media\n");
+
 	if (zstr(r_sdp)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya21 verto_tech_media\n");
 		return SWITCH_STATUS_FALSE;
 	}
 
 	if ((match = switch_core_media_negotiate_sdp(tech_pvt->session, r_sdp, &p, sdp_type))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya22 verto_tech_media\n");
 		if (switch_core_media_choose_ports(tech_pvt->session, SWITCH_TRUE, SWITCH_FALSE) != SWITCH_STATUS_SUCCESS) {
 		//if (switch_core_media_choose_port(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO, 0) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya23 verto_tech_media\n");
 			return SWITCH_STATUS_FALSE;
 		}
 
 		if (switch_core_media_activate_rtp(tech_pvt->session) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya24 verto_tech_media\n");
 			return SWITCH_STATUS_FALSE;
 		}
 		//if (!switch_channel_test_flag(tech_pvt->channel, CF_ANSWERED)) {
 		//	switch_channel_set_variable(tech_pvt->channel, SWITCH_ENDPOINT_DISPOSITION_VARIABLE, "EARLY MEDIA");
 		//		switch_channel_mark_pre_answered(tech_pvt->channel);
 		//}
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya25 verto_tech_media\n");
 		return SWITCH_STATUS_SUCCESS;
 	}
 
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya26 verto_tech_media\n");
 	return SWITCH_STATUS_FALSE;
 }
 

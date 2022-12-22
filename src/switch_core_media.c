@@ -4863,15 +4863,18 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 	int rtcp_auto_audio = 0, rtcp_auto_video = 0;
 	int got_audio_rtcp = 0, got_video_rtcp = 0;
 	switch_port_t audio_port = 0, video_port = 0;
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya300 switch_core_media_negotiate_sdp\n");
 
 	switch_assert(session);
 
 	if (!r_sdp) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya301 switch_core_media_negotiate_sdp\n");
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Tried to negotiate a blank SDP?\n");
 		return 0;
 	}
 
 	if (!(smh = session->media_handle)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya302 switch_core_media_negotiate_sdp\n");
 		return 0;
 	}
 
@@ -4886,10 +4889,12 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 	total_codecs = smh->mparams->num_codecs;
 
 	if (!(parser = sdp_parse(NULL, r_sdp, (int) strlen(r_sdp), 0))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya303 switch_core_media_negotiate_sdp\n");
 		return 0;
 	}
 
 	if (!(sdp = sdp_session(parser))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya304 switch_core_media_negotiate_sdp\n");
 		sdp_parser_free(parser);
 		return 0;
 	}
@@ -4900,11 +4905,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 	if (dtls_ok(session) && (tmp = switch_channel_get_variable(smh->session->channel, "webrtc_enable_dtls")) && switch_false(tmp)) {
 		switch_channel_clear_flag(smh->session->channel, CF_DTLS_OK);
 		switch_channel_clear_flag(smh->session->channel, CF_DTLS);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya305 switch_core_media_negotiate_sdp\n");
 	}
 
 	if (switch_true(switch_channel_get_variable_dup(session->channel, "rtp_assume_rtcp", SWITCH_FALSE, -1))) {
 		rtcp_auto_video = 1;
 		rtcp_auto_audio = 1;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya306 switch_core_media_negotiate_sdp\n");
 	}
 
 	v_engine->new_dtls = 1;
@@ -4929,13 +4936,17 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 		if (!strcasecmp(val, "generous")) {
 			greedy = 0;
 			scrooge = 0;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya307 switch_core_media_negotiate_sdp\n");
 		} else if (!strcasecmp(val, "greedy")) {
 			greedy = 1;
 			scrooge = 0;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya308 switch_core_media_negotiate_sdp\n");
 		} else if (!strcasecmp(val, "scrooge")) {
 			scrooge = 1;
 			greedy = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya309 switch_core_media_negotiate_sdp\n");
 		} else {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya310 switch_core_media_negotiate_sdp\n");
 		    switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "rtp_codec_negotiation ignored invalid value : '%s' \n", val );
 		}
 	}
@@ -4946,11 +4957,14 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			if (strstr(smh->origin, "CiscoSystemsSIP-GW-UserAgent")) {
 				a_engine->rtp_bugs |= RTP_BUG_CISCO_SKIP_MARK_BIT_2833;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya311 switch_core_media_negotiate_sdp\n");
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Activate Buggy RFC2833 Mode!\n");
 			}
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya312 switch_core_media_negotiate_sdp\n");
 		}
 
 		if ((smh->mparams->auto_rtp_bugs & RTP_BUG_SONUS_SEND_INVALID_TIMESTAMP_2833)) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya313 switch_core_media_negotiate_sdp\n");
 			if (strstr(smh->origin, "Sonus_UAC")) {
 				a_engine->rtp_bugs |= RTP_BUG_SONUS_SEND_INVALID_TIMESTAMP_2833;
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING,
@@ -4960,17 +4974,20 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 								  "Don't worry, DTMF will work but you may want to ask them to fix it......\n");
 			}
 		}
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya314 switch_core_media_negotiate_sdp\n");
 	}
 
 	/* check dtmf_type variable */
 	switch_core_media_check_dtmf_type(session);
 
 	if ((val = switch_channel_get_variable(session->channel, "rtp_liberal_dtmf")) && switch_true(val)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya315 switch_core_media_negotiate_sdp\n");
 		switch_channel_set_flag(session->channel, CF_LIBERAL_DTMF);
 	}
 
 	if (switch_stristr("T38FaxFillBitRemoval:", r_sdp) || switch_stristr("T38FaxTranscodingMMR:", r_sdp) ||
 		switch_stristr("T38FaxTranscodingJBIG:", r_sdp)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya316 switch_core_media_negotiate_sdp\n");
 		switch_channel_set_variable(session->channel, "t38_broken_boolean", "true");
 	}
 
@@ -4982,6 +4999,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 	check_ice(smh, SWITCH_MEDIA_TYPE_TEXT, sdp, NULL);
 
 	if ((sdp->sdp_connection && sdp->sdp_connection->c_address && !strcmp(sdp->sdp_connection->c_address, "0.0.0.0"))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya317 switch_core_media_negotiate_sdp\n");
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "RFC2543 from March 1999 called; They want their 0.0.0.0 hold method back.....\n");
 		sendonly = 2;			/* global sendonly always wins */
 	}
@@ -4995,18 +5013,22 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 	for (m = sdp->sdp_media; m; m = m->m_next) {
 		sdp_connection_t *connection;
 		switch_core_session_t *other_session;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya318 switch_core_media_negotiate_sdp\n");
 
 		if (!m->m_port && smh->rej_idx < MAX_REJ_STREAMS - 1) {
 
 			switch(m->m_type) {
 			case sdp_media_audio:
 				smh->rejected_streams[smh->rej_idx++] = sdp_media_audio;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya319 switch_core_media_negotiate_sdp\n");
 				continue;
 			case sdp_media_video:
 				smh->rejected_streams[smh->rej_idx++] = sdp_media_video;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya320 switch_core_media_negotiate_sdp\n");
 				continue;
 			case sdp_media_image:
 				smh->rejected_streams[smh->rej_idx++] = sdp_media_image;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya321 switch_core_media_negotiate_sdp\n");
 				continue;
 			default:
 				break;
@@ -5014,10 +5036,12 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 		}
 
 		if (m->m_type == sdp_media_audio) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya322 switch_core_media_negotiate_sdp\n");
 			saw_audio = 1;
 		}
 
 		if (m->m_type == sdp_media_video) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya323 switch_core_media_negotiate_sdp\n");
 			saw_video = 1;
 		}
 
@@ -5026,24 +5050,29 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 		if (m->m_proto == sdp_proto_extended_srtp || m->m_proto == sdp_proto_extended_rtp) {
 			got_webrtc++;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya324 switch_core_media_negotiate_sdp\n");
 			switch_core_session_set_ice(session);
 		}
 
 		if (m->m_proto_name && !strcasecmp(m->m_proto_name, "UDP/TLS/RTP/SAVPF")) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya325 switch_core_media_negotiate_sdp\n");
 			switch_channel_set_flag(session->channel, CF_AVPF_MOZ);
 		}
 
 		if (m->m_proto_name && !strcasecmp(m->m_proto_name, "UDP/RTP/AVPF")) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya326 switch_core_media_negotiate_sdp\n");
 			switch_channel_set_flag(session->channel, CF_AVPF_MOZ);
 		}
 
 		if (m->m_proto == sdp_proto_srtp || m->m_proto == sdp_proto_extended_srtp) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya327 switch_core_media_negotiate_sdp\n");
 			if (m->m_type == sdp_media_audio) {
 				got_savp++;
 			} else {
 				got_video_savp++;
 			}
 		} else if (m->m_proto == sdp_proto_rtp) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya328 switch_core_media_negotiate_sdp\n");
 			if (m->m_type == sdp_media_audio) {
 				got_avp++;
 			} else {
@@ -5051,13 +5080,19 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			}
 		} else if (m->m_proto == sdp_proto_udptl) {
 			got_udptl++;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya329 switch_core_media_negotiate_sdp\n");
 		} else if (m->m_proto == sdp_proto_msrp || m->m_proto == sdp_proto_msrps){
 			got_msrp++;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya330 switch_core_media_negotiate_sdp\n");
+		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya331 switch_core_media_negotiate_sdp\n");
 		}
 
 		if (got_msrp && m->m_type == sdp_media_message) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya332 switch_core_media_negotiate_sdp\n");
 			if (!smh->msrp_session) {
 				smh->msrp_session = switch_msrp_session_new(switch_core_session_get_pool(session), switch_core_session_get_uuid(session), m->m_proto == sdp_proto_msrps);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya333 switch_core_media_negotiate_sdp\n");
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "MSRP session created %s\n", smh->msrp_session->call_id);
 			}
 
@@ -5068,17 +5103,22 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				if (!strcasecmp(attr->a_name, "path") && attr->a_value) {
 					smh->msrp_session->remote_path = switch_core_session_strdup(session, attr->a_value);
 					switch_channel_set_variable(session->channel, "sip_msrp_remote_path", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya334 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "accept-types") && attr->a_value) {
 					smh->msrp_session->remote_accept_types = switch_core_session_strdup(session, attr->a_value);
 					switch_channel_set_variable(session->channel, "sip_msrp_remote_accept_types", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya335 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "accept-wrapped-types") && attr->a_value) {
 					smh->msrp_session->remote_accept_wrapped_types = switch_core_session_strdup(session, attr->a_value);
 					switch_channel_set_variable(session->channel, "sip_msrp_remote_accept_wrapped_types", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya336 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "setup") && attr->a_value) {
 					smh->msrp_session->remote_setup = switch_core_session_strdup(session, attr->a_value);
 					switch_channel_set_variable(session->channel, "sip_msrp_remote_setup", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya337 switch_core_media_negotiate_sdp\n");
 					if (!strcmp(attr->a_value, "passive")) {
 						smh->msrp_session->active = 1;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya338 switch_core_media_negotiate_sdp\n");
 					}
 				} else if (!strcasecmp(attr->a_name, "file-selector") && attr->a_value) {
 					char *tmp = switch_mprintf("%s", attr->a_value);
@@ -5088,13 +5128,16 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 					smh->msrp_session->remote_file_selector = switch_core_session_strdup(session, attr->a_value);
 					switch_channel_set_variable(session->channel, "sip_msrp_remote_file_selector", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya339 switch_core_media_negotiate_sdp\n");
 
 					argc = switch_separate_string(tmp, ' ', argv, (sizeof(argv) / sizeof(argv[0])));
 
 					for(i = 0; i<argc; i++) {
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "::::%s\n", switch_str_nil(argv[i]));
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya340 switch_core_media_negotiate_sdp\n");
 						if (zstr(argv[i])) {
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "ERRRRRRR\n");
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya341 switch_core_media_negotiate_sdp\n");
 							continue;
 						}
 						if (!strncasecmp(argv[i], "name:", 5)) {
@@ -5106,27 +5149,36 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 								p++;
 							}
 							switch_channel_set_variable(session->channel, "sip_msrp_file_name", p);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya342 switch_core_media_negotiate_sdp\n");
 						} else if (!strncasecmp(argv[i], "type:", 5)) {
 							switch_channel_set_variable(session->channel, "sip_msrp_file_type", argv[i] + 5);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya343 switch_core_media_negotiate_sdp\n");
 						}
 						if (!strncasecmp(argv[i], "size:", 5)) {
 							switch_channel_set_variable(session->channel, "sip_msrp_file_size", argv[i] + 5);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya344 switch_core_media_negotiate_sdp\n");
 						}
 						if (!strncasecmp(argv[i], "hash:", 5)) {
 							switch_channel_set_variable(session->channel, "sip_msrp_file_hash", argv[i] + 5);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya345 switch_core_media_negotiate_sdp\n");
 						}
 					}
 					switch_safe_free(tmp);
 				} else if (!strcasecmp(attr->a_name, "file-transfer-id") && attr->a_value) {
 					switch_channel_set_variable(session->channel, "sip_msrp_file_transfer_id", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya346 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "file-disposition") && attr->a_value) {
 					switch_channel_set_variable(session->channel, "sip_msrp_file_disposition", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya347 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "file-date") && attr->a_value) {
 					switch_channel_set_variable(session->channel, "sip_msrp_file_date", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya348 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "file-icon") && attr->a_value) {
 					switch_channel_set_variable(session->channel, "sip_msrp_file_icon", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya349 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "file-range") && attr->a_value) {
 					switch_channel_set_variable(session->channel, "sip_msrp_file_range", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya350 switch_core_media_negotiate_sdp\n");
 				}
 			}
 
@@ -5141,6 +5193,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			if (m->m_proto == sdp_proto_msrps) {
 				switch_channel_set_flag(session->channel, CF_MSRPS);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya351 switch_core_media_negotiate_sdp\n");
 			}
 
 			if (smh->msrp_session->active) {
@@ -5160,10 +5213,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 		if (got_udptl && m->m_type == sdp_media_image) {
 			switch_channel_set_flag(session->channel, CF_IMAGE_SDP);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya352 switch_core_media_negotiate_sdp\n");
 
 			if (m->m_port) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya353 switch_core_media_negotiate_sdp\n");
 				if (switch_channel_test_app_flag_key("T38", session->channel, CF_APP_T38_NEGOTIATED)) {
 					fmatch = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya354 switch_core_media_negotiate_sdp\n");
 					goto done;
 				}
 
@@ -5175,7 +5231,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 					restore_pmaps(a_engine);
 					fmatch = 0;
-
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya355 switch_core_media_negotiate_sdp\n");
 					goto t38_done;
 				} else {
 					switch_t38_options_t *t38_options = switch_core_media_process_udptl(session, sdp, m);
@@ -5185,14 +5241,17 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "%s T38 ACCEPT on %s\n",
 									  switch_channel_get_name(channel),
 									  sdp_type == SDP_TYPE_RESPONSE ? "response" : "request");
-
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya356 switch_core_media_negotiate_sdp\n");
 					if (switch_channel_test_app_flag_key("T38", session->channel, CF_APP_T38)) {
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya357 switch_core_media_negotiate_sdp\n");
 						if (proceed) *proceed = 0;
 					}
 
 					if (var) {
 						if (!(pass = switch_true(var))) {
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya358 switch_core_media_negotiate_sdp\n");
 							if (!strcasecmp(var, "once")) {
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya359 switch_core_media_negotiate_sdp\n");
 								pass = 2;
 							}
 						}
@@ -5204,6 +5263,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						switch_channel_test_flag(session->channel, CF_PROXY_MODE) ||
 						switch_channel_test_flag(session->channel, CF_PROXY_MEDIA) ||
 						!switch_rtp_ready(a_engine->rtp_session)) {
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya360 switch_core_media_negotiate_sdp\n");
 						pass = 0;
 					}
 
@@ -5223,6 +5283,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 							match = 0;
 							fmatch = 0;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya361 switch_core_media_negotiate_sdp\n");
 							goto done;
 						}
 
@@ -5240,6 +5301,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						if (remote_host && remote_port && !strcmp(remote_host, a_engine->cur_payload_map->remote_sdp_ip) && remote_port == a_engine->cur_payload_map->remote_sdp_port) {
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio params are unchanged for %s.\n",
 											  switch_channel_get_name(session->channel));
+												switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya362 switch_core_media_negotiate_sdp\n");
 						} else {
 							const char *err = NULL;
 
@@ -5254,10 +5316,14 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 							if (switch_rtp_set_remote_address(a_engine->rtp_session, a_engine->cur_payload_map->remote_sdp_ip,
 															  a_engine->cur_payload_map->remote_sdp_port, 0, SWITCH_TRUE, &err) != SWITCH_STATUS_SUCCESS) {
 								switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "AUDIO RTP REPORTS ERROR: [%s]\n", err);
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya363 switch_core_media_negotiate_sdp\n");
 								switch_channel_hangup(channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
+							} else {
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya364 switch_core_media_negotiate_sdp\n");
 							}
 
 							switch_core_media_check_autoadj(session);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya365 switch_core_media_negotiate_sdp\n");
 							switch_channel_execute_on(session->channel, "execute_on_audio_change");
 						}
 
@@ -5273,6 +5339,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						msg->from = __FILE__;
 						msg->string_arg = switch_core_session_strdup(other_session, r_sdp);
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Passing T38 req to other leg.\n%s\n", r_sdp);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya366 switch_core_media_negotiate_sdp\n");
 						switch_core_session_queue_message(other_session, msg);
 						switch_core_session_rwunlock(other_session);
 					}
@@ -5296,6 +5363,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			}
 		} else if (m->m_type == sdp_media_audio && m->m_port && got_audio && got_savp) {
 			a_engine->reject_avp = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya367 switch_core_media_negotiate_sdp\n");
 		} else if (m->m_type == sdp_media_audio && m->m_port && !got_audio) {
 			sdp_rtpmap_t *map;
 			int ice = 0;
@@ -5306,6 +5374,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			memset(near_matches, 0, sizeof(near_matches[0]) * MAX_MATCHES);
 
 			audio_port = m->m_port;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya368 switch_core_media_negotiate_sdp\n");
 
 			if (!sendonly && (m->m_mode == sdp_sendonly || m->m_mode == sdp_inactive)) {
 				sendonly = 1;
@@ -5322,6 +5391,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			switch_core_media_set_rmode(smh->session, SWITCH_MEDIA_TYPE_AUDIO, sdp_media_flow(m->m_mode), sdp_type);
 
 			if (sdp_type == SDP_TYPE_REQUEST) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya369 switch_core_media_negotiate_sdp\n");
 				switch(a_engine->rmode) {
 				case SWITCH_MEDIA_FLOW_RECVONLY:
 					switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_AUDIO, SWITCH_MEDIA_FLOW_SENDONLY, sdp_type);
@@ -5340,18 +5410,23 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			for (attr = sdp->sdp_attributes; attr; attr = attr->a_next) {
 				if (zstr(attr->a_name)) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya370 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 
 
 				if (!strncasecmp(attr->a_name, "ice", 3)) {
 					ice++;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya371 switch_core_media_negotiate_sdp\n");
 				} else if (sendonly < 2 && !strcasecmp(attr->a_name, "sendonly")) {
 					sendonly = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya372 switch_core_media_negotiate_sdp\n");
 					switch_channel_set_variable(session->channel, "media_audio_mode", "recvonly");
 				} else if (sendonly < 2 && !strcasecmp(attr->a_name, "inactive")) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya373 switch_core_media_negotiate_sdp\n");
 					switch_channel_set_variable(session->channel, "media_audio_mode", "inactive");
 				} else if (!strcasecmp(attr->a_name, "recvonly")) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya374 switch_core_media_negotiate_sdp\n");
 					switch_channel_set_variable(session->channel, "media_audio_mode", "sendonly");
 					recvonly = 1;
 
@@ -5362,19 +5437,24 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						switch_rtp_set_max_missed_packets(a_engine->rtp_session, 0);
 						a_engine->max_missed_hold_packets = 0;
 						a_engine->max_missed_packets = 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya375 switch_core_media_negotiate_sdp\n");
 						switch_rtp_set_media_timeout(a_engine->rtp_session, a_engine->media_timeout);
 					} else {
 						switch_channel_set_variable(session->channel, "media_timeout_audio", "0");
 						switch_channel_set_variable(session->channel, "media_hold_timeout_audio", "0");
 						switch_channel_set_variable(session->channel, "rtp_timeout_sec", "0");
 						switch_channel_set_variable(session->channel, "rtp_hold_timeout_sec", "0");
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya376 switch_core_media_negotiate_sdp\n");
 					}
 				} else if (sendonly < 2 && !strcasecmp(attr->a_name, "sendrecv")) {
 					sendonly = 0;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya377 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "ptime")) {
 					ptime = dptime = atoi(attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya378 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "maxptime")) {
 					maxptime = dmaxptime = atoi(attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya379 switch_core_media_negotiate_sdp\n");
 				}
 			}
 
@@ -5385,10 +5465,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			if (sendonly != 1 && recvonly != 1 && inactive != 1) {
 				switch_channel_set_variable(session->channel, "media_audio_mode", NULL);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya380 switch_core_media_negotiate_sdp\n");
 			}
 
 			if (sdp_type == SDP_TYPE_RESPONSE) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya381 switch_core_media_negotiate_sdp\n");
 				if (inactive) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya382 switch_core_media_negotiate_sdp\n");
 					// When freeswitch had previously sent inactive in sip request. it should remain inactive otherwise smode should be sendrecv
 					if (a_engine->smode==SWITCH_MEDIA_FLOW_INACTIVE) {
 						switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_AUDIO, sdp_media_flow(sdp_inactive), sdp_type);
@@ -5408,11 +5491,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					  && switch_true(val)))
 				&& !smh->mparams->hold_laps) {
 				smh->mparams->hold_laps++;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya383 switch_core_media_negotiate_sdp\n");
 				switch_core_media_toggle_hold(session, sendonly);
 			}
 
 
 			if (switch_rtp_has_dtls() && dtls_ok(session)) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya384 switch_core_media_negotiate_sdp\n");
 				for (attr = m->m_attributes; attr; attr = attr->a_next) {
 
 					if (!strcasecmp(attr->a_name, "fingerprint") && !zstr(attr->a_value)) {
@@ -5430,8 +5515,10 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					if (!smh->mparams->rtcp_video_interval_msec) {
 						smh->mparams->rtcp_video_interval_msec = SWITCH_RTCP_VIDEO_INTERVAL_MSEC;
 					}
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya385 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "ice-ufrag")) {
 					skip_rtcp = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya386 switch_core_media_negotiate_sdp\n");
 				}
 			}
 
@@ -5440,6 +5527,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			}
 
 			for (attr = m->m_attributes; attr; attr = attr->a_next) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya387 switch_core_media_negotiate_sdp\n");
 				if (!strcasecmp(attr->a_name, "rtcp") && attr->a_value && !skip_rtcp) {
 					a_engine->remote_rtcp_port = (switch_port_t)atoi(attr->a_value);
 					switch_channel_set_variable_printf(session->channel, "rtp_remote_audio_rtcp_port", "%d", a_engine->remote_rtcp_port);
@@ -5448,10 +5536,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						smh->mparams->rtcp_audio_interval_msec = SWITCH_RTCP_AUDIO_INTERVAL_MSEC;
 					}
 					got_audio_rtcp = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya388 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "ptime") && attr->a_value) {
 					ptime = atoi(attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya389 switch_core_media_negotiate_sdp\n");
 				} else if (!strcasecmp(attr->a_name, "maxptime") && attr->a_value) {
 					maxptime = atoi(attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya390 switch_core_media_negotiate_sdp\n");
 				} else if (got_crypto < 1 && !strcasecmp(attr->a_name, "crypto") && !zstr(attr->a_value)) {
 					int crypto_tag;
 
@@ -5468,13 +5559,14 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					crypto_tag = atoi(crypto);
 					got_crypto = switch_core_session_check_incoming_crypto(session,
 																		   "rtp_has_crypto", SWITCH_MEDIA_TYPE_AUDIO, crypto, crypto_tag, sdp_type);
-
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya391 switch_core_media_negotiate_sdp\n");
 				}
 			}
 
 			if (got_crypto == -1 && got_savp && !got_avp && !got_webrtc) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Received invite with SAVP but secure media is administratively disabled\n");
 				match = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya392 switch_core_media_negotiate_sdp\n");
 				continue;
 			}
 
@@ -5486,6 +5578,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			if (!connection) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Cannot find a c= line in the sdp at media or session level!\n");
 				match = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya393 switch_core_media_negotiate_sdp\n");
 				break;
 			}
 
@@ -5497,6 +5590,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				uint32_t map_bit_rate = 0;
 				switch_codec_fmtp_t codec_fmtp = { 0 };
 				int map_channels = map->rm_params ? atoi(map->rm_params) : 1;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya394 switch_core_media_negotiate_sdp\n");
 
 				if (!(rm_encoding = map->rm_encoding)) {
 					rm_encoding = "";
@@ -5509,6 +5603,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						best_te_rate = map->rm_rate;
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Set telephone-event payload to %u@%ld\n", best_te, best_te_rate);
 					}
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya395 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 
@@ -5518,15 +5613,18 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Set comfort noise payload to %u\n", cng_pt);
 						switch_rtp_set_cng_pt(a_engine->rtp_session, cng_pt);
 					}
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya396 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 
 
 				if (x++ < skip) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya397 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 
 				if (match) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya398 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 
@@ -5534,21 +5632,26 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 				if (switch_channel_get_variable(session->channel, "rtp_h_X-Broken-PTIME") && a_engine->read_impl.microseconds_per_packet) {
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Overwriting ptime from a known broken endpoint with the currently used value of %d ms\n", a_engine->read_impl.microseconds_per_packet / 1000);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya399 switch_core_media_negotiate_sdp\n");
 					codec_ms = a_engine->read_impl.microseconds_per_packet / 1000;
 				}
 
 				if (maxptime && (!codec_ms || codec_ms > maxptime)) {
 					codec_ms = maxptime;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya400 switch_core_media_negotiate_sdp\n");
 				}
 
 				if (!codec_ms) {
 					codec_ms = switch_default_ptime(rm_encoding, map->rm_pt);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya401 switch_core_media_negotiate_sdp\n");
 				}
 
 				map_bit_rate = switch_known_bitrate((switch_payload_t)map->rm_pt);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya402 switch_core_media_negotiate_sdp\n");
 
 				if (!ptime && !strcasecmp(map->rm_encoding, "g723")) {
 					codec_ms = 30;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya403 switch_core_media_negotiate_sdp\n");
 				}
 
 				remote_codec_rate = map->rm_rate;
@@ -5559,26 +5662,33 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					if (!strcasecmp(map->rm_encoding, "ilbc")) {
 						codec_ms = 30;
 						map_bit_rate = 13330;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya404 switch_core_media_negotiate_sdp\n");
 					} else if (!strcasecmp(map->rm_encoding, "isac")) {
 						codec_ms = 30;
 						map_bit_rate = 32000;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya405 switch_core_media_negotiate_sdp\n");
 					}
 				} else {
 					if ((switch_core_codec_parse_fmtp(map->rm_encoding, map->rm_fmtp, map->rm_rate, &codec_fmtp)) == SWITCH_STATUS_SUCCESS) {
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya406 switch_core_media_negotiate_sdp\n");
 						if (codec_fmtp.bits_per_second) {
 							map_bit_rate = codec_fmtp.bits_per_second;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya407 switch_core_media_negotiate_sdp\n");
 						}
 						if (codec_fmtp.microseconds_per_packet) {
 							codec_ms = (codec_fmtp.microseconds_per_packet / 1000);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya408 switch_core_media_negotiate_sdp\n");
 						}
 						if (codec_fmtp.actual_samples_per_second) {
 							fmtp_remote_codec_rate = codec_fmtp.actual_samples_per_second;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya409 switch_core_media_negotiate_sdp\n");
 						}
 						if (codec_fmtp.stereo) {
 							map_channels = 2;
 						} else if (!strcasecmp(map->rm_encoding, "opus")) {
 							map_channels = 1;
 						}
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya410 switch_core_media_negotiate_sdp\n");
 					}
 				}
 
@@ -5586,9 +5696,11 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					const switch_codec_implementation_t *imp = codec_array[i];
 					uint32_t bit_rate = imp->bits_per_second;
 					uint32_t codec_rate = imp->samples_per_second;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya411 switch_core_media_negotiate_sdp\n");
 
 					if (imp->codec_type != SWITCH_CODEC_TYPE_AUDIO) {
 						continue;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya412 switch_core_media_negotiate_sdp\n");
 					}
 
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio Codec Compare [%s:%d:%u:%d:%u:%d]/[%s:%d:%u:%d:%u:%d]\n",
@@ -5596,6 +5708,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 									  imp->iananame, imp->ianacode, codec_rate, imp->microseconds_per_packet / 1000, bit_rate, imp->number_of_channels);
 					if ((zstr(map->rm_encoding) || (smh->mparams->ndlb & SM_NDLB_ALLOW_BAD_IANANAME)) && map->rm_pt < 96) {
 						match = (map->rm_pt == imp->ianacode) ? 1 : 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya413 switch_core_media_negotiate_sdp\n");
 					} else {
 						match = (!strcasecmp(rm_encoding, imp->iananame) &&
 								 ((map->rm_pt < 96 && imp->ianacode < 96) || (map->rm_pt > 95 && imp->ianacode > 95)) &&
@@ -5603,12 +5716,14 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						if (fmtp_remote_codec_rate) {
 							remote_codec_rate = fmtp_remote_codec_rate;
 						}
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya414 switch_core_media_negotiate_sdp\n");
 					}
 
 					if (match && bit_rate && map_bit_rate && map_bit_rate != bit_rate && strcasecmp(map->rm_encoding, "ilbc") &&
 						strcasecmp(map->rm_encoding, "isac")) {
 						/* if a bit rate is specified and doesn't match, this is not a codec match, except for ILBC */
 						match = 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya415 switch_core_media_negotiate_sdp\n");
 					}
 
 					if (match && remote_codec_rate && codec_rate && remote_codec_rate != codec_rate && (!strcasecmp(map->rm_encoding, "pcma") ||
@@ -5616,6 +5731,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						/* if the sampling rate is specified and doesn't match, this is not a codec match for G.711 */
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "sampling rates have to match for G.711\n");
 						match = 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya416 switch_core_media_negotiate_sdp\n");
 					}
 
 					if (match) {
@@ -5623,10 +5739,12 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 											  "Bah HUMBUG! Sticking with %s@%uh@%ui\n",
 											  imp->iananame, imp->samples_per_second, imp->microseconds_per_packet / 1000);
+												switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya417 switch_core_media_negotiate_sdp\n");
 						} else if ((ptime && codec_ms && codec_ms * 1000 != imp->microseconds_per_packet) || remote_codec_rate != codec_rate) {
 							/* ptime does not match */
 							match = 0;
 
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya418 switch_core_media_negotiate_sdp\n");
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 											  "Audio Codec Compare [%s:%d:%u:%d:%u:%d] is saved as a near-match\n",
 											  imp->iananame, imp->ianacode, codec_rate, imp->microseconds_per_packet / 1000, bit_rate, imp->number_of_channels);
@@ -5637,6 +5755,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 							near_matches[nm_idx].map = map;
 							nm_idx++;
 
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya419 switch_core_media_negotiate_sdp\n");
 							continue;
 						}
 
@@ -5651,6 +5770,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 										  imp->iananame, imp->ianacode, codec_rate, imp->microseconds_per_packet / 1000, bit_rate, imp->number_of_channels);
 
 						if (m_idx >= MAX_MATCHES) {
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya420 switch_core_media_negotiate_sdp\n");
 							break;
 						}
 
@@ -5659,11 +5779,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				}
 
 				if (m_idx >= MAX_MATCHES) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya421 switch_core_media_negotiate_sdp\n");
 					break;
 				}
 			}
 
 			if (smh->crypto_mode == CRYPTO_MODE_MANDATORY && got_crypto < 1) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya422 switch_core_media_negotiate_sdp\n");
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Crypto not negotiated but required.\n");
 				match = 0;
 				m_idx = nm_idx = 0;
@@ -5672,6 +5794,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			if (!m_idx && nm_idx) {
 				int j;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya423 switch_core_media_negotiate_sdp\n");
 
 				for(j = 0; j < nm_idx; j++) {
 					const switch_codec_implementation_t *search[1];
@@ -5708,12 +5831,14 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						matches[m_idx].map = near_map;
 						m_idx++;
 
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya424 switch_core_media_negotiate_sdp\n");
 						break;
 					}
 				}
 			}
 
 			if (m_idx) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya425 switch_core_media_negotiate_sdp\n");
 				int j;
 
 				if (greedy) { /* sort in favor of mine */
@@ -5793,11 +5918,13 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				switch_snprintf(tmp, sizeof(tmp), "%d", a_engine->cur_payload_map->remote_sdp_port);
 				switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_IP_VARIABLE, a_engine->cur_payload_map->remote_sdp_ip);
 				switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_PORT_VARIABLE, tmp);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya426 switch_core_media_negotiate_sdp\n");
 
 
 				if (a_engine->cur_payload_map->pt == smh->mparams->te) {
 					switch_payload_t pl = 0;
 					payload_map_t *pmap;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya427 switch_core_media_negotiate_sdp\n");
 
 					switch_mutex_lock(smh->sdp_mutex);
 					for (pmap = a_engine->cur_payload_map; pmap && pmap->allocated; pmap = pmap->next) {
@@ -5816,6 +5943,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				switch_channel_set_variable(session->channel, "rtp_audio_recv_pt", tmp);
 
 				if (a_engine->read_impl.iananame) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya428 switch_core_media_negotiate_sdp\n");
 					if (!switch_core_codec_ready(&a_engine->read_codec) ||
 						((strcasecmp(matches[0].imp->iananame, a_engine->read_impl.iananame) ||
 						  matches[0].imp->microseconds_per_packet != a_engine->read_impl.microseconds_per_packet ||
@@ -5823,17 +5951,22 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						  ))) {
 
 						a_engine->reset_codec = 1;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya429 switch_core_media_negotiate_sdp\n");
 					}
 				} else if (switch_core_media_set_codec(session, 0, smh->mparams->codec_flags) != SWITCH_STATUS_SUCCESS) {
 					match = 0;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya430 switch_core_media_negotiate_sdp\n");
 				}
 
 				if (match) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya431 switch_core_media_negotiate_sdp\n");
 					if (check_ice(smh, SWITCH_MEDIA_TYPE_AUDIO, sdp, m) == SWITCH_STATUS_FALSE) {
 						match = 0;
 						got_audio = 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya432 switch_core_media_negotiate_sdp\n");
 					} else {
 						got_audio = 1;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya433 switch_core_media_negotiate_sdp\n");
 					}
 				}
 
@@ -5852,6 +5985,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						best_te_rate = map->rm_rate;
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Set telephone-event payload to %u@%lu\n", best_te, best_te_rate);
 					}
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya434 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 
@@ -5863,9 +5997,11 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 						if (a_engine->rtp_session) {
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Set comfort noise payload to %u@%lu\n", cng_pt, cng_rate);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya435 switch_core_media_negotiate_sdp\n");
 							switch_rtp_set_cng_pt(a_engine->rtp_session, cng_pt);
 						}
 					}
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya436 switch_core_media_negotiate_sdp\n");
 					continue;
 				}
 			}
@@ -5886,6 +6022,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			if (best_te) {
 				smh->mparams->te_rate = best_te_rate;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya437 switch_core_media_negotiate_sdp\n");
 
 				if (smh->mparams->dtmf_type == DTMF_AUTO || smh->mparams->dtmf_type == DTMF_2833 ||
 					switch_channel_test_flag(session->channel, CF_LIBERAL_DTMF)) {
@@ -5905,24 +6042,29 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					switch_channel_set_variable_printf(session->channel, "rtp_2833_send_payload", "%d", smh->mparams->te);
 					switch_rtp_set_telephony_recv_event(a_engine->rtp_session, smh->mparams->recv_te);
 					switch_channel_set_variable_printf(session->channel, "rtp_2833_recv_payload", "%d", smh->mparams->recv_te);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya438 switch_core_media_negotiate_sdp\n");
 				}
 
 
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "%s Set 2833 dtmf send payload to %u recv payload to %u\n",
 								  switch_channel_get_name(session->channel), smh->mparams->te, smh->mparams->recv_te);
+									switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya439 switch_core_media_negotiate_sdp\n");
 
 
 			} else {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya440 switch_core_media_negotiate_sdp\n");
 				/* by default, use SIP INFO if 2833 is not in the SDP */
 				if (!switch_false(switch_channel_get_variable(channel, "rtp_info_when_no_2833"))) {
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "No 2833 in SDP.  Disable 2833 dtmf and switch to INFO\n");
 					switch_channel_set_variable(session->channel, "dtmf_type", "info");
 					smh->mparams->dtmf_type = DTMF_INFO;
 					smh->mparams->recv_te = smh->mparams->te = 0;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya441 switch_core_media_negotiate_sdp\n");
 				} else {
 					switch_channel_set_variable(session->channel, "dtmf_type", "none");
 					smh->mparams->dtmf_type = DTMF_NONE;
 					smh->mparams->recv_te = smh->mparams->te = 0;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya442 switch_core_media_negotiate_sdp\n");
 				}
 			}
 
@@ -5933,13 +6075,16 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			switch_channel_set_flag(session->channel, CF_RTT);
 
 			connection = sdp->sdp_connection;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya443 switch_core_media_negotiate_sdp\n");
 			if (m->m_connections) {
 				connection = m->m_connections;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya444 switch_core_media_negotiate_sdp\n");
 			}
 
 			if (!connection) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Cannot find a c= line in the sdp at media or session level!\n");
 				match = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya445 switch_core_media_negotiate_sdp\n");
 				break;
 			}
 
@@ -5951,6 +6096,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			for (map = m->m_rtpmaps; map; map = map->rm_next) {
 				payload_map_t *pmap;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya446 switch_core_media_negotiate_sdp\n");
 
 				pmap = switch_core_media_add_payload_map(session,
 														 SWITCH_MEDIA_TYPE_TEXT,
@@ -5969,6 +6115,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				pmap->remote_sdp_port = (switch_port_t) m->m_port;
 				if (map->rm_fmtp) {
 					pmap->rm_fmtp = switch_core_session_strdup(session, (char *) map->rm_fmtp);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya447 switch_core_media_negotiate_sdp\n");
 				}
 
 
@@ -5984,17 +6131,21 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			}
 
 			for (attr = m->m_attributes; attr; attr = attr->a_next) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya448 switch_core_media_negotiate_sdp\n");
 				if (!strcasecmp(attr->a_name, "rtcp") && attr->a_value) {
 					switch_channel_set_variable(session->channel, "sip_remote_text_rtcp_port", attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya449 switch_core_media_negotiate_sdp\n");
 
 				} else if (!got_text_crypto && !strcasecmp(attr->a_name, "crypto") && !zstr(attr->a_value)) {
 					int crypto_tag;
-
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya450 switch_core_media_negotiate_sdp\n");
+					
 					if (!(smh->mparams->ndlb & SM_NDLB_ALLOW_CRYPTO_IN_AVP) &&
 						!switch_true(switch_channel_get_variable(session->channel, "rtp_allow_crypto_in_avp"))) {
 						if (m->m_proto != sdp_proto_srtp && !got_webrtc) {
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "a=crypto in RTP/AVP, refer to rfc3711\n");
 							match = 0;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya451 switch_core_media_negotiate_sdp\n");
 							goto done;
 						}
 					}
@@ -6036,6 +6187,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			switch_core_media_set_rmode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, sdp_media_flow(m->m_mode), sdp_type);
 			
 			if (sdp_type == SDP_TYPE_REQUEST) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya442 switch_core_media_negotiate_sdp\n");
 				sdp_bandwidth_t *bw;
 				int tias = 0;
 
@@ -6052,15 +6204,19 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				case SWITCH_MEDIA_FLOW_RECVONLY:
 					switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, SWITCH_MEDIA_FLOW_SENDONLY, sdp_type);
 					switch_channel_set_flag(smh->session->channel, CF_VIDEO_READY);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya443 switch_core_media_negotiate_sdp\n");
 					break;
 				case SWITCH_MEDIA_FLOW_SENDONLY:
 					switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, SWITCH_MEDIA_FLOW_RECVONLY, sdp_type);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya444 switch_core_media_negotiate_sdp\n");
 					break;
 				case SWITCH_MEDIA_FLOW_INACTIVE:
 					switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, SWITCH_MEDIA_FLOW_INACTIVE, sdp_type);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya445 switch_core_media_negotiate_sdp\n");
 					break;
 				default:
 					switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, SWITCH_MEDIA_FLOW_SENDRECV, sdp_type);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya446 switch_core_media_negotiate_sdp\n");
 					break;
 				}
 			}
@@ -6087,6 +6243,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			if (!connection) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Cannot find a c= line in the sdp at media or session level!\n");
 				match = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya447 switch_core_media_negotiate_sdp\n");
 				break;
 			}
 
@@ -6095,6 +6252,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			skip_video_rtcp = 0;
 			got_video_rtcp_mux = 0;
 			for (attr = m->m_attributes; attr; attr = attr->a_next) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya448 switch_core_media_negotiate_sdp\n");
 				if (!strcasecmp(attr->a_name, "rtcp-mux")) {
 					got_video_rtcp_mux = 1;
 					skip_video_rtcp = 1;
@@ -6108,9 +6266,12 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			}
 
 			for (attr = m->m_attributes; attr; attr = attr->a_next) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya449 switch_core_media_negotiate_sdp\n");
 				if (!strcasecmp(attr->a_name, "framerate") && attr->a_value) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya450 switch_core_media_negotiate_sdp\n");
 					//framerate = atoi(attr->a_value);
 				} else if (!strcasecmp(attr->a_name, "rtcp-fb")) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya451 switch_core_media_negotiate_sdp\n");
 					if (!zstr(attr->a_value)) {
 						if (switch_stristr("fir", attr->a_value)) {
 							v_engine->fir++;
@@ -6133,6 +6294,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					}
 				} else if (!strcasecmp(attr->a_name, "rtcp") && attr->a_value && !skip_video_rtcp) {
 					v_engine->remote_rtcp_port = (switch_port_t)atoi(attr->a_value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya452 switch_core_media_negotiate_sdp\n");
 					switch_channel_set_variable_printf(session->channel, "rtp_remote_video_rtcp_port", "%d", v_engine->remote_rtcp_port);
 					if (!smh->mparams->rtcp_video_interval_msec) {
 						smh->mparams->rtcp_video_interval_msec = SWITCH_RTCP_VIDEO_INTERVAL_MSEC;
@@ -6140,6 +6302,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					got_video_rtcp = 1;
 				} else if (!got_video_crypto && !strcasecmp(attr->a_name, "crypto") && !zstr(attr->a_value)) {
 					int crypto_tag;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya453 switch_core_media_negotiate_sdp\n");
 
 					if (!(smh->mparams->ndlb & SM_NDLB_ALLOW_CRYPTO_IN_AVP) &&
 						!switch_true(switch_channel_get_variable(session->channel, "rtp_allow_crypto_in_avp"))) {
@@ -6163,6 +6326,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 			if (switch_true(switch_channel_get_variable_dup(session->channel, "inherit_codec", SWITCH_FALSE, -1))) {
 				vmatch_pt = 1;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya454 switch_core_media_negotiate_sdp\n");
 			}
 
 		compare:
@@ -6183,13 +6347,16 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 				for (i = 0; i < total_codecs; i++) {
 					const switch_codec_implementation_t *imp = codec_array[i];
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya455 switch_core_media_negotiate_sdp\n");
 
 					if (imp->codec_type != SWITCH_CODEC_TYPE_VIDEO) {
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya456 switch_core_media_negotiate_sdp\n");
 						continue;
 					}
 
 					if (switch_channel_direction(session->channel) == SWITCH_CALL_DIRECTION_INBOUND &&
 						switch_channel_test_flag(session->channel, CF_NOVIDEO)) {
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya457 switch_core_media_negotiate_sdp\n");
 						continue;
 					}
 
@@ -6197,25 +6364,33 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 									  rm_encoding, map->rm_pt, imp->iananame, imp->ianacode);
 					if ((zstr(map->rm_encoding) || (smh->mparams->ndlb & SM_NDLB_ALLOW_BAD_IANANAME)) && map->rm_pt < 96) {
 						vmatch = (map->rm_pt == imp->ianacode) ? 1 : 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya458 switch_core_media_negotiate_sdp\n");
 					} else {
 						vmatch = strcasecmp(rm_encoding, imp->iananame) ? 0 : 1;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya459 switch_core_media_negotiate_sdp\n");
 					}
 
 					if (sdp_type == SDP_TYPE_RESPONSE && consider_video_fmtp && vmatch && !zstr(map->rm_fmtp) && !zstr(smh->fmtps[i])) {
 						almost_vmatch = 1;
 						vmatch = !strcasecmp(smh->fmtps[i], map->rm_fmtp);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya460 switch_core_media_negotiate_sdp\n");
 					}
 
 					if (vmatch && vmatch_pt) {
 						const char *other_pt = switch_channel_get_variable_partner(channel, "rtp_video_pt");
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya461 switch_core_media_negotiate_sdp\n");
 
 						if (other_pt) {
 							int opt = atoi(other_pt);
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya462 switch_core_media_negotiate_sdp\n");
 							if (map->rm_pt != opt) {
 								vmatch = 0;
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya463 switch_core_media_negotiate_sdp\n");
 							} else {
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya464 switch_core_media_negotiate_sdp\n");
 								if (switch_channel_var_true(channel, "inherit_video_fmtp")) {
 									inherit_video_fmtp = switch_channel_get_variable_partner(channel, "rtp_video_fmtp");
+									switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya465 switch_core_media_negotiate_sdp\n");
 								}
 							}
 						}
@@ -6224,6 +6399,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					if (vmatch) {
 						matches[m_idx].imp = imp;
 						matches[m_idx].map = map;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya466 switch_core_media_negotiate_sdp\n");
 
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Video Codec Compare [%s:%d] +++ is saved as a match\n",
 										  imp->iananame, map->rm_pt);
@@ -6232,6 +6408,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					}
 
 					vmatch = 0;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya467 switch_core_media_negotiate_sdp\n");
 				}
 			}
 
@@ -6240,12 +6417,14 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				almost_vmatch = 0;
 				m_idx = 0;
 				consider_video_fmtp = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya468 switch_core_media_negotiate_sdp\n");
 				goto compare;
 			}
 
 			if (vmatch_pt && !m_idx) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "No matches with inherit_codec, fallback to ignoring PT\n");
 				vmatch_pt = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya469 switch_core_media_negotiate_sdp\n");
 				goto compare;
 			}
 
@@ -6253,6 +6432,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Crypto not negotiated but required.\n");
 				vmatch = 0;
 				m_idx = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya470 switch_core_media_negotiate_sdp\n");
 			}
 
 			if (m_idx) {
@@ -6260,6 +6440,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				//const char *mirror = switch_channel_get_variable(session->channel, "rtp_mirror_remote_video_codec_payload");
 				int j = 0;
 
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya471 switch_core_media_negotiate_sdp\n");
 				if (greedy) { /* sort in favor of mine */
 					greedy_sort(smh, matches, m_idx, codec_array, total_codecs);
 				}
@@ -6269,6 +6450,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				v_engine->payload_map = NULL;
 
 				for(j = 0; j < m_idx && smh->num_negotiated_codecs < SWITCH_MAX_CODECS; j++) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya472 switch_core_media_negotiate_sdp\n");
 					payload_map_t *pmap = switch_core_media_add_payload_map(session,
 																			SWITCH_MEDIA_TYPE_VIDEO,
 																			matches[j].map->rm_encoding,
@@ -6291,6 +6473,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 					mimp = matches[j].imp;
 					map = matches[j].map;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya473 switch_core_media_negotiate_sdp\n");
 
 					pmap->rm_encoding = switch_core_session_strdup(session, (char *) map->rm_encoding);
 					pmap->recv_pt = (switch_payload_t) map->rm_pt;
@@ -6319,14 +6502,18 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				switch_core_media_check_video_codecs(session);
 				switch_snprintf(tmp, sizeof(tmp), "%d", v_engine->cur_payload_map->recv_pt);
 				switch_channel_set_variable(session->channel, "rtp_video_recv_pt", tmp);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya474 switch_core_media_negotiate_sdp\n");
 
 				if (switch_core_codec_ready(&v_engine->read_codec) && strcasecmp(matches[0].imp->iananame, v_engine->read_codec.implementation->iananame)) {
 					v_engine->reset_codec = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya475 switch_core_media_negotiate_sdp\n");
 				}
 
 				if (switch_core_media_set_video_codec(session, 0) == SWITCH_STATUS_SUCCESS) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya476 switch_core_media_negotiate_sdp\n");
 					if (check_ice(smh, SWITCH_MEDIA_TYPE_VIDEO, sdp, m) == SWITCH_STATUS_FALSE) {
 						vmatch = 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya477 switch_core_media_negotiate_sdp\n");
 					}
 				}
 			}
@@ -6338,19 +6525,24 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
  endsdp:
 
 	if (rtcp_auto_audio || rtcp_auto_video) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya478 switch_core_media_negotiate_sdp\n");
 		if (rtcp_auto_audio && !skip_rtcp && !got_audio_rtcp && audio_port) {
 			switch_channel_set_variable_printf(session->channel, "rtp_remote_audio_rtcp_port", "%d", audio_port + 1);
 			a_engine->remote_rtcp_port = audio_port + 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya479 switch_core_media_negotiate_sdp\n");
 
 			if (!smh->mparams->rtcp_audio_interval_msec) {
 				smh->mparams->rtcp_audio_interval_msec = SWITCH_RTCP_AUDIO_INTERVAL_MSEC;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya480 switch_core_media_negotiate_sdp\n");
 			}
 		}
 		if (rtcp_auto_video && !skip_video_rtcp && !got_video_rtcp && video_port) {
 			switch_channel_set_variable_printf(session->channel, "rtp_remote_video_rtcp_port", "%d", video_port + 1);
 			v_engine->remote_rtcp_port = video_port + 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya481 switch_core_media_negotiate_sdp\n");
 			if (!smh->mparams->rtcp_video_interval_msec) {
 				smh->mparams->rtcp_video_interval_msec = SWITCH_RTCP_VIDEO_INTERVAL_MSEC;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya482 switch_core_media_negotiate_sdp\n");
 			}
 		}
 	}
@@ -6358,6 +6550,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 
 	if (!saw_audio) {
 		payload_map_t *pmap;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya483 switch_core_media_negotiate_sdp\n");
 
 		a_engine->rmode = SWITCH_MEDIA_FLOW_DISABLED;
 		switch_channel_set_variable(smh->session->channel, "audio_media_flow", "inactive");
@@ -6383,76 +6576,100 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 		a_engine->cur_payload_map = pmap;
 		switch_channel_set_flag(channel, CF_AUDIO_PAUSE_READ);
 		switch_channel_set_flag(channel, CF_AUDIO_PAUSE_WRITE);
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya484 switch_core_media_negotiate_sdp\n");
 	}
 
  done:
 
 	if (v_engine->rtp_session) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya485 switch_core_media_negotiate_sdp\n");
 		if (v_engine->fir) {
 			switch_rtp_set_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_FIR);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya486 switch_core_media_negotiate_sdp\n");
 		} else {
 			switch_rtp_clear_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_FIR);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya487 switch_core_media_negotiate_sdp\n");
 		}
 		
 		if (v_engine->pli) {
 			switch_rtp_set_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_PLI);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya488 switch_core_media_negotiate_sdp\n");
 		} else {
 			switch_rtp_clear_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_PLI);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya489 switch_core_media_negotiate_sdp\n");
 		}
 		
 		if (v_engine->nack) {
 			switch_rtp_set_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_NACK);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya490 switch_core_media_negotiate_sdp\n");
 		} else {
 			switch_rtp_clear_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_NACK);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya491 switch_core_media_negotiate_sdp\n");
 		}
 		
 		if (v_engine->tmmbr) {
 			switch_rtp_set_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_TMMBR);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya492 switch_core_media_negotiate_sdp\n");
 		} else {
 			switch_rtp_clear_flag(v_engine->rtp_session, SWITCH_RTP_FLAG_TMMBR);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya493 switch_core_media_negotiate_sdp\n");
 		}
 	}
 
 	if (match) {
 		switch_channel_set_flag(channel, CF_AUDIO);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya494 switch_core_media_negotiate_sdp\n");
 	} else {
 		switch_channel_clear_flag(channel, CF_AUDIO);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya495 switch_core_media_negotiate_sdp\n");
 	}
 
 	if (vmatch) {
 		switch_channel_set_flag(channel, CF_VIDEO);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya496 switch_core_media_negotiate_sdp\n");
 	} else {
 		if (switch_channel_test_flag(channel, CF_VIDEO) && !saw_video) {
 			//switch_core_media_set_rmode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, SWITCH_MEDIA_FLOW_INACTIVE, sdp_type);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya497 switch_core_media_negotiate_sdp\n");
 
 			if (sdp_type == SDP_TYPE_REQUEST) {
 				switch_core_media_set_smode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, SWITCH_MEDIA_FLOW_INACTIVE, sdp_type);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya498 switch_core_media_negotiate_sdp\n");
 			}
 		}
 	}
 
 	if (tmatch) {
 		switch_channel_set_flag(channel, CF_HAS_TEXT);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya499 switch_core_media_negotiate_sdp\n");
 	} else {
 		switch_channel_clear_flag(channel, CF_HAS_TEXT);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya500 switch_core_media_negotiate_sdp\n");
 	}
 
 	if (fmatch) {
 		switch_channel_set_flag(channel, CF_IMAGE_SDP);
 		switch_channel_set_flag(channel, CF_AUDIO);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya501 switch_core_media_negotiate_sdp\n");
 	} else {
 		switch_channel_clear_flag(channel, CF_IMAGE_SDP);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya502 switch_core_media_negotiate_sdp\n");
 	}
 
  t38_done:
 
 	if (parser) {
 		sdp_parser_free(parser);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya503 switch_core_media_negotiate_sdp\n");
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya504 switch_core_media_negotiate_sdp\n");
 	}
 
 	smh->mparams->cng_pt = cng_pt;
 	smh->mparams->cng_rate = cng_rate;
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya475 switch_core_media_negotiate_sdp\n");
 	check_stream_changes(session, r_sdp, sdp_type);
 
 	return match || vmatch || tmatch || fmatch;
@@ -8248,7 +8465,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_choose_ports(switch_core_sessi
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
 	switch_media_handle_t *smh;
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya30 switch_core_media_choose_ports\n");
+
+
 	if (!(smh = session->media_handle)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya31 switch_core_media_choose_ports\n");
 		return SWITCH_STATUS_FALSE;
 	}
 
@@ -8258,18 +8479,23 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_choose_ports(switch_core_sessi
 						  switch_channel_get_name(smh->session->channel));
 		switch_channel_hangup(smh->session->channel, SWITCH_CAUSE_BEARERCAPABILITY_NOTAVAIL);
 
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya33 switch_core_media_choose_ports\n");
 		return SWITCH_STATUS_FALSE;
 	}
 
 	if (audio && (status = switch_core_media_choose_port(session, SWITCH_MEDIA_TYPE_AUDIO, 0)) == SWITCH_STATUS_SUCCESS) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya34 switch_core_media_choose_ports\n");
 		if (video) {
 			switch_core_media_check_video_codecs(session);
 			if (switch_channel_test_flag(session->channel, CF_VIDEO_POSSIBLE)) {
 				switch_core_media_choose_port(session, SWITCH_MEDIA_TYPE_VIDEO, 0);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya35 switch_core_media_choose_ports\n");
 			}
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya36 switch_core_media_choose_ports\n");
 		}
 	}
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya37 switch_core_media_choose_ports\n");
 	return status;
 }
 
@@ -8525,16 +8751,22 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 	switch_rtp_engine_t *a_engine, *v_engine, *t_engine;
 	switch_media_handle_t *smh;
 	int is_reinvite = 0;
+	
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya700 switch_core_media_activate_rtp\n");
+
 
 #ifdef HAVE_OPENSSL_DTLSv1_2_method
 			uint8_t want_DTLSv1_2 = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya701 switch_core_media_activate_rtp\n");
 #else
 			uint8_t want_DTLSv1_2 = 0;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya702 switch_core_media_activate_rtp\n");
 #endif
 
 	switch_assert(session);
 
 	if (!(smh = session->media_handle)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya703 switch_core_media_activate_rtp\n");
 		return SWITCH_STATUS_FALSE;
 	}
 
@@ -8543,11 +8775,13 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 	t_engine = &smh->engines[SWITCH_MEDIA_TYPE_TEXT];
 
 	if (a_engine->rtp_session || v_engine->rtp_session || t_engine->rtp_session || switch_channel_test_flag(session->channel, CF_REINVITE)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya704 switch_core_media_activate_rtp\n");
 		is_reinvite = 1;
 	}
 
 
 	if (switch_channel_down(session->channel)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya705 switch_core_media_activate_rtp\n");
 		return SWITCH_STATUS_FALSE;
 	}
 
@@ -8557,37 +8791,47 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 		switch_rtp_reset_media_timer(a_engine->rtp_session);
 		check_media_timeout_params(session, a_engine);
 		check_media_timeout_params(session, v_engine);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya706 switch_core_media_activate_rtp\n");
 	}
 
 	if (a_engine->crypto_type != CRYPTO_INVALID) {
 		switch_channel_set_flag(session->channel, CF_SECURE);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya707 switch_core_media_activate_rtp\n");
 	}
 	
 	if (want_DTLSv1_2) {
 		switch_channel_set_flag(session->channel, CF_WANT_DTLSv1_2);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya708 switch_core_media_activate_rtp\n");
 	}
 
 	if (switch_channel_test_flag(session->channel, CF_PROXY_MODE)) {
 		status = SWITCH_STATUS_SUCCESS;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya709 switch_core_media_activate_rtp\n");
 		goto end;
 	}
 
 	if (!is_reinvite) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya710 switch_core_media_activate_rtp\n");
 		if (switch_rtp_ready(a_engine->rtp_session)) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya711 switch_core_media_activate_rtp\n");
 			if (switch_channel_test_flag(session->channel, CF_TEXT_POSSIBLE) && !switch_rtp_ready(t_engine->rtp_session)) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya712 switch_core_media_activate_rtp\n");
 				goto text;
 			}
 
 			if (switch_channel_test_flag(session->channel, CF_VIDEO_POSSIBLE) && !switch_rtp_ready(v_engine->rtp_session)) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya713 switch_core_media_activate_rtp\n");
 				goto video;
 			}
 
 			status = SWITCH_STATUS_SUCCESS;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya714 switch_core_media_activate_rtp\n");
 			goto end;
 		}
 	}
 
 	if ((status = switch_core_media_set_codec(session, 0, smh->mparams->codec_flags)) != SWITCH_STATUS_SUCCESS) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya715 switch_core_media_activate_rtp\n");
 		goto end;
 	}
 
@@ -8599,39 +8843,47 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 	if (!switch_media_handle_test_media_flag(smh, SCMF_DISABLE_RTP_AUTOADJ) && !switch_channel_test_flag(session->channel, CF_AVPF) &&
 		!((val = switch_channel_get_variable(session->channel, "disable_rtp_auto_adjust")) && switch_true(val))) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya716 switch_core_media_activate_rtp\n");
 		flags[SWITCH_RTP_FLAG_AUTOADJ]++;
 	}
 
 	if (switch_media_handle_test_media_flag(smh, SCMF_PASS_RFC2833)
 		|| ((val = switch_channel_get_variable(session->channel, "pass_rfc2833")) && switch_true(val))) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya717 switch_core_media_activate_rtp\n");
 		switch_channel_set_flag(session->channel, CF_PASS_RFC2833);
 	}
 
 
 	if (switch_media_handle_test_media_flag(smh, SCMF_AUTOFLUSH)
 		|| ((val = switch_channel_get_variable(session->channel, "rtp_autoflush")) && switch_true(val))) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya718 switch_core_media_activate_rtp\n");
 		flags[SWITCH_RTP_FLAG_AUTOFLUSH]++;
 	}
 
 	if (!(switch_media_handle_test_media_flag(smh, SCMF_REWRITE_TIMESTAMPS) ||
 		  ((val = switch_channel_get_variable(session->channel, "rtp_rewrite_timestamps")) && switch_true(val)))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya719 switch_core_media_activate_rtp\n");
 		flags[SWITCH_RTP_FLAG_RAW_WRITE]++;
 	}
 
 	if (switch_media_handle_test_media_flag(smh, SCMF_SUPPRESS_CNG)) {
 		smh->mparams->cng_pt = 0;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya720 switch_core_media_activate_rtp\n");
 	} else if (smh->mparams->cng_pt) {
 		flags[SWITCH_RTP_FLAG_AUTO_CNG]++;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya721 switch_core_media_activate_rtp\n");
 	}
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	if (!strcasecmp(a_engine->read_impl.iananame, "L16")) {
 		flags[SWITCH_RTP_FLAG_BYTESWAP]++;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya722 switch_core_media_activate_rtp\n");
 	}
 #endif
 
 	if ((flags[SWITCH_RTP_FLAG_BYTESWAP]) && (val = switch_channel_get_variable(session->channel, "rtp_disable_byteswap")) && switch_true(val)) {
 		flags[SWITCH_RTP_FLAG_BYTESWAP] = 0;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya723 switch_core_media_activate_rtp\n");
 	}
 
 	if (a_engine->rtp_session && is_reinvite) {
@@ -8645,6 +8897,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio params are unchanged for %s.\n",
 							  switch_channel_get_name(session->channel));
 			a_engine->cur_payload_map->negotiated = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya724 switch_core_media_activate_rtp\n");
 			//XX
 			goto video;
 		} else {
@@ -8656,10 +8909,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_IP_VARIABLE, a_engine->cur_payload_map->remote_sdp_ip);
 			switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_PORT_VARIABLE, tmp);
 			switch_channel_execute_on(session->channel, "execute_on_audio_change");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya725 switch_core_media_activate_rtp\n");
 		}
 	}
 
 	if (!switch_channel_test_flag(session->channel, CF_PROXY_MEDIA)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya726 switch_core_media_activate_rtp\n");
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "AUDIO RTP [%s] %s port %d -> %s port %d codec: %u ms: %d\n",
 						  switch_channel_get_name(session->channel),
 						  a_engine->local_sdp_ip,
@@ -8674,21 +8929,26 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 	switch_channel_set_variable(session->channel, SWITCH_LOCAL_MEDIA_IP_VARIABLE, a_engine->local_sdp_ip);
 	switch_channel_set_variable(session->channel, SWITCH_LOCAL_MEDIA_PORT_VARIABLE, tmp);
 	switch_channel_set_variable(session->channel, SWITCH_ADVERTISED_MEDIA_IP_VARIABLE, a_engine->adv_sdp_ip);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya727 switch_core_media_activate_rtp\n");
 
 	if (a_engine->rtp_session && is_reinvite) {
 		const char *rport = NULL;
 		switch_port_t remote_rtcp_port = a_engine->remote_rtcp_port;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya728 switch_core_media_activate_rtp\n");
 
 		if (!remote_rtcp_port) {
 			if ((rport = switch_channel_get_variable(session->channel, "rtp_remote_audio_rtcp_port"))) {
 				remote_rtcp_port = (switch_port_t)atoi(rport);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya729 switch_core_media_activate_rtp\n");
 			}
 		}
 
 		if (switch_rtp_set_remote_address(a_engine->rtp_session, a_engine->cur_payload_map->remote_sdp_ip, a_engine->cur_payload_map->remote_sdp_port,
 										  remote_rtcp_port, SWITCH_TRUE, &err) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya730 switch_core_media_activate_rtp\n");
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "AUDIO RTP REPORTS ERROR: [%s]\n", err);
 		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya731 switch_core_media_activate_rtp\n");
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "AUDIO RTP CHANGING DEST TO: [%s:%d]\n",
 							  a_engine->cur_payload_map->remote_sdp_ip, a_engine->cur_payload_map->remote_sdp_port);
 
@@ -8701,11 +8961,13 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 				!((val = switch_channel_get_variable(session->channel, "disable_rtp_auto_adjust")) && switch_true(val)) &&
 				!switch_channel_test_flag(session->channel, CF_AVPF)) {
 				/* Reactivate the NAT buster flag. */
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya732 switch_core_media_activate_rtp\n");
 				switch_rtp_set_flag(a_engine->rtp_session, SWITCH_RTP_FLAG_AUTOADJ);
 			}
 		}
 
 		if (session && a_engine) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya733 switch_core_media_activate_rtp\n");
 			check_dtls_reinvite(session, a_engine);
 		}
 
@@ -8722,6 +8984,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 		if (!switch_media_handle_test_media_flag(smh, SCMF_DISABLE_RTP_AUTOADJ) && !switch_channel_test_flag(session->channel, CF_AVPF) &&
 			!((val = switch_channel_get_variable(session->channel, "disable_rtp_auto_adjust")) && switch_true(val))) {
 			flags[SWITCH_RTP_FLAG_AUTOADJ]++;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya734 switch_core_media_activate_rtp\n");
 		}
 
 		timer_name = NULL;
@@ -8736,6 +8999,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		if (switch_rtp_ready(a_engine->rtp_session)) {
 			switch_rtp_set_default_payload(a_engine->rtp_session, a_engine->cur_payload_map->pt);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya735 switch_core_media_activate_rtp\n");
 		}
 
 	} else {
@@ -8743,12 +9007,14 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		if ((var = switch_channel_get_variable(session->channel, "rtp_timer_name"))) {
 			timer_name = (char *) var;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya736 switch_core_media_activate_rtp\n");
 		}
 	}
 
 
 	if (switch_channel_up(session->channel)) {
 		switch_channel_set_variable(session->channel, "rtp_use_timer_name", timer_name);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya737 switch_core_media_activate_rtp\n");
 
 
 
@@ -8764,6 +9030,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		if (switch_rtp_ready(a_engine->rtp_session)) {
 			switch_rtp_set_payload_map(a_engine->rtp_session, &a_engine->payload_map);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya737 switch_core_media_activate_rtp\n");
 		}
 	}
 
@@ -8775,6 +9042,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		switch_mutex_init(&smh->read_mutex[SWITCH_MEDIA_TYPE_AUDIO], SWITCH_MUTEX_NESTED, switch_core_session_get_pool(session));
 		switch_mutex_init(&smh->write_mutex[SWITCH_MEDIA_TYPE_AUDIO], SWITCH_MUTEX_NESTED, switch_core_session_get_pool(session));
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya738 switch_core_media_activate_rtp\n");
 
 		//switch_core_media_set_rtp_session(session, SWITCH_MEDIA_TYPE_AUDIO, a_engine->rtp_session);
 
@@ -8782,12 +9050,15 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			uint32_t ssrc_ul = (uint32_t) strtoul(ssrc, NULL, 10);
 			switch_rtp_set_ssrc(a_engine->rtp_session, ssrc_ul);
 			a_engine->ssrc = ssrc_ul;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya739 switch_core_media_activate_rtp\n");
 		} else {
 			switch_rtp_set_ssrc(a_engine->rtp_session, a_engine->ssrc);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya740 switch_core_media_activate_rtp\n");
 		}
 
 		if (a_engine->remote_ssrc) {
 			switch_rtp_set_remote_ssrc(a_engine->rtp_session, a_engine->remote_ssrc);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya741 switch_core_media_activate_rtp\n");
 		}
 
 		check_media_timeout_params(session, a_engine);
@@ -8798,16 +9069,20 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		if ((val = switch_channel_get_variable(session->channel, "rtp_enable_vad_in")) && switch_true(val)) {
 			vad_in = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya742 switch_core_media_activate_rtp\n");
 		}
 		if ((val = switch_channel_get_variable(session->channel, "rtp_enable_vad_out")) && switch_true(val)) {
 			vad_out = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya743 switch_core_media_activate_rtp\n");
 		}
 
 		if ((val = switch_channel_get_variable(session->channel, "rtp_disable_vad_in")) && switch_true(val)) {
 			vad_in = 0;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya744 switch_core_media_activate_rtp\n");
 		}
 		if ((val = switch_channel_get_variable(session->channel, "rtp_disable_vad_out")) && switch_true(val)) {
 			vad_out = 0;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya745 switch_core_media_activate_rtp\n");
 		}
 
 
@@ -8818,10 +9093,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 		if (smh->mparams->auto_rtp_bugs & RTP_BUG_IGNORE_MARK_BIT) {
 			a_engine->rtp_bugs |= RTP_BUG_IGNORE_MARK_BIT;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya746 switch_core_media_activate_rtp\n");
 		}
 
 		if ((val = switch_channel_get_variable(session->channel, "rtp_manual_rtp_bugs"))) {
 			switch_core_media_parse_rtp_bugs(&a_engine->rtp_bugs, val);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya746 switch_core_media_activate_rtp\n");
 		}
 
 		//if (switch_channel_test_flag(session->channel, CF_AVPF)) {
@@ -8833,6 +9110,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 		if ((vad_in && inb) || (vad_out && !inb)) {
 			switch_rtp_enable_vad(a_engine->rtp_session, session, &a_engine->read_codec, SWITCH_VAD_FLAG_TALKING | SWITCH_VAD_FLAG_EVENTS_TALK | SWITCH_VAD_FLAG_EVENTS_NOTALK);
 
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya747 switch_core_media_activate_rtp\n");
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "AUDIO RTP Engage VAD for %s ( %s %s )\n",
 							  switch_channel_get_name(switch_core_session_get_channel(session)), vad_in ? "in" : "", vad_out ? "out" : "");
 		}
@@ -8916,6 +9194,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			}
 		}
 
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya723 switch_core_media_activate_rtp\n");
 		if (!zstr(a_engine->local_dtls_fingerprint.str) && switch_rtp_has_dtls() && dtls_ok(smh->session)) {
 			dtls_type_t xtype, dtype = a_engine->dtls_controller ? DTLS_TYPE_CLIENT : DTLS_TYPE_SERVER;
 
@@ -9229,6 +9508,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 				}
 
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya723 switch_core_media_activate_rtp\n");
 				if ((val = switch_channel_get_variable(session->channel, "rtcp_text_interval_msec")) || (val = smh->mparams->rtcp_text_interval_msec)) {
 					const char *rport = switch_channel_get_variable(session->channel, "rtp_remote_text_rtcp_port");
 					switch_port_t remote_port = t_engine->remote_rtcp_port;
@@ -9284,6 +9564,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 					}
 				}
 
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya724 switch_core_media_activate_rtp\n");
 				if (!zstr(t_engine->local_dtls_fingerprint.str) && switch_rtp_has_dtls() && dtls_ok(smh->session)) {
 					dtls_type_t xtype,
 						dtype = t_engine->dtls_controller ? DTLS_TYPE_CLIENT : DTLS_TYPE_SERVER;
@@ -9612,6 +9893,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 					}
 				}
 
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya725 switch_core_media_activate_rtp\n");
 				if (!zstr(v_engine->local_dtls_fingerprint.str) && switch_rtp_has_dtls() && dtls_ok(smh->session)) {
 					dtls_type_t xtype,
 						dtype = v_engine->dtls_controller ? DTLS_TYPE_CLIENT : DTLS_TYPE_SERVER;
@@ -9665,10 +9947,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			}
 		}
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya726 switch_core_media_activate_rtp\n");
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "AUDIO RTP REPORTS ERROR: [%s]\n", switch_str_nil(err));
 		switch_channel_hangup(session->channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
 		status = SWITCH_STATUS_FALSE;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya727 switch_core_media_activate_rtp\n");
 		goto end;
 	}
 
@@ -9685,7 +9969,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 	switch_channel_clear_flag(session->channel, CF_REINVITE);
 
 	switch_core_recovery_track(session);
-
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya728 switch_core_media_activate_rtp\n");
 	return status;
 
 }
