@@ -5838,8 +5838,8 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			}
 
 			if (m_idx) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya425 switch_core_media_negotiate_sdp\n");
 				int j;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya425 switch_core_media_negotiate_sdp\n");
 
 				if (greedy) { /* sort in favor of mine */
 					greedy_sort(smh, matches, m_idx, codec_array, total_codecs);
@@ -6187,9 +6187,9 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 			switch_core_media_set_rmode(smh->session, SWITCH_MEDIA_TYPE_VIDEO, sdp_media_flow(m->m_mode), sdp_type);
 			
 			if (sdp_type == SDP_TYPE_REQUEST) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya442 switch_core_media_negotiate_sdp\n");
 				sdp_bandwidth_t *bw;
 				int tias = 0;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya442 switch_core_media_negotiate_sdp\n");
 
 				for (bw = m->m_bandwidths; bw; bw = bw->b_next) {
 					if (bw->b_modifier == sdp_bw_as && !tias) {
@@ -6450,7 +6450,6 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 				v_engine->payload_map = NULL;
 
 				for(j = 0; j < m_idx && smh->num_negotiated_codecs < SWITCH_MAX_CODECS; j++) {
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya472 switch_core_media_negotiate_sdp\n");
 					payload_map_t *pmap = switch_core_media_add_payload_map(session,
 																			SWITCH_MEDIA_TYPE_VIDEO,
 																			matches[j].map->rm_encoding,
@@ -6462,6 +6461,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 																			matches[j].imp->microseconds_per_packet / 1000,
 																			matches[j].imp->number_of_channels,
 																			SWITCH_TRUE);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya472 switch_core_media_negotiate_sdp\n");
 
 					if (j == 0) {
 						v_engine->cur_payload_map = pmap;
@@ -8757,10 +8757,10 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 #ifdef HAVE_OPENSSL_DTLSv1_2_method
 			uint8_t want_DTLSv1_2 = 1;
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya701 switch_core_media_activate_rtp\n");
+			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya701 switch_core_media_activate_rtp\n");
 #else
 			uint8_t want_DTLSv1_2 = 0;
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya702 switch_core_media_activate_rtp\n");
+			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya702 switch_core_media_activate_rtp\n");
 #endif
 
 	switch_assert(session);
