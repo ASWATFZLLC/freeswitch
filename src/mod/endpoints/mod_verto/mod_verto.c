@@ -2748,33 +2748,42 @@ static switch_bool_t verto__answer_func(const char *method, cJSON *params, jsock
 
 	*response = obj;
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya1 params: %s\n",cJSON_PrintUnformatted(params));
+
 	if (!params) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Params data missing"));
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya2 missing params\n");
 		err = 1; goto cleanup;
 	}
 
 	if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya3 missing dialogParams\n");
 		err = 1; goto cleanup;
 	}
 
 	if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4 missing callID\n");
 		err = 1; goto cleanup;
 	}
 
 	if (!(sdp = cJSON_GetObjectCstr(params, "sdp"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("SDP missing"));
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya5 missing SDP\n");
 		err = 1; goto cleanup;
 	}
 
 	callee_id_name = cJSON_GetObjectCstr(dialog, "callee_id_name");
 	callee_id_number = cJSON_GetObjectCstr(dialog, "callee_id_number");
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6 callee_id_name: %s\n", callee_id_name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya6 callee_id_number: %s\n",callee_id_number);
 
 	if ((session = switch_core_session_locate(call_id))) {
 		verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
 		switch_core_session_t *other_session = NULL;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya7 switch_core_session_locate\n");
 
 		tech_pvt->r_sdp = switch_core_session_strdup(session, sdp);
 		switch_channel_set_variable(tech_pvt->channel, SWITCH_R_SDP_VARIABLE, sdp);
@@ -2786,22 +2795,27 @@ static switch_bool_t verto__answer_func(const char *method, cJSON *params, jsock
 
 		if (switch_core_session_get_partner(tech_pvt->session, &other_session) == SWITCH_STATUS_SUCCESS) {
 			switch_channel_t *other_channel = switch_core_session_get_channel(other_session);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8 switch_core_session_get_partner\n");
 			switch_channel_set_variable(other_channel, SWITCH_B_SDP_VARIABLE, sdp);
 			switch_core_session_rwunlock(other_session);
 		}
 
 		if (switch_channel_test_flag(tech_pvt->channel, CF_PROXY_MODE)) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya9 switch_channel_test_flag if\n");
 			pass_sdp(tech_pvt);
 		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya10 switch_channel_test_flag else\n");
 			if (verto_tech_media(tech_pvt, tech_pvt->r_sdp, SDP_TYPE_RESPONSE) != SWITCH_STATUS_SUCCESS) {
 				switch_channel_set_variable(tech_pvt->channel, SWITCH_ENDPOINT_DISPOSITION_VARIABLE, "CODEC NEGOTIATION ERROR");
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CODEC ERROR"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 verto_tech_media\n");
 				err = 1;
 			}
 
 			if (!err && switch_core_media_activate_rtp(tech_pvt->session) != SWITCH_STATUS_SUCCESS) {
 				switch_channel_hangup(tech_pvt->channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("MEDIA ERROR"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 switch_core_media_activate_rtp\n");
 				err = 1;
 			}
 		}
@@ -2809,17 +2823,22 @@ static switch_bool_t verto__answer_func(const char *method, cJSON *params, jsock
 		if (!err) {
 			if (callee_id_name) {
 				switch_channel_set_profile_var(tech_pvt->channel, "callee_id_name", callee_id_name);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 callee_id_name\n");
 			}
 			if (callee_id_number) {
 				switch_channel_set_profile_var(tech_pvt->channel, "callee_id_number", callee_id_number);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 callee_id_number\n");
 			}
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 not err\n");
 			switch_channel_mark_answered(tech_pvt->channel);
 		}
 
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 there is error\n");
 		switch_core_session_rwunlock(session);
 	} else {
 		err = 1;
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL DOES NOT EXIST"));
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya16 CALL DOES NOT EXIST\n");
 	}
 
  cleanup:
@@ -2829,8 +2848,7 @@ static switch_bool_t verto__answer_func(const char *method, cJSON *params, jsock
 
 
 	cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
-
-
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya17 END OF FUNCTION\n");
 	return SWITCH_FALSE;
 
 }
@@ -3419,6 +3437,7 @@ static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 	}
 }
 
+// here is our functions
 static switch_bool_t verto__info_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
 {
 	cJSON *msg = NULL, *dialog = NULL, *txt = NULL;
