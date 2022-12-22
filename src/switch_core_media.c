@@ -8757,10 +8757,8 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 
 #ifdef HAVE_OPENSSL_DTLSv1_2_method
 			uint8_t want_DTLSv1_2 = 1;
-			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya701 switch_core_media_activate_rtp\n");
 #else
 			uint8_t want_DTLSv1_2 = 0;
-			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya702 switch_core_media_activate_rtp\n");
 #endif
 
 	switch_assert(session);
