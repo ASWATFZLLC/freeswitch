@@ -8751,8 +8751,6 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 	switch_rtp_engine_t *a_engine, *v_engine, *t_engine;
 	switch_media_handle_t *smh;
 	int is_reinvite = 0;
-	
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya700 switch_core_media_activate_rtp\n");
 
 
 #ifdef HAVE_OPENSSL_DTLSv1_2_method
