@@ -2756,7 +2756,7 @@ static switch_bool_t verto__answer_func(const char *method, cJSON *params, jsock
 
 	*response = obj;
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya1 params: %s\n",cJSON_PrintUnformatted(params));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya1 params: %s -> %s\n",method, cJSON_PrintUnformatted(params));
 
 	if (!params) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Params data missing"));
