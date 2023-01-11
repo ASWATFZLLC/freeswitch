@@ -41,6 +41,8 @@ mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local
 mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib/
 mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/bin
 mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/freeswitch/lib
+mkdir -p /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
+
 cp /opt/banshee/freeswitch /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp /opt/banshee/fs_cli /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp -r /opt/banshee/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
