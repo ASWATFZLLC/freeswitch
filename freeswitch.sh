@@ -26,6 +26,7 @@ CFLAGS=-Wno-error ./configure --prefix=/usr/local/banshee --enable-core-pgsql-su
 wget https://gist.githubusercontent.com/soufiane-bouchaara/58a42e334de0849af205772ba22a6eb0/raw/226bcb4838d406e5816913568ba790dd64354931/gistfile1.txt -O /tmp/modules.conf 
 cp /tmp/modules.conf /opt/banshee/modules.conf
 make
+make install
 mkdir -p /opt/banshee/banshee-v1.10.5.9/DEBIAN
 
 cat > /opt/banshee/banshee-v1.10.5.9/DEBIAN/control << EOL
@@ -44,9 +45,10 @@ cp /opt/banshee/freeswitch /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp /opt/banshee/fs_cli /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp -r /opt/banshee/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp -r /opt/banshee/banshee-v1.10.5.9/usr/local/bin/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib
+cp -r /usr/local/banshee/etc/ /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/etc
 dpkg-deb --build --root-owner-group /opt/banshee/banshee-v1.10.5.9
 #temporarry
 curl --data-binary @banshee-v1.10.5.9.deb \
      -H "Content-Type: application/vnd.debian.binary-package" \
-     -H "Authorization: Bearer public_W142hWypqozsHbXRaCnewpVckS82" \
-     -X POST "https://api.upload.io/v2/accounts/W142hWy/uploads/binary"
+     -H "Authorization: Bearer public_FW25b1oFjK7gRZRg8z7FMBYmoCBm" \
+     -X POST "https://api.upload.io/v2/accounts/FW25b1o/uploads/binary"
