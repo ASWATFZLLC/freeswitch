@@ -54,7 +54,7 @@ cp /opt/banshee/fs_cli /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 cp /opt/banshee/fs_encode /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 cp /opt/banshee/fs_ivrd /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 cp /opt/banshee/fs_tts /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
-cp /opt/banshee/fsxs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
+#cp /opt/banshee/fsxs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 cp /opt/banshee/gentls_cert /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 cp /opt/banshee/tone2wav /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 
