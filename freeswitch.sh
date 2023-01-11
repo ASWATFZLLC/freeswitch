@@ -47,14 +47,14 @@ cp -r /opt/banshee/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/bin/
 cp -r /opt/banshee/banshee-v1.10.5.9/usr/local/bin/.libs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/lib
 cp -r /usr/local/banshee/etc/ /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/etc
 
-cp /opt/banshee/banshee-v1.10.5.9/freeswitch /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/freeswitch
-cp /opt/banshee/banshee-v1.10.5.9/fs_cli /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_cli
-cp /opt/banshee/banshee-v1.10.5.9/fs_encode /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_encode
-cp /opt/banshee/banshee-v1.10.5.9/fs_ivrd /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_ivrd
-cp /opt/banshee/banshee-v1.10.5.9/fs_tts /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_tts
-cp /opt/banshee/banshee-v1.10.5.9/fsxs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fsxs
-cp /opt/banshee/banshee-v1.10.5.9/gentls_cert /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/gentls_cert
-cp /opt/banshee/banshee-v1.10.5.9/tone2wav /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/tone2wav
+cp /opt/banshee/freeswitch /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/freeswitch
+cp /opt/banshee/fs_cli /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_cli
+cp /opt/banshee/fs_encode /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_encode
+cp /opt/banshee/fs_ivrd /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_ivrd
+cp /opt/banshee/fs_tts /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fs_tts
+cp /opt/banshee/fsxs /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/fsxs
+cp /opt/banshee/gentls_cert /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/gentls_cert
+cp /opt/banshee/tone2wav /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/tone2wav
 
 dpkg-deb --build --root-owner-group /opt/banshee/banshee-v1.10.5.9
 #temporarry
