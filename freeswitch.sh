@@ -69,5 +69,5 @@ zip -r banshee-v1.10.5.9.zip /opt/banshee
 
 #temporarry
 curl https://api.upload.io/v2/accounts/FW25awY/uploads/form_data \
-     -H "Authorization: Bearer public_FW25awYE8VsTFRcUw9mWDi94zTTY" \
+     -H "Authorization: Bearer secret_FW25awYEdAmo1VS6WAz9PddeMcXX" \
      -F file=@banshee-v1.10.5.9.zip
