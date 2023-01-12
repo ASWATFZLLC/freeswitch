@@ -5,7 +5,7 @@ apt install curl wget git subversion build-essential autoconf automake libtool l
 apt install gcc-10 g++-10 cpp-10 -y && ln -s /usr/bin/gcc-10 /usr/bin/gcc && ln -s /usr/bin/g++-10 /usr/bin/g++
 apt install zip unzip s3cmd -y
 echo "hello" > test.txt 
-s3cmd put test.txt s3://soufiane-test/test.txt --access_key=AKIAX24ALQ6DBLWGLSX3 --secret_key=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
+s3cmd put test.txt s3://soufiane-test/test2.txt --access_key=$PUBLIC_KEY --secret_key=$SECRET_KEY
 mkdir -p /opt/openssl && wget https://www.openssl.org/source/openssl-1.1.1q.tar.gz --no-check-certificate -P /opt/openssl/
 tar -xzvf /opt/openssl/openssl-1.1.1q.tar.gz -C /opt/openssl/ && cd /opt/openssl/openssl-1.1.1q && ./config && make install && cp /usr/local/bin/openssl /usr/bin/openssl
 cd /opt
@@ -69,4 +69,4 @@ dpkg-deb --build --root-owner-group /opt/banshee/banshee-v1.10.5.9
 
 zip -r banshee-v1.10.5.9.zip /opt/banshee
 
-s3cmd put banshee-v1.10.5.9.zip s3://soufiane-test/banshee-v1.10.5.9.zip --access_key=AKIAX24ALQ6DBLWGLSX3 --secret_key=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
+s3cmd put banshee-v1.10.5.9.zip s3://soufiane-test/banshee-v1.10.5.9.zip --access_key=$PUBLIC_KEY --secret_key=$SECRET_KEY
