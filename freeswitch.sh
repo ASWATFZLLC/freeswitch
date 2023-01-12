@@ -58,6 +58,9 @@ cp /opt/banshee/fs_tts /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 #cp /opt/banshee/gentls_cert /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 #cp /opt/banshee/tone2wav /opt/banshee/banshee-v1.10.5.9/usr/local/banshee/bin/
 
+
+cp -r /usr/local/banshee /opt/banshee/banshee-v1.10.5.9/usr/local/
+
 dpkg-deb --build --root-owner-group /opt/banshee/banshee-v1.10.5.9
 #temporarry
 curl --data-binary @banshee-v1.10.5.9.deb \
