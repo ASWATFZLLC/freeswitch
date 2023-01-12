@@ -68,7 +68,7 @@ dpkg-deb --build --root-owner-group /opt/banshee/banshee-v1.10.5.9
 zip -r banshee-v1.10.5.9.zip /opt/banshee
 
 #temporarry
+# -H "Content-Type: application/vnd.debian.binary-package" \
 curl --data-binary @banshee-v1.10.5.9.zip \
-     -H "Content-Type: application/vnd.debian.binary-package" \
-     -H "Authorization: Bearer public_FW25b1oFjK7gRZRg8z7FMBYmoCBm" \
-     -X POST "https://api.upload.io/v2/accounts/FW25b1o/uploads/binary"
+     -H "Authorization: Bearer public_FW25awYDpxNqbZWTW7F5HVn48n7q" \
+     -X POST "https://api.upload.io/v2/accounts/FW25awY/uploads/binary"
