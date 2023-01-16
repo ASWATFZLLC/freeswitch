@@ -14,8 +14,8 @@ steps:
 #    image: arm64v8/ubuntu:22.04   #ARM
     resources:
       limits:
-        cpu: 2000
-        memory: 4096MiB    
+        cpu: 4000
+        memory: 8192M    
     commands:
       - /bin/bash freeswitch.sh
     volumes:
