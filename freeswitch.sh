@@ -24,7 +24,7 @@ make install
 cd /opt  && git clone https://github.com/ASWATFZLLC/freeswitch.git -b v1.10.5.9 /opt/banshee
 cd /opt/banshee && ./bootstrap.sh -j
 CFLAGS=-Wno-error ./configure --prefix=/usr/local/banshee --enable-core-pgsql-support --enable-zrtp
-  ##    - cd /opt  && git clone https://github.com/ASWATFZLLC/ziwo-ansible.git -b master /tmp/ziwo-ansible
+##    - cd /opt  && git clone https://github.com/ASWATFZLLC/ziwo-ansible.git -b master /tmp/ziwo-ansible
 wget https://gist.githubusercontent.com/soufiane-bouchaara/58a42e334de0849af205772ba22a6eb0/raw/226bcb4838d406e5816913568ba790dd64354931/gistfile1.txt -O /tmp/modules.conf 
 cp /tmp/modules.conf /opt/banshee/modules.conf
 make
