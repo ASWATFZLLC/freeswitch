@@ -12,21 +12,21 @@ git clone https://github.com/ASWATFZLLC/spandsp.git /opt/spandsp
 cd /opt/spandsp
 ./bootstrap.sh
 ./configure
-make
+make -j4
 make install 
 cd /opt
 git clone https://github.com/ASWATFZLLC/sofia-sip.git /opt/sofia-sip
 cd /opt/sofia-sip
 ./bootstrap.sh
 ./configure
-make
+make -j4
 make install 
 cd /opt  && git clone https://github.com/ASWATFZLLC/freeswitch.git -b v1.10.5.9 /opt/banshee
 cd /opt/banshee && ./bootstrap.sh -j
 CFLAGS=-Wno-error ./configure --prefix=/usr/local/banshee --enable-core-pgsql-support --enable-zrtp
 ##    - cd /opt  && git clone https://github.com/ASWATFZLLC/ziwo-ansible.git -b master /tmp/ziwo-ansible
 
-make
+make -j4
 make install
 mkdir -p /opt/banshee/banshee-v1.10.5.9/DEBIAN
 
