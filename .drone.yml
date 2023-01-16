@@ -1,0 +1,37 @@
+---
+kind: pipeline
+type: kubernetes
+name: freeswitch
+service_account_name: drone-runner-aws-privileges
+
+volumes:
+  - name: artifact
+    temp: {}
+    
+steps:
+  - name: Compile Freeswitch AKA Banshee 
+    image: ubuntu:22.04
+#    image: arm64v8/ubuntu:22.04   #ARM
+    resources:
+      limits:
+        cpu: 2000
+        memory: 4096MiB    
+    commands:
+      - /bin/bash freeswitch.sh
+    volumes:
+      - name: artifact
+        path: /artifact
+      
+
+  - name: Push to bucket
+    image: plugins/s3
+    volumes:
+      - name: artifact
+        path: /artifact
+    settings:
+      bucket: 'artifacts-engineering-gulf-4cb065ce-9ba1-54fc-a5c7-6a66be41314d'
+      assume_role: 'arn:aws:iam::997737331395:role/drone-k8s-1-infra-bhr-1'
+      region: 'me-south-1'
+      target: 'banshee/ubuntu22.04LTS/'
+      source: "/artifact/**"
+      strip_prefix: '/artifact/'
