@@ -2610,6 +2610,7 @@ static switch_status_t messagehook (switch_core_session_t *session, switch_core_
 {
 	switch_status_t r = SWITCH_STATUS_SUCCESS;
 	verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya801 messagehook: %s\n", cJSON_PrintUnformatted(msg));
 
 	switch(msg->message_id) {
 	case SWITCH_MESSAGE_INDICATE_DISPLAY:
@@ -2617,10 +2618,15 @@ static switch_status_t messagehook (switch_core_session_t *session, switch_core_
 			const char *name, *number;
 			cJSON *jmsg = NULL, *params = NULL;
 			jsock_t *jsock = NULL;
+			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya802 messagehook jmsg: %s\n", cJSON_PrintUnformatted(jmsg));
+			// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya802 messagehook params: %s\n", cJSON_PrintUnformatted(params));
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya802 messagehook jsock_uuid: %s\n", tech_pvt->jsock_uuid);
 
 			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
 				name = msg->string_array_arg[0];
 				number = msg->string_array_arg[1];
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya803 messagehook name: %s\n", name);
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya803 messagehook number: %s\n",number);
 
 				if (name || number) {
 					jmsg = jrpc_new_req("verto.display", tech_pvt->call_id, &params);
@@ -2641,6 +2647,7 @@ static switch_status_t messagehook (switch_core_session_t *session, switch_core_
 	case SWITCH_MESSAGE_INDICATE_MEDIA_RENEG:
 		{
 			jsock_t *jsock = NULL;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya804 messagehook jsock_uuid: %s\n", tech_pvt->jsock_uuid);
 
 			if ((jsock = get_jsock(tech_pvt->jsock_uuid))) {
 				switch_core_session_stop_media(session);
@@ -2652,11 +2659,14 @@ static switch_status_t messagehook (switch_core_session_t *session, switch_core_
 		break;
 	case SWITCH_MESSAGE_INDICATE_ANSWER:
 		r = verto_send_media_indication(session, "verto.answer");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya805 messagehook \n");
 		break;
 	case SWITCH_MESSAGE_INDICATE_PROGRESS:
 		r = verto_send_media_indication(session, "verto.media");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya806 messagehook \n");
 		break;
 	default:
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya807 messagehook \n");
 		break;
 	}
 
@@ -2673,8 +2683,11 @@ static int verto_recover_callback(switch_core_session_t *session)
 	verto_profile_t *profile = NULL;
 	const char *profile_name = NULL, *jsock_uuid_str = NULL;
 	switch_channel_t *channel = switch_core_session_get_channel(session);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya808 verto_recover_callback jsock_uuid_str: %s\n", jsock_uuid_str);
+
 
 	if (switch_channel_test_flag(channel, CF_VIDEO_ONLY)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya809 verto_recover_callback: \n");
 		return 0;
 	}
 
@@ -2682,9 +2695,12 @@ static int verto_recover_callback(switch_core_session_t *session)
 
 	profile_name = switch_channel_get_variable(channel, "verto_profile_name");
 	jsock_uuid_str = switch_channel_get_variable(channel, "jsock_uuid_str");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya818 verto_recover_callback profile_name: %s\n", profile_name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya819 verto_recover_callback jsock_uuid_str: %s\n", jsock_uuid_str);
 
 	if (!(profile_name && jsock_uuid_str && (profile = find_profile(profile_name)))) {
 		UNPROTECT_INTERFACE(verto_endpoint_interface);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya810 verto_recover_callback: \n");
 		return 0;
 	}
 
@@ -2700,16 +2716,21 @@ static int verto_recover_callback(switch_core_session_t *session)
 
 	switch_snprintf(name, sizeof(name), "verto.rtc/%s", tech_pvt->jsock_uuid);
 	switch_channel_set_name(channel, name);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya811 verto_recover_callback jsock_uuid: %s\n", tech_pvt->jsock_uuid);
+
 
 	if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
 		tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
 		if (verto_set_media_options(tech_pvt, profile) != SWITCH_STATUS_SUCCESS) {
 			UNPROTECT_INTERFACE(verto_endpoint_interface);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya812 verto_recover_callback:\n");
 			return 0;
 		}
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya813 verto_recover_callback\n");
 	}
 
 	switch_channel_add_state_handler(channel, &verto_state_handlers);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya814 verto_recover_callback\n");
 	switch_core_event_hook_add_receive_message(session, messagehook);
 
 	//track_pvt(tech_pvt);
@@ -3857,6 +3878,7 @@ static switch_bool_t verto__invite_func(const char *method, cJSON *params, jsock
 
 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL CREATED"));
 	cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(tech_pvt->call_id));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya821 verto__invite_func obj: %s\n", cJSON_PrintUnformatted(obj));
 
 	switch_channel_add_state_handler(channel, &verto_state_handlers);
 	switch_core_event_hook_add_receive_message(session, messagehook);
