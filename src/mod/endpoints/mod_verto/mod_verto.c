@@ -2610,7 +2610,8 @@ static switch_status_t messagehook (switch_core_session_t *session, switch_core_
 {
 	switch_status_t r = SWITCH_STATUS_SUCCESS;
 	verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya801 messagehook: %s\n", msg);
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya801 messagehook: %s\n", msg);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya801 messagehook: \n");
 
 	switch(msg->message_id) {
 	case SWITCH_MESSAGE_INDICATE_DISPLAY:
