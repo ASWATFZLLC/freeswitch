@@ -5774,9 +5774,11 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 
 	if (!zstr(outbound_profile->destination_number)) {
 		dest = strdup(outbound_profile->destination_number);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya120 verto_outgoing_channel %s\n", dest);
 	}
 
 	if (zstr(dest)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya121 verto_outgoing_channel\n");
 		goto end;
 	}
 
@@ -5791,6 +5793,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 			p = strchr(trimmed_dest, '@');
 			if (p) *p = '\0';
 			switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, "origination_callee_id_number", trimmed_dest);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya122 verto_outgoing_channel %s\n", trimmed_dest);
 			free(trimmed_dest);
 		}
 
@@ -5815,6 +5818,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 			free(dial_str);
 		}
 
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya123 verto_outgoing_channel cause %d\n", cause);
 		return cause;
 	} else {
 		const char *dialed_user = switch_event_get_header(var_event, "dialed_user");
@@ -5829,6 +5833,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 			if (zstr(switch_event_get_header(var_event, "origination_callee_id_number"))) {
 				switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, "origination_callee_id_number", dialed_user);
 				outbound_profile->callee_id_number = switch_sanitize_number(switch_core_strdup(outbound_profile->pool, dialed_user));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya124 verto_outgoing_channel %s\n", outbound_profile->callee_id_number);
 			}
 		}
 	}
@@ -5846,6 +5851,8 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 		tech_pvt->session = *new_session;
 		tech_pvt->channel = channel;
 		tech_pvt->jsock_uuid = switch_core_session_strdup(*new_session, jsock_uuid_str);
+
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya125 verto_outgoing_channel %s\n", tech_pvt->jsock_uuid);
 
 		switch_core_session_set_private_class(*new_session, tech_pvt, SWITCH_PVT_SECONDARY);
 
@@ -5875,6 +5882,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 		}
 
 		switch_channel_add_state_handler(channel, &verto_state_handlers);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya126 verto_outgoing_channel \n");
 		switch_core_event_hook_add_receive_message(*new_session, messagehook);
 		switch_channel_set_state(channel, CS_INIT);
 		//track_pvt(tech_pvt);
@@ -5888,6 +5896,7 @@ static switch_call_cause_t verto_outgoing_channel(switch_core_session_t *session
 
 	switch_safe_free(dest);
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya127 verto_outgoing_channel cause: %d \n", cause);
 	return cause;
 }
 
