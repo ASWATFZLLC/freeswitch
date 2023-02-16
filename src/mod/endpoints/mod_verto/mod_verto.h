@@ -78,6 +78,7 @@
 #define CODE_AUTH_FAILED -32001
 #define CODE_SESSION_ERROR -32002
 #define CODE_DUPLICATE_SESSION -32003
+#define CODE_IP_REJECTED -32004
 
 #define MY_EVENT_CLIENT_CONNECT "verto::client_connect"
 #define MY_EVENT_CLIENT_DISCONNECT "verto::client_disconnect"
