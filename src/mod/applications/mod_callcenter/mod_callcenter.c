@@ -2525,6 +2525,9 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	const char *member_abandoned_epoch = NULL;
 	const char *serving_agent = NULL;
 	const char *last_originated_call = NULL;
+	switch_core_session_t *member_session = NULL;
+	const char *preferred_agent = NULL;
+
 	memset(&cbt, 0, sizeof(cbt));
 
 	cbt.queue_name = argv[0];
@@ -2650,7 +2653,30 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 	cbt.record_template = queue_record_template;
 	cbt.agent_found = SWITCH_FALSE;
 
-	if (!strcasecmp(queue->strategy, "top-down")) {
+	member_session = switch_core_session_locate(cbt.member_session_uuid);
+	if (member_session) {
+		switch_channel_t *member_channel = switch_core_session_get_channel(member_session);
+		preferred_agent = switch_channel_get_variable(member_channel, "cc_preferred_agent");
+		// Give this agent a chance only in the first iteration.
+		// otherwise always this agent will be chosen in every interation no matter whatever is the strategy 
+		switch_channel_set_variable(member_channel, "cc_preferred_agent", NULL);
+		switch_core_session_rwunlock(member_session);
+	}
+
+	if (preferred_agent != NULL) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Preferred agent found: %s \n", preferred_agent);
+		sql = switch_mprintf(
+				"SELECT instance_id, name, status, contact, no_answer_count, max_no_answer, reject_delay_time, busy_delay_time, no_answer_delay_time, tiers.state, agents.last_bridge_end, agents.wrap_up_time, agents.state, agents.ready_time, tiers.position, tiers.level, agents.type, agents.uuid, external_calls_count "
+				"FROM agents LEFT JOIN tiers ON (agents.name = tiers.agent)"
+				"WHERE tiers.queue = '%q'"
+				"AND (agents.status = '%q' OR agents.status = '%q' OR agents.status = '%q')"
+				"AND (agents.name = '%q')",
+				queue_name,
+				cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE), cc_agent_status2str(CC_AGENT_STATUS_ON_BREAK), cc_agent_status2str(CC_AGENT_STATUS_AVAILABLE_ON_DEMAND),
+				preferred_agent);
+	}
+
+	else if (!strcasecmp(queue->strategy, "top-down")) {
 		/* WARNING this use channel variable to help dispatch... might need to be reviewed to save it in DB to make this multi server prooft in the future */
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 		int position = 0, level = 0;
@@ -2769,7 +2795,7 @@ static int members_callback(void *pArg, int argc, char **argv, char **columnName
 
 	}
 
-	if (!strcasecmp(queue->strategy, "ring-progressively")) {
+	if (preferred_agent == NULL && !strcasecmp(queue->strategy, "ring-progressively")) {
 		switch_core_session_t *member_session = switch_core_session_locate(cbt.member_session_uuid);
 
 		if (member_session) {
