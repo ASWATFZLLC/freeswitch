@@ -3278,8 +3278,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 
 	cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
 	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya002 verto__modify_func obj: %s\n");
-
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya002 verto__modify_func\n");
 
 	if ((session = switch_core_session_locate(call_id))) {
 		verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
@@ -3334,6 +3333,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 			switch_core_media_toggle_hold(session, !!!switch_channel_test_flag(tech_pvt->channel, CF_PROTO_HOLD));
 		}
 
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya005 verto__modify_func\n");
 		cJSON_AddItemToObject(obj, "holdState", cJSON_CreateString(switch_channel_test_flag(tech_pvt->channel, CF_PROTO_HOLD) ? "held" : "active"));
 		// parse_user_vars(dialog, session);
 
@@ -3465,7 +3465,7 @@ static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 
 	switch_assert(obj);
 	switch_assert(session);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_vars\n", , cJSON_PrintUnformatted(obj));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_vars\n", cJSON_PrintUnformatted(obj));
 
 	if ((json_ptr = cJSON_GetObjectItem(obj, "userVariables"))) {
 		cJSON * i;
