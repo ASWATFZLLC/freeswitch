@@ -3251,6 +3251,8 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 		err = 1; goto cleanup;
 	}
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya013 verto__modify_func obj: %s\n", cJSON_PrintUnformatted(params));
+
 	if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
 		err = 1; goto cleanup;
@@ -3272,6 +3274,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 
 	if ((session = switch_core_session_locate(call_id))) {
 		verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya001 verto__modify_func\n");
 
 		if (!strcasecmp(action, "transfer")) {
 			switch_core_session_t *other_session = NULL;
@@ -3284,6 +3287,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 			if (switch_core_session_get_partner(tech_pvt->session, &other_session) == SWITCH_STATUS_SUCCESS) {
 				switch_ivr_session_transfer(other_session, destination, NULL, NULL);
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL TRANSFERRED"));
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya002 verto__modify_func\n");
 				switch_channel_set_variable(tech_pvt->channel, "transfer_disposition", "recv_replace");
 				switch_core_session_rwunlock(other_session);
 			} else {
@@ -3296,6 +3300,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 			switch_core_session_t *b_session = NULL;
 
 			if (!(replace_call_id = cJSON_GetObjectCstr(params, "replaceCallID"))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya003 verto__modify_func\n");
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("replaceCallID missing"));
 				err = 1; goto rwunlock;
 			}
@@ -3319,7 +3324,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 		}
 
 		cJSON_AddItemToObject(obj, "holdState", cJSON_CreateString(switch_channel_test_flag(tech_pvt->channel, CF_PROTO_HOLD) ? "held" : "active"));
-
+		// parse_user_vars(dialog, session);
 
 	rwunlock:
 
@@ -3442,6 +3447,7 @@ static switch_bool_t verto__attach_func(const char *method, cJSON *params, jsock
 	return SWITCH_FALSE;
 }
 
+// here user vars is getting parsed
 static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 {
 	cJSON *json_ptr;
@@ -3648,6 +3654,103 @@ static switch_bool_t verto__info_func(const char *method, cJSON *params, jsock_t
 	return SWITCH_FALSE;
 }
 
+// static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
+// {
+// 	cJSON *obj = cJSON_CreateObject();
+// 	// cJSON *msg = NULL, *dialog = NULL, *txt = NULL;
+// 	const char *call_id = NULL;
+// 	// switch_bool_t r = SWITCH_TRUE;
+// 	// char *proto = VERTO_CHAT_PROTO;
+// 	// char *pproto = NULL;
+// 	int err = 0;
+
+// 	*response = cJSON_CreateObject();
+
+// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya111 verto__send_func\n");
+
+// 	if (!params) {
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya112 verto__send_func\n");
+// 		cJSON_AddItemToObject(*response, "message", cJSON_CreateString("Params data missing"));
+// 		err = 1; goto cleanup;
+// 	}
+
+// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya113 verto__send_func obj: %s\n", cJSON_PrintUnformatted(params));
+
+// 	if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya114 verto__send_func\n");
+// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
+// 		err = 1; goto cleanup;
+// 	}
+
+// 	if (!(call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya1141 verto__send_func\n");
+// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CallID missing"));
+// 		err = 1; goto cleanup;
+// 	}
+
+// 	if (!(action = cJSON_GetObjectCstr(params, "action"))) {
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya115 verto__send_func\n");
+// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("action missing"));
+// 		err = 1; goto cleanup;
+// 	}
+
+// 	cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
+// 	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
+
+// 	if ((session = switch_core_session_locate(call_id))) {
+// 		verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya116 verto__send_func\n");
+// 		parse_user_vars(dialog, session);
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya117 verto__send_func\n");
+// 		// rwunlock:
+// 		switch_core_session_rwunlock(session);
+// 	} else {
+// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya118 verto__send_func\n");
+// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL DOES NOT EXIST"));
+// 		err = 1;
+// 	}
+
+// 	// if ((dialog = cJSON_GetObjectItem(params, "dialogParams")) && (call_id = cJSON_GetObjectCstr(dialog, "callID"))) {
+// 	// 	switch_core_session_t *session = NULL;
+
+// 	// 	if ((session = switch_core_session_locate(call_id))) {
+
+// 	// 		parse_user_vars(dialog, session);
+
+// 	// 		if ((dtmf = cJSON_GetObjectCstr(params, "dtmf"))) {
+// 	// 			verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
+// 	// 			char *send;
+
+// 	// 			if (!tech_pvt) {
+// 	// 				cJSON_AddItemToObject(*response, "message", cJSON_CreateString("Invalid channel"));
+// 	// 				err = 1; goto cleanup;
+// 	// 			}
+
+// 	// 			send = switch_mprintf("~%s", dtmf);
+
+// 	// 			if (switch_channel_test_flag(tech_pvt->channel, CF_PROXY_MODE)) {
+// 	// 				switch_core_session_t *other_session = NULL;
+
+// 	// 				if (switch_core_session_get_partner(tech_pvt->session, &other_session) == SWITCH_STATUS_SUCCESS) {
+// 	// 					switch_core_session_send_dtmf_string(other_session, send);
+// 	// 					switch_core_session_rwunlock(other_session);
+// 	// 				}
+// 	// 			} else {
+// 	// 				switch_channel_queue_dtmf_string(tech_pvt->channel, send);
+// 	// 			}
+// 	// 			free(send);
+// 	// 			cJSON_AddItemToObject(*response, "message", cJSON_CreateString("SENT"));
+// 	// 		}
+
+// 	// 		switch_core_session_rwunlock(session);
+// 	// 	}
+// 	// }
+
+// 	cleanup:
+// 	if (!err) return SWITCH_TRUE;
+// 	cJSON_AddItemToObject(*response, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
+// 	return SWITCH_FALSE;
+// }
 
 
 static switch_bool_t verto__invite_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
@@ -4274,7 +4377,7 @@ static void jrpc_init(void)
 	jrpc_add_func("verto.unsubscribe", verto__unsubscribe_func);
 	jrpc_add_func("verto.broadcast", verto__broadcast_func);
 	jrpc_add_func("verto.modify", verto__modify_func);
-
+	// jrpc_add_func("verto.send", verto__send_func);
 }
 
 
