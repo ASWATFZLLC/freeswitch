@@ -3465,7 +3465,7 @@ static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 
 	switch_assert(obj);
 	switch_assert(session);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_vars\n", cJSON_PrintUnformatted(obj));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_var obj:%s\n", cJSON_PrintUnformatted(obj));
 
 	if ((json_ptr = cJSON_GetObjectItem(obj, "userVariables"))) {
 		cJSON * i;
