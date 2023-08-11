@@ -3235,6 +3235,32 @@ static switch_bool_t attended_transfer(switch_core_session_t *session, switch_co
 	return result;
 }
 
+// here user vars is getting parsed
+static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
+{
+	cJSON *json_ptr;
+
+	switch_assert(obj);
+	switch_assert(session);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_var obj:%s\n", cJSON_PrintUnformatted(obj));
+
+	if ((json_ptr = cJSON_GetObjectItem(obj, "userVariables"))) {
+		cJSON * i;
+		switch_channel_t *channel = switch_core_session_get_channel(session);
+
+		for(i = json_ptr->child; i; i = i->next) {
+			char *varname = switch_core_session_sprintf(session, "verto_dvar_%s", i->string);
+
+			if (i->type == cJSON_True) {
+				switch_channel_set_variable(channel, varname, "true");
+			} else if (i->type == cJSON_False) {
+				switch_channel_set_variable(channel, varname, "false");
+			} else if (!zstr(i->string) && !zstr(i->valuestring)) {
+				switch_channel_set_variable(channel, varname, i->valuestring);
+			}
+		}
+	}
+}
 
 static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
 {
@@ -3456,33 +3482,6 @@ static switch_bool_t verto__attach_func(const char *method, cJSON *params, jsock
 	cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
 
 	return SWITCH_FALSE;
-}
-
-// here user vars is getting parsed
-static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
-{
-	cJSON *json_ptr;
-
-	switch_assert(obj);
-	switch_assert(session);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_var obj:%s\n", cJSON_PrintUnformatted(obj));
-
-	if ((json_ptr = cJSON_GetObjectItem(obj, "userVariables"))) {
-		cJSON * i;
-		switch_channel_t *channel = switch_core_session_get_channel(session);
-
-		for(i = json_ptr->child; i; i = i->next) {
-			char *varname = switch_core_session_sprintf(session, "verto_dvar_%s", i->string);
-
-			if (i->type == cJSON_True) {
-				switch_channel_set_variable(channel, varname, "true");
-			} else if (i->type == cJSON_False) {
-				switch_channel_set_variable(channel, varname, "false");
-			} else if (!zstr(i->string) && !zstr(i->valuestring)) {
-				switch_channel_set_variable(channel, varname, i->valuestring);
-			}
-		}
-	}
 }
 
 // here is our functions
