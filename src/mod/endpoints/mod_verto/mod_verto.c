@@ -3246,10 +3246,7 @@ static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t
 	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
 
 	if ((session = switch_core_session_locate(call_id))) {
-		verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
 		parse_user_vars(dialog, session);
-
-	rwunlock:
 		switch_core_session_rwunlock(session);
 	} else {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL DOES NOT EXIST"));
