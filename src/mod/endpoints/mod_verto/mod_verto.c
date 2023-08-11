@@ -3251,7 +3251,15 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 		err = 1; goto cleanup;
 	}
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya013 verto__modify_func obj: %s\n", cJSON_PrintUnformatted(params));
+// 2023-08-11 12:14:34.026401 [ERR] mod_verto.c:3254 surya013 verto__modify_func obj: {"action":"transfer","destination":"0001",
+// "dialogParams":{"caller_id_name":"","caller_id_number":"","remote_caller_id_name":"Transferred Call",
+// "userVariables":{"root_call_id":"aeb73775-1a50-498f-9cf4-de7e51907ea8","transfer_origin_call_id":"aeb73775-1a50-498f-9cf4-de7e51907ea8",
+// "is_blind_transfer":"true"},"callID":"081fa3f6-5afa-4131-86d1-201a0953f2bc","dedEnc":false,"destination_number":"+97142706956",
+// "incomingBandwidth":"default","localTag":null,"login":"agent-0000@turing-api.aswat.co","outgoingBandwidth":"default",
+// "remote_caller_id_number":"+97142706956","screenShare":false,"tag":"2f74805e-5bca-4fcd-bed9-7f5cf15e2703","useCamera":false,
+// "useMic":true,"useSpeak":true,"useStereo":true,"videoParams":{},"audioParams":{"googAutoGainControl":false,"googNoiseSuppression":false,
+// "googHighpassFilter":false}},"sessid":"864b8020-f1f8-4b11-9527-4cedb49d3115"}
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya001 verto__modify_func obj: %s\n", cJSON_PrintUnformatted(params));
 
 	if (!(dialog = cJSON_GetObjectItem(params, "dialogParams"))) {
 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Dialog data missing"));
@@ -3270,14 +3278,17 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 
 	cJSON_AddItemToObject(obj, "callID", cJSON_CreateString(call_id));
 	cJSON_AddItemToObject(obj, "action", cJSON_CreateString(action));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya002 verto__modify_func obj: %s\n");
 
 
 	if ((session = switch_core_session_locate(call_id))) {
 		verto_pvt_t *tech_pvt = switch_core_session_get_private_class(session, SWITCH_PVT_SECONDARY);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya001 verto__modify_func\n");
+		parse_user_vars(dialog, session);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya003 verto__modify_func\n");
 
 		if (!strcasecmp(action, "transfer")) {
 			switch_core_session_t *other_session = NULL;
+			// remote_caller_id_name = cJSON_GetObjectCstr(dialog, "remote_caller_id_name");
 
 			if (!(destination = cJSON_GetObjectCstr(params, "destination"))) {
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("destination missing"));
@@ -3287,7 +3298,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 			if (switch_core_session_get_partner(tech_pvt->session, &other_session) == SWITCH_STATUS_SUCCESS) {
 				switch_ivr_session_transfer(other_session, destination, NULL, NULL);
 				cJSON_AddItemToObject(obj, "message", cJSON_CreateString("CALL TRANSFERRED"));
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya002 verto__modify_func\n");
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya004 verto__modify_func\n");
 				switch_channel_set_variable(tech_pvt->channel, "transfer_disposition", "recv_replace");
 				switch_core_session_rwunlock(other_session);
 			} else {
@@ -3326,7 +3337,7 @@ static switch_bool_t verto__modify_func(const char *method, cJSON *params, jsock
 		cJSON_AddItemToObject(obj, "holdState", cJSON_CreateString(switch_channel_test_flag(tech_pvt->channel, CF_PROTO_HOLD) ? "held" : "active"));
 		// parse_user_vars(dialog, session);
 
-	rwunlock:
+		rwunlock:
 
 		switch_core_session_rwunlock(session);
 	} else {
@@ -3454,6 +3465,7 @@ static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 
 	switch_assert(obj);
 	switch_assert(session);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya4001 parse_user_vars\n", , cJSON_PrintUnformatted(obj));
 
 	if ((json_ptr = cJSON_GetObjectItem(obj, "userVariables"))) {
 		cJSON * i;
