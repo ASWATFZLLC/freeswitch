@@ -3212,7 +3212,7 @@ static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 	}
 }
 
-static switch_bool_t verto__send_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
+static switch_bool_t verto__sendToCall_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
 {
 	cJSON *obj = cJSON_CreateObject();
 	switch_core_session_t *session;
@@ -4272,7 +4272,7 @@ static void jrpc_init(void)
 	jrpc_add_func("verto.unsubscribe", verto__unsubscribe_func);
 	jrpc_add_func("verto.broadcast", verto__broadcast_func);
 	jrpc_add_func("verto.modify", verto__modify_func);
-	jrpc_add_func("verto.send", verto__send_func);
+	jrpc_add_func("verto.sendToCall", verto__sendToCall_func);
 }
 
 
