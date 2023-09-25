@@ -3402,31 +3402,6 @@ static switch_bool_t attended_transfer(switch_core_session_t *session, switch_co
 	return result;
 }
 
-static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
-{
-	cJSON *json_ptr;
-
-	switch_assert(obj);
-	switch_assert(session);
-
-	if ((json_ptr = cJSON_GetObjectItem(obj, "userVariables"))) {
-		cJSON * i;
-		switch_channel_t *channel = switch_core_session_get_channel(session);
-
-		for(i = json_ptr->child; i; i = i->next) {
-			char *varname = switch_core_session_sprintf(session, "verto_dvar_%s", i->string);
-
-			if (i->type == cJSON_True) {
-				switch_channel_set_variable(channel, varname, "true");
-			} else if (i->type == cJSON_False) {
-				switch_channel_set_variable(channel, varname, "false");
-			} else if (!zstr(i->string) && !zstr(i->valuestring)) {
-				switch_channel_set_variable(channel, varname, i->valuestring);
-			}
-		}
-	}
-}
-
 static switch_bool_t verto__sendToCall_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
 {
 	cJSON *obj = cJSON_CreateObject();
@@ -3751,7 +3726,7 @@ static switch_bool_t verto__attach_func(const char *method, cJSON *params, jsock
 	
 	if (session) {
 		switch_core_session_rwunlock(session);
-
+	}
 
 	if (!err) {
 		const char *cid_name, *cid_num;
@@ -3774,6 +3749,7 @@ static switch_bool_t verto__attach_func(const char *method, cJSON *params, jsock
 
 	return SWITCH_FALSE;
 }
+
 
 static void parse_user_vars(cJSON *obj, switch_core_session_t *session)
 {
