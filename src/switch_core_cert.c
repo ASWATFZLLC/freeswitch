@@ -281,11 +281,16 @@ SWITCH_DECLARE(int) switch_core_gen_certs(const char *prefix)
 		}
 	}
 
+#ifdef CRYPTO_MEM_CHECK_ON
 	CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
+#endif
 
 	//bio_err=BIO_new_fp(stderr, BIO_NOCLOSE);
 
-	mkcert(&x509, &pkey, 4096, 0, 36500);
+	if (!mkcert(&x509, &pkey, 4096, 0, 36500)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Certificate generation failed\n");
+		goto end;
+	}
 
 	//RSA_print_fp(stdout, pkey->pkey.rsa, 0);
 	//X509_print_fp(stdout, x509);
@@ -330,6 +335,67 @@ SWITCH_DECLARE(int) switch_core_gen_certs(const char *prefix)
 	return(0);
 }
 
+SWITCH_DECLARE(switch_bool_t) switch_core_check_dtls_pem(const char *file)
+{
+	char *pem = NULL, *old_pem = NULL;
+	FILE *fp = NULL;
+	EVP_PKEY *pkey = NULL;
+	int bits = 0;
+
+	if (switch_is_file_path(file)) {
+		pem = strdup(file);
+	} else {
+		pem = switch_mprintf("%s%s%s", SWITCH_GLOBAL_dirs.certs_dir, SWITCH_PATH_SEPARATOR, file);
+	}
+
+	if (switch_file_exists(pem, NULL) != SWITCH_STATUS_SUCCESS) {
+		switch_safe_free(pem);
+
+		return SWITCH_FALSE;
+	}
+
+	fp = fopen(pem, "r");
+	if (!fp) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Cannot open %s: %s\n", pem, strerror(errno));
+		goto rename_pem;
+	}
+
+	pkey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+	fclose(fp);
+
+	if (!pkey) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Cannot read key %s: %s\n", pem, ERR_error_string(ERR_get_error(), NULL));
+		goto rename_pem;
+	}
+
+	bits = EVP_PKEY_bits(pkey);
+	EVP_PKEY_free(pkey);
+
+	if (bits < 4096) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "%s cryptographic length is too short (%d), it will be regenerated\n", pem, bits);
+		goto rename_pem;
+	}
+
+	switch_safe_free(pem);
+
+	return SWITCH_TRUE;
+
+rename_pem:
+
+	old_pem = switch_mprintf("%s.old", pem);
+
+	if (rename(pem, old_pem) != -1) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Renamed %s to %s\n", pem, old_pem);
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Could not rename %s: %s\n", pem, strerror(errno));
+	}
+
+	switch_safe_free(old_pem);
+	switch_safe_free(pem);
+
+	return SWITCH_FALSE;
+}
+
 #if 0
 static void callback(int p, int n, void *arg)
 {
@@ -347,7 +413,9 @@ static int mkcert(X509 **x509p, EVP_PKEY **pkeyp, int bits, int serial, int days
 {
 	X509 *x;
 	EVP_PKEY *pk;
+#if OPENSSL_VERSION_NUMBER < 0x30000000
 	RSA *rsa;
+#endif
 	X509_NAME *name=NULL;
 
 	switch_assert(pkeyp);
@@ -369,7 +437,26 @@ static int mkcert(X509 **x509p, EVP_PKEY **pkeyp, int bits, int serial, int days
 		x = *x509p;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+	{
+		EVP_PKEY_CTX *ctx;
+
+		ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+		/* Setup the key context */
+		if ((!ctx) || (EVP_PKEY_keygen_init(ctx) <= 0) || (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits) <= 0)) {
+			abort();
+			goto err;
+		}
+
+		/* Generate key */
+		if (EVP_PKEY_generate(ctx, &pk) <= 0) {
+			abort();
+			goto err;
+		}
+
+		EVP_PKEY_CTX_free(ctx);
+	}
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000
 	rsa = RSA_new();
 	{
 		static const BN_ULONG ULONG_RSA_F4 = RSA_F4;
@@ -386,13 +473,15 @@ static int mkcert(X509 **x509p, EVP_PKEY **pkeyp, int bits, int serial, int days
 	rsa = RSA_generate_key(bits, RSA_F4, NULL, NULL);
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000
 	if (!EVP_PKEY_assign_RSA(pk, rsa)) {
 		abort();
 	}
 
 	rsa = NULL;
+#endif
 
-	X509_set_version(x, 0);
+	X509_set_version(x, 2);
 	ASN1_INTEGER_set(X509_get_serialNumber(x), serial);
 	X509_gmtime_adj(X509_get_notBefore(x), -(long)60*60*24*7);
 	X509_gmtime_adj(X509_get_notAfter(x), (long)60*60*24*days);
@@ -413,13 +502,21 @@ static int mkcert(X509 **x509p, EVP_PKEY **pkeyp, int bits, int serial, int days
 	 */
 	X509_set_issuer_name(x, name);
 
-	if (!X509_sign(x, pk, EVP_sha1()))
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+	if (!X509_sign(x, pk, EVP_sha256())) {
+#else
+	if (!X509_sign(x, pk, EVP_sha1())) {
+#endif
 		goto err;
+	}
 
 	*x509p = x;
 	*pkeyp = pk;
+
 	return(1);
- err:
+err:
+	ERR_print_errors_fp(stdout);
+
 	return(0);
 }
 

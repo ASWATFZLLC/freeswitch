@@ -129,6 +129,8 @@ static char *my_dup(const char *s)
 #define FREE(ptr) switch_safe_free(ptr)
 #endif
 
+static void free_header(switch_event_header_t **header);
+
 /* make sure this is synced with the switch_event_types_t enum in switch_types.h
    also never put any new ones before EVENT_ALL
 */
@@ -205,6 +207,7 @@ static char *EVENT_NAMES[] = {
 	"SEND_INFO",
 	"RECV_INFO",
 	"RECV_RTCP_MESSAGE",
+	"SEND_RTCP_MESSAGE",
 	"CALL_SECURE",
 	"NAT",
 	"RECORD_START",
@@ -648,7 +651,6 @@ SWITCH_DECLARE(void) switch_event_launch_dispatch_threads(uint32_t max)
 {
 	switch_threadattr_t *thd_attr;
 	uint32_t index = 0;
-	int launched = 0;
 	uint32_t sanity = 200;
 
 	switch_memory_pool_t *pool = RUNTIME_POOL;
@@ -679,7 +681,6 @@ SWITCH_DECLARE(void) switch_event_launch_dispatch_threads(uint32_t max)
 		} else {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Create additional event dispatch thread %d\n", index);
 		}
-		launched++;
 	}
 
 	SOFT_MAX_DISPATCH = index;
@@ -891,27 +892,7 @@ SWITCH_DECLARE(switch_status_t) switch_event_del_header_val(switch_event_t *even
 			if (hp == event->last_header || !hp->next) {
 				event->last_header = lp;
 			}
-			FREE(hp->name);
-
-			if (hp->idx) {
-				int i = 0;
-
-				for (i = 0; i < hp->idx; i++) {
-					FREE(hp->array[i]);
-				}
-				FREE(hp->array);
-			}
-
-			FREE(hp->value);
-
-			memset(hp, 0, sizeof(*hp));
-#ifdef SWITCH_EVENT_RECYCLE
-			if (switch_queue_trypush(EVENT_HEADER_RECYCLE_QUEUE, hp) != SWITCH_STATUS_SUCCESS) {
-				FREE(hp);
-			}
-#else
-			FREE(hp);
-#endif
+			free_header(&hp);
 			status = SWITCH_STATUS_SUCCESS;
 		} else {
 			lp = hp;
@@ -942,6 +923,37 @@ static switch_event_header_t *new_header(const char *header_name)
 
 		return header;
 
+}
+
+static void free_header(switch_event_header_t **header)
+{
+	assert(header);
+
+	if (*header) {
+		if ((*header)->idx) {
+			if (!(*header)->array) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "INDEX WITH NO ARRAY ?? [%s][%s]\n", (*header)->name, (*header)->value);
+			} else {
+				int i = 0;
+
+				for (i = 0; i < (*header)->idx; i++) {
+					FREE((*header)->array[i]);
+				}
+				FREE((*header)->array);
+			}
+		}
+
+		FREE((*header)->name);
+		FREE((*header)->value);
+
+#ifdef SWITCH_EVENT_RECYCLE
+		if (switch_queue_trypush(EVENT_HEADER_RECYCLE_QUEUE, *header) != SWITCH_STATUS_SUCCESS) {
+			FREE(*header);
+		}
+#else
+		FREE(*header);
+#endif
+	}
 }
 
 SWITCH_DECLARE(int) switch_event_add_array(switch_event_t *event, const char *var, const char *val)
@@ -1012,10 +1024,11 @@ static switch_status_t switch_event_base_add_header(switch_event_t *event, switc
 	}
 
 	if (index_ptr || (stack & SWITCH_STACK_PUSH) || (stack & SWITCH_STACK_UNSHIFT)) {
+		switch_event_header_t *tmp_header = NULL;
 
 		if (!(header = switch_event_get_header_ptr(event, header_name)) && index_ptr) {
 
-			header = new_header(header_name);
+			tmp_header = header = new_header(header_name);
 
 			if (switch_test_flag(event, EF_UNIQ_HEADERS)) {
 				switch_event_del_header(event, header_name);
@@ -1047,9 +1060,14 @@ static switch_status_t switch_event_base_add_header(switch_event_t *event, switc
 							exists = 1;
 						}
 
+						FREE(data);
 						goto redraw;
 					}
+				} else if (tmp_header) {
+					free_header(&tmp_header);
 				}
+
+				FREE(data);
 				goto end;
 			} else {
 				if ((stack & SWITCH_STACK_PUSH) || (stack & SWITCH_STACK_UNSHIFT)) {
@@ -1215,10 +1233,18 @@ SWITCH_DECLARE(switch_status_t) switch_event_set_subclass_name(switch_event_t *e
 	return SWITCH_STATUS_SUCCESS;
 }
 
+SWITCH_DECLARE(switch_status_t) switch_event_add_header_string_nodup(switch_event_t *event, switch_stack_t stack, const char *header_name, const char *data)
+{
+	if (data) {
+		return switch_event_base_add_header(event, stack, header_name, (char *)data);
+	}
+	return SWITCH_STATUS_GENERR;
+}
+
 SWITCH_DECLARE(switch_status_t) switch_event_add_header_string(switch_event_t *event, switch_stack_t stack, const char *header_name, const char *data)
 {
 	if (data) {
-		return switch_event_base_add_header(event, stack, header_name, (stack & SWITCH_STACK_NODUP) ? (char *)data : DUP(data));
+		return switch_event_base_add_header(event, stack, header_name, DUP(data));
 	}
 	return SWITCH_STATUS_GENERR;
 }
@@ -1266,33 +1292,7 @@ SWITCH_DECLARE(void) switch_event_destroy(switch_event_t **event)
 		for (hp = ep->headers; hp;) {
 			this = hp;
 			hp = hp->next;
-
-			if (this->idx) {
-				if (!this->array) {
-					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "INDEX WITH NO ARRAY WTF?? [%s][%s]\n", this->name, this->value);
-				} else {
-					int i = 0;
-
-					for (i = 0; i < this->idx; i++) {
-						FREE(this->array[i]);
-					}
-					FREE(this->array);
-				}
-			}
-
-			FREE(this->name);
-			FREE(this->value);
-
-
-#ifdef SWITCH_EVENT_RECYCLE
-			if (switch_queue_trypush(EVENT_HEADER_RECYCLE_QUEUE, this) != SWITCH_STATUS_SUCCESS) {
-				FREE(this);
-			}
-#else
-			FREE(this);
-#endif
-
-
+			free_header(&this);
 		}
 		FREE(ep->body);
 		FREE(ep->subclass_name);
@@ -1729,10 +1729,8 @@ SWITCH_DECLARE(switch_status_t) switch_event_create_brackets(char *data, char a,
 			int x = 0;
 			for (x = 0; x < var_count; x++) {
 				char *inner_var_array[2] = { 0 };
-				int inner_var_count;
 
-				if ((inner_var_count = switch_separate_string(var_array[x], '=',
-															  inner_var_array, (sizeof(inner_var_array) / sizeof(inner_var_array[0])))) == 2) {
+				if (switch_separate_string(var_array[x], '=', inner_var_array, (sizeof(inner_var_array) / sizeof(inner_var_array[0]))) == 2) {
 					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG1, "Parsing variable [%s]=[%s]\n", inner_var_array[0], inner_var_array[1]);
 					switch_event_add_header_string(e, SWITCH_STACK_BOTTOM, inner_var_array[0], inner_var_array[1]);
 				}
@@ -1909,6 +1907,8 @@ SWITCH_DECLARE(switch_xml_t) switch_event_xmlize(switch_event_t *event, const ch
 		data = (char *) malloc(2048);
 		if (!data) {
 			va_end(ap);
+			switch_xml_free(xml);
+
 			return NULL;
 		}
 		ret = vsnprintf(data, 2048, fmt, ap);
@@ -1918,6 +1918,8 @@ SWITCH_DECLARE(switch_xml_t) switch_event_xmlize(switch_event_t *event, const ch
 #ifndef HAVE_VASPRINTF
 			free(data);
 #endif
+			switch_xml_free(xml);
+
 			return NULL;
 		}
 	}
@@ -2069,15 +2071,18 @@ SWITCH_DECLARE(switch_status_t) switch_event_bind_removable(const char *id, swit
 		switch_mutex_lock(CUSTOM_HASH_MUTEX);
 
 		if (!(subclass = switch_core_hash_find(CUSTOM_HASH, subclass_name))) {
-			switch_event_reserve_subclass_detailed(id, subclass_name);
-			subclass = switch_core_hash_find(CUSTOM_HASH, subclass_name);
-			subclass->bind = 1;
+			if (switch_event_reserve_subclass_detailed(id, subclass_name) == SWITCH_STATUS_SUCCESS) {
+				if ((subclass = switch_core_hash_find(CUSTOM_HASH, subclass_name))) {
+					subclass->bind = 1;
+				}
+			}
 		}
 
 		switch_mutex_unlock(CUSTOM_HASH_MUTEX);
 
 		if (!subclass) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Could not reserve subclass. '%s'\n", subclass_name);
+
 			return SWITCH_STATUS_FALSE;
 		}
 	}
@@ -2092,6 +2097,7 @@ SWITCH_DECLARE(switch_status_t) switch_event_bind_removable(const char *id, swit
 		if (subclass_name) {
 			event_node->subclass_name = DUP(subclass_name);
 		}
+
 		event_node->callback = callback;
 		event_node->user_data = user_data;
 
@@ -2464,8 +2470,6 @@ SWITCH_DECLARE(char *) switch_event_expand_headers_check(switch_event_t *event, 
 					char *expanded = NULL;
 					char *expanded_vname = NULL;
 
-					SWITCH_STANDARD_STREAM(stream);
-
 					if ((expanded_vname = switch_event_expand_headers_check(event, (char *) vname, var_list, api_list, recur+1)) == vname) {
 						expanded_vname = NULL;
 					} else {
@@ -2482,6 +2486,7 @@ SWITCH_DECLARE(char *) switch_event_expand_headers_check(switch_event_t *event, 
 						func_val = NULL;
 						sub_val = "<API execute Permission Denied>";
 					} else {
+						SWITCH_STANDARD_STREAM(stream);
 						if (switch_api_execute(vname, vval, NULL, &stream) == SWITCH_STATUS_SUCCESS) {
 							func_val = stream.data;
 							sub_val = func_val;
@@ -2951,14 +2956,17 @@ static void ecd_deliver(event_channel_data_t **ecdP)
 		int x_argc = switch_separate_string_string(key, (char*) sep, x_argv, SWITCH_CHANNEL_DISPATCH_MAX_KEY_PARTS);
 		char buf[1024];
 		int i, r;
+
 		for(i=x_argc - 1; i > 0; i--) {
 			int z;
+
 			memset(buf, 0, 1024);
-			sprintf(buf, "%s", x_argv[0]);
+			switch_snprintf(buf, sizeof(buf), "%s", x_argv[0]);
 			for(z=1; z < i; z++) {
 				strcat(buf, sep);
-				strcat(buf, x_argv[z]);
+				strncat(buf, x_argv[z], sizeof(buf) - strlen(buf) - 1);
 			}
+
 			r = _switch_event_channel_broadcast(buf, ecd->event_channel, ecd->json, ecd->key, ecd->id);
 			t += r;
 			if (r && switch_core_test_flag(SCF_EVENT_CHANNEL_HIERARCHY_DELIVERY_ONCE)) {
@@ -2967,11 +2975,13 @@ static void ecd_deliver(event_channel_data_t **ecdP)
 		}
 	} else {
 		char *p = NULL;
+
 		if ((p = strchr(key, '.'))) {
 			*p = '\0';
 			t += _switch_event_channel_broadcast(key, ecd->event_channel, ecd->json, ecd->key, ecd->id);
 		}
 	}
+
 	switch_safe_free(key);
 
 	t += _switch_event_channel_broadcast(SWITCH_EVENT_CHANNEL_GLOBAL, ecd->event_channel, ecd->json, ecd->key, ecd->id);
@@ -2979,6 +2989,7 @@ static void ecd_deliver(event_channel_data_t **ecdP)
 	if(t == 0) {
 		if (switch_core_test_flag(SCF_EVENT_CHANNEL_LOG_UNDELIVERABLE_JSON)) {
 			char *json = cJSON_Print(ecd->json);
+
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "no subscribers for %s , %s => %s\n", ecd->event_channel, ecd->key, json);
 			switch_safe_free(json);
 		} else {
@@ -3618,7 +3629,8 @@ SWITCH_DECLARE(switch_status_t) switch_live_array_add(switch_live_array_t *la, c
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
 	const char *action = "add";
 	cJSON *msg = NULL, *data = NULL;
-
+	const char *visibility = NULL;
+	
 	switch_mutex_lock(la->mutex);
 
 	if ((node = switch_core_hash_find(la->hash, name))) {
@@ -3685,7 +3697,9 @@ SWITCH_DECLARE(switch_status_t) switch_live_array_add(switch_live_array_t *la, c
 
 	msg = cJSON_CreateObject();
 	data = json_add_child_obj(msg, "data", NULL);
-
+	if ((visibility = cJSON_GetObjectCstr(node->obj, "contentVisibility"))) {
+		cJSON_AddItemToObject(msg, "contentVisibility", cJSON_CreateString(visibility));
+	}
 	cJSON_AddItemToObject(msg, "eventChannel", cJSON_CreateString(la->event_channel));
 	cJSON_AddItemToObject(data, "action", cJSON_CreateString(action));
 
