@@ -79,6 +79,7 @@
 #define CODE_AUTH_REQUIRED -32000
 #define CODE_AUTH_FAILED -32001
 #define CODE_SESSION_ERROR -32002
+#define CODE_DUPLICATE_SESSION -32003
 
 #define MY_EVENT_CLIENT_CONNECT "verto::client_connect"
 #define MY_EVENT_CLIENT_DISCONNECT "verto::client_disconnect"
@@ -320,6 +321,8 @@ struct globals_s {
 	int enable_fs_events;
 	switch_bool_t kslog_on;
 
+	switch_bool_t disable_multiple_sessions;
+
 	switch_hash_t *jsock_hash;
 	switch_mutex_t *jsock_mutex;
 
@@ -332,6 +335,8 @@ struct globals_s {
 
 	uint32_t detached;
 	uint32_t detach_timeout;
+
+	uint32_t tcp_keepalive_probes;
 
 	switch_event_channel_id_t event_channel_id;
 
