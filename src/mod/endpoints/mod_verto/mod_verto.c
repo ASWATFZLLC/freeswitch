@@ -1400,6 +1400,34 @@ static void attach_calls(jsock_t *jsock)
 	cJSON *reattached_sessions = NULL;
 
 	reattached_sessions = cJSON_CreateArray();
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
+
+	if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
+		// tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
+		if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
+			cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+			err = 1; goto cleanup;
+		}
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
+		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+		err = 1; goto cleanup;
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
+
+	// if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
+	// 	tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
+	// 	if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+	// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+	// 		err = 1; goto cleanup;
+	// 	}
+	// } else {
+	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+	// 	err = 1; goto cleanup;
+	// }
 
 	switch_thread_rwlock_rdlock(verto_globals.tech_rwlock);
 	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
@@ -1415,6 +1443,7 @@ static void attach_calls(jsock_t *jsock)
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 
 	msg = jrpc_new_req("verto.clientReady", NULL, &params);
+	// here clientReady
 	cJSON_AddItemToObject(params, "reattached_sessions", reattached_sessions);
 	jsock_queue_event(jsock, &msg, SWITCH_TRUE);
 }
@@ -2573,7 +2602,55 @@ static switch_state_handler_table_t verto_state_handlers = {
     SSH_FLAG_STICKY
 };
 
+static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
+{
+	uint32_t i;
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya21 verto_set_ip_options\n");
 
+	switch_mutex_lock(profile->mutex);
+	if (!zstr(profile->rtpip[profile->rtpip_cur])) {
+		tech_pvt->mparams->rtpip4 = switch_core_session_strdup(tech_pvt->session, profile->rtpip[profile->rtpip_cur++]);
+		tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip4;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya22 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip4);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya23 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
+		if (profile->rtpip_cur == profile->rtpip_index) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya24 verto_set_ip_options\n");
+			profile->rtpip_cur = 0;
+		}
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya25 verto_set_ip_options\n");
+
+	if (!zstr(profile->rtpip6[profile->rtpip_cur6])) {
+		tech_pvt->mparams->rtpip6 = switch_core_session_strdup(tech_pvt->session, profile->rtpip6[profile->rtpip_cur6++]);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya26 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip6);
+
+		if (zstr(tech_pvt->mparams->rtpip)) {
+			tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip6;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya27 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
+		}
+
+		if (profile->rtpip_cur6 == profile->rtpip_index6) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya28 verto_set_ip_options %s\n", profile->rtpip_cur6);
+			profile->rtpip_cur6 = 0;
+		}
+	}
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya29 verto_set_ip_options\n");
+	switch_mutex_unlock(profile->mutex);
+
+	if (zstr(tech_pvt->mparams->rtpip)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya31 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "%s has no media ip, check your configuration\n",
+						  switch_channel_get_name(tech_pvt->channel));
+		return SWITCH_STATUS_FALSE;
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya32 verto_set_ip_options\n");
+	tech_pvt->mparams->extrtpip = tech_pvt->mparams->extsipip = profile->extrtpip;
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya33 verto_set_ip_options %s\n", tech_pvt->mparams->extrtpip);
+
+	return SWITCH_STATUS_SUCCESS;
+}
 
 
 static switch_status_t verto_set_media_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
@@ -4560,6 +4637,7 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 	const char *var;
 	*response = cJSON_CreateObject();
 	cJSON_AddItemToObject(*response, "message", cJSON_CreateString("logged in"));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya01 login_func\n");
 
 	if (jsock->exptime) {
 		cJSON_AddItemToObject(*response, "auth-expires", cJSON_CreateNumber(jsock->exptime));
@@ -4580,7 +4658,22 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 		cJSON_AddItemToObject(*response, "superuser", cJSON_CreateTrue());
 	}
 	switch_mutex_unlock(jsock->flag_mutex);
+
+	// if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
+	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya02 attach_calls\n");
+	// 	// tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
+	// 	if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+	// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya03 attach_calls\n");
+	// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+	// 		err = 1; goto cleanup;
+	// 	}
+	// } else {
+	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya04 attach_calls\n");
+	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+	// 	err = 1; goto cleanup;
+	// }
 						
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya05 login_func\n");
 	login_fire_custom_event(jsock, params, 1, "Logged in");
 
 	return SWITCH_TRUE;
