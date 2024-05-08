@@ -1398,22 +1398,23 @@ static void attach_calls(jsock_t *jsock)
 	cJSON *msg = NULL;
 	cJSON *params = NULL;
 	cJSON *reattached_sessions = NULL;
+	int err = 0;
 
 	reattached_sessions = cJSON_CreateArray();
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
 
-	if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
+	if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
 		// tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
 		if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
-			cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-			err = 1; goto cleanup;
+			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+			// err = 1; goto cleanup;
 		}
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
-		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-		err = 1; goto cleanup;
+		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+		// err = 1; goto cleanup;
 	}
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
@@ -2400,6 +2401,7 @@ static switch_status_t verto_on_hangup(switch_core_session_t *session)
 }
 
 static switch_status_t verto_set_media_options(verto_pvt_t *tech_pvt, verto_profile_t *profile);
+static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile);
 
 static switch_status_t verto_connect(switch_core_session_t *session, const char *method)
 {
@@ -2631,7 +2633,7 @@ static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile
 		}
 
 		if (profile->rtpip_cur6 == profile->rtpip_index6) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya28 verto_set_ip_options %s\n", profile->rtpip_cur6);
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya28 verto_set_ip_options %d\n", profile->rtpip_cur6);
 			profile->rtpip_cur6 = 0;
 		}
 	}
