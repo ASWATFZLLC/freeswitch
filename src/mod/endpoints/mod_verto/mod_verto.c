@@ -1404,23 +1404,22 @@ static void attach_calls(jsock_t *jsock)
 	reattached_sessions = cJSON_CreateArray();
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
 
-	if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
-		// tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
-		status = verto_set_ip_options(tech_pvt, jsock->profile)
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls %d\n", status);
-		// if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
-		// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
-		// 	// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-		// 	// err = 1; goto cleanup;
-		// }
-	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
-		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-		// err = 1; goto cleanup;
-	}
+	// if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
+	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
+	// 	// tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
+	// 	if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+	// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
+	// 		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+	// 		// err = 1; goto cleanup;
+	// 	}
+	// } else {
+	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
+	// 	// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+	// 	// err = 1; goto cleanup;
+	// }
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
+	status = verto_set_ip_options(tech_pvt, jsock->profile)
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls %d\n", status);
 
 	// if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
 	// 	tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
