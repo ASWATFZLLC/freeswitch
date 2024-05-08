@@ -402,6 +402,7 @@ static switch_bool_t monitor_callback(switch_core_session_t *session, const char
 
 				if (!oglobals->ignore_early_media && !oglobals->early_ok) {
 					oglobals->early_ok = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya610 switch_ivr_originate: \n");
 				}
 			}
 		}
@@ -565,6 +566,7 @@ static uint8_t check_channel_status(originate_global_t *oglobals, uint32_t len, 
 			if (oglobals->ignore_early_media == 3 && oglobals->bridge_early_media == -1) {
 				oglobals->bridge_early_media = i;
 				oglobals->ringback_ok = 1;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya609 switch_ivr_originate: \n");
 			}
 
 			if (oglobals->sending_ringback == 1) {
@@ -574,6 +576,7 @@ static uint8_t check_channel_status(originate_global_t *oglobals, uint32_t len, 
 				switch_channel_pass_callee_id(oglobals->originate_status[0].peer_channel, caller_channel);
 				switch_channel_ring_ready(caller_channel);
 				oglobals->sent_ring = 1;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya608 switch_ivr_originate: \n");
 			}
 
 			if (!oglobals->originate_status[i].early_media) {
@@ -934,6 +937,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 	switch_channel_state_t wait_state = 0;
 
 	switch_assert(peer_channel);
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya911 switch_ivr_wait_for_answer \n");
 
 	if (switch_channel_get_state(peer_channel) == CS_RESET) {
 		switch_channel_set_state(peer_channel, CS_SOFT_EXECUTE);
@@ -941,9 +945,11 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 
 	if (session) {
 		caller_channel = switch_core_session_get_channel(session);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya912 switch_ivr_wait_for_answer \n");
 	}
 
 	if ((switch_channel_test_flag(peer_channel, CF_ANSWERED) || switch_channel_test_flag(peer_channel, CF_EARLY_MEDIA))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya913 switch_ivr_wait_for_answer \n");
 		goto end;
 	}
 
@@ -962,23 +968,28 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 
 	if (caller_channel) {
 		cancel_key = switch_channel_get_variable(caller_channel, "origination_cancel_key");
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya914 switch_ivr_wait_for_answer cancel_key %s\n", cancel_key);
 
 		if (switch_channel_test_flag(caller_channel, CF_ANSWERED)) {
 			ringback_data = switch_channel_get_variable(caller_channel, "transfer_ringback");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya915 switch_ivr_wait_for_answer %s\n", ringback_data);
 		}
 
 		if (!ringback_data) {
 			ringback_data = switch_channel_get_variable(caller_channel, "ringback");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya916 switch_ivr_wait_for_answer %s\n", ringback_data);
 		}
 
 		if (switch_channel_test_flag(caller_channel, CF_PROXY_MODE) || switch_channel_test_flag(caller_channel, CF_PROXY_MEDIA)) {
 			ringback_data = NULL;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya917 switch_ivr_wait_for_answer \n");
 		} else if (zstr(ringback_data)) {
 			if ((var = switch_channel_get_variable(caller_channel, SWITCH_SEND_SILENCE_WHEN_IDLE_VARIABLE))) {
 				int sval = atoi(var);
 
 				if (sval) {
 					ringback_data = switch_core_session_sprintf(session, "silence:%d", sval);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya918 switch_ivr_wait_for_answer %s\n", ringback_data);
 				}
 			}
 		}
@@ -996,6 +1007,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 
 		if (!ringback.asis) {
 			if ((pass = (uint8_t) switch_test_flag(read_codec, SWITCH_CODEC_FLAG_PASSTHROUGH))) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya919 switch_ivr_wait_for_answer \n");
 				goto no_ringback;
 			}
 
@@ -1091,6 +1103,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 
 	if (caller_channel) {
 		wait_state = switch_channel_get_state(caller_channel);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya921 switch_ivr_wait_for_answer, wait_state %d\n", wait_state);
 	}
 
 	while (switch_channel_ready(peer_channel) && !switch_channel_media_ready(peer_channel)) {
@@ -1104,6 +1117,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 				if (switch_channel_dequeue_dtmf(caller_channel, &dtmf) == SWITCH_STATUS_SUCCESS) {
 					if (dtmf.digit == *cancel_key) {
 						status = SWITCH_STATUS_FALSE;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya922 switch_ivr_wait_for_answer \n");
 						goto done;
 					}
 				}
@@ -1111,17 +1125,20 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 		}
 
 		if (caller_channel && switch_channel_get_state(caller_channel) != wait_state) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya923 switch_ivr_wait_for_answer \n");
 			goto done;
 		}
 
 		if (diff > timelimit) {
 			status = SWITCH_STATUS_TIMEOUT;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya924 switch_ivr_wait_for_answer \n");
 			goto done;
 		}
 
 		if (switch_channel_media_ready(caller_channel)) {
 			status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);
 			if (!SWITCH_READ_ACCEPTABLE(status)) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya925 switch_ivr_wait_for_answer \n");
 				break;
 			}
 		} else {
@@ -1209,6 +1226,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 			switch_channel_hangup(peer_channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 		}
 		status = SWITCH_STATUS_FALSE;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya925 switch_ivr_wait_for_answer %d \n", status);
 	}
 
 	if (switch_channel_test_flag(caller_channel, CF_XFER_ZOMBIE)) {
@@ -1223,6 +1241,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_wait_for_answer(switch_core_session_t
 
 	if (caller_channel && !switch_channel_up_nosig(caller_channel)) {
 		status = SWITCH_STATUS_FALSE;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya926 switch_ivr_wait_for_answer %d \n", status);
 	}
 
 	return status;
@@ -1886,6 +1905,7 @@ static void *SWITCH_THREAD_FUNC early_thread_run(switch_thread_t *thread, void *
 					ring_ready = 1;
 					state->oglobals->bridge_early_media = -1;
 					state->oglobals->ignore_early_media = 1;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya607 switch_ivr_originate: \n");
 				}
 
 				if (switch_channel_test_flag(channel, CF_ANSWERED)) {
@@ -2055,6 +2075,9 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 	const char *ent_aleg_uuid = NULL;
 	switch_core_session_t *a_session = session, *l_session = NULL;
 	char *event_string;
+	// switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya831 switch_ivr_originate obj: %s\n", cJSON_PrintUnformatted(obj));
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya831 switch_ivr_originate: \n");
+
 	
 	if (!bridgeto || dh) {
 		bridgeto = "";
@@ -2071,6 +2094,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 
 
 	if (strstr(bridgeto, SWITCH_ENT_ORIGINATE_DELIM)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya832 switch_ivr_originate: \n");
 		return switch_ivr_enterprise_originate(session, bleg, cause, bridgeto, timelimit_sec, table, cid_name_override, cid_num_override,
 											   caller_profile_override, ovars, flags, cancel_cause);
 	}
@@ -2177,6 +2201,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 	if (!odata) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Memory Error!\n");
 		status = SWITCH_STATUS_MEMERR;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya833 switch_ivr_originate: \n");
 		goto done;
 	}
 
@@ -2192,11 +2217,13 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 		var_event = ovars;
 	} else {
 		if (switch_event_create_plain(&var_event, SWITCH_EVENT_CHANNEL_DATA) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya834 switch_ivr_originate: \n");
 			abort();
 		}
 	}
 
 	ent_aleg_uuid = switch_event_get_header(var_event, "ent_originate_aleg_uuid");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya835 switch_ivr_originate ent_aleg_uuid: %s\n", ent_aleg_uuid);
 
 	if (caller_channel) {
 		switch_channel_process_export(caller_channel, NULL, var_event, SWITCH_EXPORT_VARS_VARIABLE);
@@ -2264,6 +2291,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 	if (zstr(data) && !dh) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "No origination URL specified!\n");
 		status = SWITCH_STATUS_GENERR;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya836 switch_ivr_originate: \n");
 		goto done;
 	}
 
@@ -2287,6 +2315,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 			switch_channel_set_flag(caller_channel, CF_XFER_ZOMBIE);
 			oglobals.early_ok = 0;
 			oglobals.ignore_early_media = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya606 switch_ivr_originate: \n");
 		}
 
 		if ((cdr_var = switch_channel_get_variable(caller_channel, "failed_xml_cdr_prefix"))) {
@@ -2357,8 +2386,10 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					ok = 1;
 				}
 
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya837 switch_ivr_originate hi->name: %s\n", hi->name);
 				if (ok && !switch_event_get_header(var_event, hi->name)) {
 					switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, (char *) hi->name, (char *) hi->value);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya838 switch_ivr_originate: %s->%s\n", hi->name, hi->value);
 				}
 			}
 			switch_channel_variable_last(caller_channel);
@@ -2469,6 +2500,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 		if (switch_true(var_val)) {
 			oglobals.early_ok = 0;
 			oglobals.ignore_early_media = 3;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya601 switch_ivr_originate: \n");
 		}
 	}
 
@@ -2476,12 +2508,17 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 		if (switch_true(var_val)) {
 			oglobals.early_ok = 0;
 			oglobals.ignore_early_media = 1;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya602 switch_ivr_originate: \n");
 		} else if (!strcmp(var_val, "consume")) {
 			oglobals.early_ok = 0;
 			oglobals.ignore_early_media = 4;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya603 switch_ivr_originate: \n");
 		} else if (!strcmp(var_val, "ring_ready")) {
 			oglobals.early_ok = 0;
 			oglobals.ignore_early_media = 2;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya604 switch_ivr_originate: \n");
+		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya605 switch_ivr_originate: \n");
 		}
 	}
 
@@ -2658,6 +2695,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 						switch_ivr_sleep(oglobals.session, retry_sleep_ms, SWITCH_TRUE, NULL);
 						if (!switch_channel_ready(caller_channel)) {
 							status = SWITCH_STATUS_FALSE;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya838 switch_ivr_originate: \n");
 							goto done;
 						}
 					} else {
@@ -2684,6 +2722,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 		
 		if (or_argc <= 0) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Nothing to do\n");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya839 switch_ivr_originate: \n");
 			goto outer_for;
 		}
 		
@@ -2724,6 +2763,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 						/* set try and retries to 0 */
 						try = 0;
 						retries = 0;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya840 switch_ivr_originate: \n");
 						goto done;
 					}
 				} else {
@@ -2855,6 +2895,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 				if (oglobals.session) {
 					if (!switch_channel_ready(caller_channel)) {
 						status = SWITCH_STATUS_FALSE;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya841 switch_ivr_originate: \n");
 						goto done;
 					}
 
@@ -2956,11 +2997,13 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 
 				if ((current_variable = switch_event_get_header(originate_var_event, "origination_caller_id_number"))) {
 					new_profile->caller_id_number = switch_core_strdup(new_profile->pool, current_variable);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya842 switch_ivr_originate caller_id_number: %s\n", new_profile->caller_id_number);
 					myflags |= SOF_NO_EFFECTIVE_CID_NUM;
 				}
 
 				if ((current_variable = switch_event_get_header(originate_var_event, "origination_caller_id_name"))) {
 					new_profile->caller_id_name = switch_core_strdup(new_profile->pool, current_variable);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya843 switch_ivr_originate caller_id_name: %s\n", new_profile->caller_id_name);
 					myflags |= SOF_NO_EFFECTIVE_CID_NAME;
 				}
 
@@ -2980,6 +3023,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					}
 				}
 
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya844 switch_ivr_originate originate_early_media: %d\n", oglobals.early_ok);
 				switch_event_add_header_string(var_event, SWITCH_STACK_BOTTOM, "originate_early_media", oglobals.early_ok ? "true" : "false");
 
 
@@ -3014,6 +3058,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 						if (fail_on_single_reject == 1 || pos) {
 							force_reason = reason;
 							status = SWITCH_STATUS_FALSE;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya845 switch_ivr_originate: \n");
 							goto outer_for;
 						}
 					}
@@ -3023,6 +3068,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 				if (switch_core_session_read_lock(new_session) != SWITCH_STATUS_SUCCESS) {
 					status = SWITCH_STATUS_FALSE;
 					if (local_var_event) switch_event_destroy(&local_var_event);
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya846 switch_ivr_originate: \n");
 					goto done;
 				}
 
@@ -3174,6 +3220,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 				}
 
 				if (oglobals.monitor_early_media_ring || oglobals.monitor_early_media_fail || oglobals.ignore_early_media == 4) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya8470 switch_ivr_originate: \n");
 					switch_channel_set_flag(oglobals.originate_status[i].peer_channel, CF_CONSUME_ON_ORIGINATE);
 				}
 
@@ -3183,6 +3230,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					status = SWITCH_STATUS_SUCCESS;
 					*bleg = oglobals.originate_status[i].peer_session;
 					*cause = SWITCH_CAUSE_SUCCESS;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya847 switch_ivr_originate: \n");
 					goto outer_for;
 				}
 
@@ -3215,10 +3263,12 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					}
 
 					if (state >= CS_ROUTING) {
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya848 switch_ivr_originate: \n");
 						goto endfor1;
 					}
 
 					if (caller_channel && !switch_channel_ready(caller_channel)) {
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya849 switch_ivr_originate: \n");
 						goto notready;
 					}
 
@@ -3227,6 +3277,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					if (elapsed > (time_t) timelimit_sec) {
 						to++;
 						oglobals.idx = IDX_TIMEOUT;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya850 switch_ivr_originate: \n");
 						goto notready;
 					}
 
@@ -3237,6 +3288,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 						if (force_reason == SWITCH_CAUSE_NONE) {
 							force_reason = SWITCH_CAUSE_PROGRESS_TIMEOUT;
 						}
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya851 switch_ivr_originate: \n");
 						goto notready;
 					}
 
@@ -3248,6 +3300,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 
 				if (valid_channels == 0) {
 					status = SWITCH_STATUS_GENERR;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya852 switch_ivr_originate: \n");
 					goto done;
 				}
 
@@ -3290,6 +3343,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 						force_reason = *cancel_cause;
 					}
 					oglobals.idx = IDX_CANCEL;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya853 switch_ivr_originate: \n");
 					goto notready;
 				}
 
@@ -3304,6 +3358,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					if (force_reason == SWITCH_CAUSE_NONE) {
 						force_reason = SWITCH_CAUSE_PROGRESS_TIMEOUT;
 					}
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya854 switch_ivr_originate: \n");
 					goto notready;
 				}
 
@@ -3343,6 +3398,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					}
 					if (!ok) {
 						oglobals.idx = IDX_TIMEOUT;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya855 switch_ivr_originate: \n");
 						goto notready;
 					}
 				}
@@ -3365,6 +3421,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 							if (switch_channel_dequeue_dtmf(caller_channel, &dtmf) == SWITCH_STATUS_SUCCESS) {
 								if (dtmf.digit == *cancel_key) {
 									oglobals.idx = IDX_KEY_CANCEL;
+									switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya856 switch_ivr_originate: \n");
 									goto notready;
 								}
 							}
@@ -3379,6 +3436,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 							}
 
 							if (switch_channel_test_flag(caller_channel, CF_XFER_ZOMBIE)) {
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya857 switch_ivr_originate: \n");
 								goto do_continue;
 							}
 							break;
@@ -3421,6 +3479,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 								break;
 							case SWITCH_STATUS_BREAK:
 								status = SWITCH_STATUS_FALSE;
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya858 switch_ivr_originate: \n");
 								goto done;
 								break;
 							default:
@@ -3430,6 +3489,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 								break;
 							}
 
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya859 switch_ivr_originate: \n");
 							goto do_continue;
 						}
 
@@ -3514,6 +3574,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 								switch_channel_set_flag(caller_channel, CF_XFER_ZOMBIE);
 							}
 							if (switch_channel_test_flag(caller_channel, CF_XFER_ZOMBIE)) {
+								switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya860 switch_ivr_originate: \n");
 								goto do_continue;
 							}
 							break;
@@ -3569,6 +3630,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 							peer_session = oglobals.originate_status[i].peer_session;
 							peer_channel = oglobals.originate_status[i].peer_channel;
 							oglobals.originate_status[i].peer_channel = NULL;
+							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya861 switch_ivr_originate: \n");
 							goto end_search;
 						}
 					}
@@ -3774,6 +3836,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					switch_process_import(oglobals.session, peer_channel, "import", NULL);
 				}
 				peer_channel = NULL;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya862 switch_ivr_originate: \n");
 				goto done;
 			}
 
@@ -3790,18 +3853,23 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 					switch_channel_pass_callee_id(peer_channel, caller_channel);
 					if (switch_channel_test_flag(caller_channel, CF_PROXY_MODE)) {
 						status = SWITCH_STATUS_SUCCESS;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya863 switch_ivr_originate: \n");
 					} else {
 						status = switch_channel_answer(caller_channel);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya864 switch_ivr_originate: \n");
 					}
 				} else if (switch_channel_test_flag(peer_channel, CF_EARLY_MEDIA)) {
 					if (switch_channel_test_flag(caller_channel, CF_PROXY_MODE)) {
 						status = SWITCH_STATUS_SUCCESS;
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya865 switch_ivr_originate: \n");
 					} else {
 						switch_channel_pass_callee_id(peer_channel, caller_channel);
 						status = switch_channel_pre_answer(caller_channel);
+						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya866 switch_ivr_originate: \n");
 					}
 				} else {
 					status = SWITCH_STATUS_SUCCESS;
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya867 switch_ivr_originate: \n");
 				}
 
 				if (status != SWITCH_STATUS_SUCCESS) {
@@ -3823,8 +3891,10 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 				}
 
 				status = SWITCH_STATUS_SUCCESS;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya868 switch_ivr_originate: \n");
 			} else {
 				status = SWITCH_STATUS_FALSE;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya869 switch_ivr_originate: \n");
 			}
 
 		  done:
@@ -3833,6 +3903,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 
 			if (caller_channel && !switch_channel_ready(caller_channel)) {
 				status = SWITCH_STATUS_FALSE;
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya870 switch_ivr_originate: \n");
 			}
 
 			if (status == SWITCH_STATUS_SUCCESS) {
@@ -3849,6 +3920,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 
 					}
 				}
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya871 switch_ivr_originate: \n");
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(oglobals.session), SWITCH_LOG_DEBUG, "Originate Resulted in Success: [%s]\n",
 								  switch_channel_get_name(peer_channel));
 				*cause = SWITCH_CAUSE_SUCCESS;
@@ -3992,6 +4064,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 										  "Originate Resulted in Attended Transfer Cause: %d [%s]\n", *cause, switch_channel_cause2str(*cause));
 					} else {
 
+						// this is where DESTINATION_OUT_OF_ORDER is coming
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(oglobals.session), SWITCH_LOG_DEBUG,
 										  "Originate Resulted in Error Cause: %d [%s]\n", *cause, switch_channel_cause2str(*cause));
 					}
@@ -4004,22 +4077,28 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 				switch (*cause) {
 				case SWITCH_CAUSE_ORIGINATOR_CANCEL:
 					switch_channel_set_variable(caller_channel, "DIALSTATUS", "CANCEL");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya872 switch_ivr_originate: \n");
 					break;
 				case SWITCH_CAUSE_USER_BUSY:
 					switch_channel_set_variable(caller_channel, "DIALSTATUS", "BUSY");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya873 switch_ivr_originate: \n");
 					break;
 				case SWITCH_CAUSE_NO_ANSWER:
 					switch_channel_set_variable(caller_channel, "DIALSTATUS", "NOANSWER");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya874 switch_ivr_originate: \n");
 					break;
 				case SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER:
 				case SWITCH_CAUSE_INVALID_PROFILE:
 					switch_channel_set_variable(caller_channel, "DIALSTATUS", "INVALIDARGS");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya875 switch_ivr_originate: \n");
 					break;
 				case SWITCH_CAUSE_CALL_REJECTED:
 					switch_channel_set_variable(caller_channel, "DIALSTATUS", "DONTCALL");
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya876 switch_ivr_originate: \n");
 					break;
 				default:
 					switch_channel_set_variable(caller_channel, "DIALSTATUS", switch_channel_cause2str(*cause));
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya877 switch_ivr_originate: \n");
 					break;
 				}
 			}
@@ -4096,6 +4175,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 			}
 
 			if (status == SWITCH_STATUS_SUCCESS || oglobals.idx == IDX_XFER) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya831 switch_ivr_originate: \n");
 				goto outer_for;
 			} else {
 				int ok = 1;
@@ -4133,10 +4213,12 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 				}
 
 				if (!ok) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya878 switch_ivr_originate: \n");
 					goto outer_for;
 				}
 
 				if (to && !oglobals.continue_on_timeout) {
+					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya879 switch_ivr_originate: \n");
 					goto outer_for;
 				}
 			}
@@ -4154,6 +4236,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 
 	if (bleg && !*bleg && status == SWITCH_STATUS_SUCCESS) {
 		status = SWITCH_STATUS_FALSE;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya880 switch_ivr_originate: \n");
 	}
 
 	if (bleg && *bleg) {
@@ -4222,6 +4305,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_originate(switch_core_session_t *sess
 	}
 
 
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya882 switch_ivr_originate: \n");
 	switch_core_destroy_memory_pool(&oglobals.pool);
 
 	return status;
