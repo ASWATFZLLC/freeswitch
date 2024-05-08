@@ -1399,38 +1399,12 @@ static void attach_calls(jsock_t *jsock)
 	cJSON *params = NULL;
 	cJSON *reattached_sessions = NULL;
 	switch_status_t status = SWITCH_STATUS_FALSE;
-	// int err = 0;
 
 	reattached_sessions = cJSON_CreateArray();
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
 
-	// if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
-	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
-	// 	// tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
-	// 	if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
-	// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
-	// 		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-	// 		// err = 1; goto cleanup;
-	// 	}
-	// } else {
-	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
-	// 	// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-	// 	// err = 1; goto cleanup;
-	// }
-
-	status = verto_set_ip_options(tech_pvt, jsock->profile)
+	status = verto_set_ip_options(tech_pvt, jsock->profile);
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls %d\n", status);
-
-	// if ((tech_pvt->smh = switch_core_session_get_media_handle(session))) {
-	// 	tech_pvt->mparams = switch_core_media_get_mparams(tech_pvt->smh);
-	// 	if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
-	// 		cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-	// 		err = 1; goto cleanup;
-	// 	}
-	// } else {
-	// 	cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-	// 	err = 1; goto cleanup;
-	// }
 
 	switch_thread_rwlock_rdlock(verto_globals.tech_rwlock);
 	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
@@ -1446,7 +1420,6 @@ static void attach_calls(jsock_t *jsock)
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 
 	msg = jrpc_new_req("verto.clientReady", NULL, &params);
-	// here clientReady
 	cJSON_AddItemToObject(params, "reattached_sessions", reattached_sessions);
 	jsock_queue_event(jsock, &msg, SWITCH_TRUE);
 }
