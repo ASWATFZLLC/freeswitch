@@ -1392,19 +1392,83 @@ static void drop_detached(void)
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 }
 
+// static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile);
+
+static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
+{
+	// uint32_t i;
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya21 verto_set_ip_options\n");
+
+	switch_mutex_lock(profile->mutex);
+	if (!zstr(profile->rtpip[profile->rtpip_cur])) {
+		tech_pvt->mparams->rtpip4 = switch_core_session_strdup(tech_pvt->session, profile->rtpip[profile->rtpip_cur++]);
+		tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip4;
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya22 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip4);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya23 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
+		if (profile->rtpip_cur == profile->rtpip_index) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya24 verto_set_ip_options\n");
+			profile->rtpip_cur = 0;
+		}
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya25 verto_set_ip_options\n");
+
+	if (!zstr(profile->rtpip6[profile->rtpip_cur6])) {
+		tech_pvt->mparams->rtpip6 = switch_core_session_strdup(tech_pvt->session, profile->rtpip6[profile->rtpip_cur6++]);
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya26 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip6);
+
+		if (zstr(tech_pvt->mparams->rtpip)) {
+			tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip6;
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya27 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
+		}
+
+		if (profile->rtpip_cur6 == profile->rtpip_index6) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya28 verto_set_ip_options %d\n", profile->rtpip_cur6);
+			profile->rtpip_cur6 = 0;
+		}
+	}
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya29 verto_set_ip_options\n");
+	switch_mutex_unlock(profile->mutex);
+
+	if (zstr(tech_pvt->mparams->rtpip)) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya31 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "%s has no media ip, check your configuration\n",
+						  switch_channel_get_name(tech_pvt->channel));
+		return SWITCH_STATUS_FALSE;
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya32 verto_set_ip_options\n");
+	tech_pvt->mparams->extrtpip = tech_pvt->mparams->extsipip = profile->extrtpip;
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya33 verto_set_ip_options %s\n", tech_pvt->mparams->extrtpip);
+
+	return SWITCH_STATUS_SUCCESS;
+}
+
 static void attach_calls(jsock_t *jsock)
 {
 	verto_pvt_t *tech_pvt;
 	cJSON *msg = NULL;
 	cJSON *params = NULL;
 	cJSON *reattached_sessions = NULL;
-	switch_status_t status = SWITCH_STATUS_FALSE;
+	int err = 0;
 
 	reattached_sessions = cJSON_CreateArray();
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
 
-	status = verto_set_ip_options(tech_pvt, jsock->profile);
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls %d\n", status);
+	if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
+		if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
+			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+			err = 1; goto cleanup;
+		}
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
+		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+		err = 1; goto cleanup;
+	}
+
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
 
 	switch_thread_rwlock_rdlock(verto_globals.tech_rwlock);
 	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
@@ -1419,7 +1483,13 @@ static void attach_calls(jsock_t *jsock)
 	}
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 
+	cleanup:
+		if (!err) return SWITCH_TRUE;
+		cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
+		return SWITCH_FALSE;
+
 	msg = jrpc_new_req("verto.clientReady", NULL, &params);
+	// here clientReady
 	cJSON_AddItemToObject(params, "reattached_sessions", reattached_sessions);
 	jsock_queue_event(jsock, &msg, SWITCH_TRUE);
 }
@@ -2376,7 +2446,6 @@ static switch_status_t verto_on_hangup(switch_core_session_t *session)
 }
 
 static switch_status_t verto_set_media_options(verto_pvt_t *tech_pvt, verto_profile_t *profile);
-// static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile);
 
 static switch_status_t verto_connect(switch_core_session_t *session, const char *method)
 {
@@ -2578,57 +2647,6 @@ static switch_state_handler_table_t verto_state_handlers = {
     /*.on_destroy */ verto_on_destroy,
     SSH_FLAG_STICKY
 };
-
-static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
-{
-	// uint32_t i;
-	// switch_status_t status = SWITCH_STATUS_FALSE;
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya21 verto_set_ip_options\n");
-
-	switch_mutex_lock(profile->mutex);
-	if (!zstr(profile->rtpip[profile->rtpip_cur])) {
-		tech_pvt->mparams->rtpip4 = switch_core_session_strdup(tech_pvt->session, profile->rtpip[profile->rtpip_cur++]);
-		tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip4;
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya22 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip4);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya23 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
-		if (profile->rtpip_cur == profile->rtpip_index) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya24 verto_set_ip_options\n");
-			profile->rtpip_cur = 0;
-		}
-	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya25 verto_set_ip_options\n");
-
-	if (!zstr(profile->rtpip6[profile->rtpip_cur6])) {
-		tech_pvt->mparams->rtpip6 = switch_core_session_strdup(tech_pvt->session, profile->rtpip6[profile->rtpip_cur6++]);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya26 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip6);
-
-		if (zstr(tech_pvt->mparams->rtpip)) {
-			tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip6;
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya27 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
-		}
-
-		if (profile->rtpip_cur6 == profile->rtpip_index6) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya28 verto_set_ip_options %d\n", profile->rtpip_cur6);
-			profile->rtpip_cur6 = 0;
-		}
-	}
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya29 verto_set_ip_options\n");
-	switch_mutex_unlock(profile->mutex);
-
-	if (zstr(tech_pvt->mparams->rtpip)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya31 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
-		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "%s has no media ip, check your configuration\n",
-						  switch_channel_get_name(tech_pvt->channel));
-		return SWITCH_STATUS_FALSE;
-	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya32 verto_set_ip_options\n");
-	tech_pvt->mparams->extrtpip = tech_pvt->mparams->extsipip = profile->extrtpip;
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya33 verto_set_ip_options %s\n", tech_pvt->mparams->extrtpip);
-
-	return SWITCH_STATUS_SUCCESS;
-}
 
 
 static switch_status_t verto_set_media_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
