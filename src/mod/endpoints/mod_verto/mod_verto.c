@@ -1450,7 +1450,7 @@ static void attach_calls(jsock_t *jsock)
 	cJSON *msg = NULL;
 	cJSON *params = NULL;
 	cJSON *reattached_sessions = NULL;
-	int err = 0;
+	// int err = 0;
 
 	reattached_sessions = cJSON_CreateArray();
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
@@ -1460,12 +1460,12 @@ static void attach_calls(jsock_t *jsock)
 		if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
 			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-			err = 1; goto cleanup;
+			// err = 1; goto cleanup;
 		}
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
 		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-		err = 1; goto cleanup;
+		// err = 1; goto cleanup;
 	}
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
@@ -1483,10 +1483,10 @@ static void attach_calls(jsock_t *jsock)
 	}
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 
-	cleanup:
-		if (!err) return SWITCH_TRUE;
-		cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
-		return SWITCH_FALSE;
+	// cleanup:
+	// 	if (!err) return SWITCH_TRUE;
+	// 	// cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
+	// 	return SWITCH_FALSE;
 
 	msg = jrpc_new_req("verto.clientReady", NULL, &params);
 	// here clientReady
