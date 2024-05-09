@@ -1455,21 +1455,6 @@ static void attach_calls(jsock_t *jsock)
 	reattached_sessions = cJSON_CreateArray();
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
 
-	if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
-		if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
-			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-			// err = 1; goto cleanup;
-		}
-	} else {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
-		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-		// err = 1; goto cleanup;
-	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
-
 	switch_thread_rwlock_rdlock(verto_globals.tech_rwlock);
 	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
 		if (tech_pvt->detach_time && !strcmp(tech_pvt->jsock_uuid, jsock->uuid_str)) {
@@ -1479,6 +1464,21 @@ static void attach_calls(jsock_t *jsock)
 
 			tech_reattach(tech_pvt, jsock);
 			cJSON_AddItemToArray(reattached_sessions, cJSON_CreateString(switch_core_session_get_uuid(tech_pvt->session)));
+		}
+		
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
+		
+		if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
+			if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
+				// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+				// err = 1; goto cleanup;
+			}
+		} else {
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
+			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+			// err = 1; goto cleanup;
 		}
 	}
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
