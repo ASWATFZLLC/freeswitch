@@ -4579,6 +4579,9 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 		switch_event_add_header_string(jsock->vars, SWITCH_STACK_BOTTOM, "conf_mvar_superuser", "true");
 		cJSON_AddItemToObject(*response, "superuser", cJSON_CreateTrue());
 	}
+
+	cJSON_AddItemToObject(*response, "client-address", cJSON_CreateString((char *)jsock->name));
+
 	switch_mutex_unlock(jsock->flag_mutex);
 						
 	login_fire_custom_event(jsock, params, 1, "Logged in");
