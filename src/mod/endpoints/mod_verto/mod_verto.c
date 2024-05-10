@@ -4580,9 +4580,7 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 		cJSON_AddItemToObject(*response, "superuser", cJSON_CreateTrue());
 	}
 
-	if (jsock->name) {
-		cJSON_AddItemToObject(*response, "client-address", cJSON_CreateString((char *)jsock->name));
-	}
+	cJSON_AddItemToObject(*response, "client-address", cJSON_CreateString((char *)jsock->name));
 
 	switch_mutex_unlock(jsock->flag_mutex);
 						
