@@ -2574,6 +2574,8 @@ static switch_state_handler_table_t verto_state_handlers = {
 };
 
 
+
+
 static switch_status_t verto_set_media_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
 {
 	uint32_t i;
