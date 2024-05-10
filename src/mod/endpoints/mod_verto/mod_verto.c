@@ -4660,7 +4660,7 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 	}
 
 	if (jsock->name) {
-		cJSON_AddItemToObject(*response, "client-address", jsock->name);
+		cJSON_AddItemToObject(*response, "client-address", cJSON_CreateString((char *)jsock->name));
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya02 login_func %s \n", jsock->name);
 	}
 
