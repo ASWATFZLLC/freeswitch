@@ -1453,7 +1453,7 @@ static void attach_calls(jsock_t *jsock)
 	// int err = 0;
 
 	reattached_sessions = cJSON_CreateArray();
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls\n");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls %s \n", jsock->name);
 
 	switch_thread_rwlock_rdlock(verto_globals.tech_rwlock);
 	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
@@ -4660,23 +4660,24 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 	}
 	switch_mutex_unlock(jsock->flag_mutex);
 
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya02 login_func\n");
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya02 login_func %s \n", jsock->name);
 	
-	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya03 attach_calls\n");
-		if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya04 attach_calls\n");
-			if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya05 attach_calls\n");
-				// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-				// err = 1; goto cleanup;
-			}
-		} else {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya06 attach_calls\n");
-			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-			// err = 1; goto cleanup;
-		}
-	}
+	// here
+	// for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
+	// 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya03 attach_calls\n");
+	// 	if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
+	// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya04 attach_calls\n");
+	// 		if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
+	// 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya05 attach_calls\n");
+	// 			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
+	// 			// err = 1; goto cleanup;
+	// 		}
+	// 	} else {
+	// 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya06 attach_calls\n");
+	// 		// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
+	// 		// err = 1; goto cleanup;
+	// 	}
+	// }
 						
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya07 login_func\n");
 	login_fire_custom_event(jsock, params, 1, "Logged in");
