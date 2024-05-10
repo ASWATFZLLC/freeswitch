@@ -4634,7 +4634,7 @@ static switch_bool_t verto__broadcast_func(const char *method, cJSON *params, js
 
 static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
 {
-	verto_pvt_t *tech_pvt;
+	// verto_pvt_t *tech_pvt;
 	const char *var;
 	*response = cJSON_CreateObject();
 	cJSON_AddItemToObject(*response, "message", cJSON_CreateString("logged in"));
