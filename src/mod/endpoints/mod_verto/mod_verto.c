@@ -4585,6 +4585,7 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 	}
 
 	switch_mutex_unlock(jsock->flag_mutex);
+
 	login_fire_custom_event(jsock, params, 1, "Logged in");
 
 	return SWITCH_TRUE;
