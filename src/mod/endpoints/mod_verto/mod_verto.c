@@ -1392,108 +1392,29 @@ static void drop_detached(void)
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 }
 
-// static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile);
-
-static switch_status_t verto_set_ip_options(verto_pvt_t *tech_pvt, verto_profile_t *profile)
-{
-	// uint32_t i;
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya21 verto_set_ip_options\n");
-
-	switch_mutex_lock(profile->mutex);
-	if (!zstr(profile->rtpip[profile->rtpip_cur])) {
-		tech_pvt->mparams->rtpip4 = switch_core_session_strdup(tech_pvt->session, profile->rtpip[profile->rtpip_cur++]);
-		tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip4;
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya22 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip4);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya23 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
-		if (profile->rtpip_cur == profile->rtpip_index) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya24 verto_set_ip_options\n");
-			profile->rtpip_cur = 0;
-		}
-	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya25 verto_set_ip_options\n");
-
-	if (!zstr(profile->rtpip6[profile->rtpip_cur6])) {
-		tech_pvt->mparams->rtpip6 = switch_core_session_strdup(tech_pvt->session, profile->rtpip6[profile->rtpip_cur6++]);
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya26 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip6);
-
-		if (zstr(tech_pvt->mparams->rtpip)) {
-			tech_pvt->mparams->rtpip = tech_pvt->mparams->rtpip6;
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya27 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
-		}
-
-		if (profile->rtpip_cur6 == profile->rtpip_index6) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya28 verto_set_ip_options %d\n", profile->rtpip_cur6);
-			profile->rtpip_cur6 = 0;
-		}
-	}
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya29 verto_set_ip_options\n");
-	switch_mutex_unlock(profile->mutex);
-
-	if (zstr(tech_pvt->mparams->rtpip)) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya31 verto_set_ip_options %s\n", tech_pvt->mparams->rtpip);
-		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "%s has no media ip, check your configuration\n",
-						  switch_channel_get_name(tech_pvt->channel));
-		return SWITCH_STATUS_FALSE;
-	}
-
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya32 verto_set_ip_options\n");
-	tech_pvt->mparams->extrtpip = tech_pvt->mparams->extsipip = profile->extrtpip;
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya33 verto_set_ip_options %s\n", tech_pvt->mparams->extrtpip);
-
-	return SWITCH_STATUS_SUCCESS;
-}
-
 static void attach_calls(jsock_t *jsock)
 {
 	verto_pvt_t *tech_pvt;
 	cJSON *msg = NULL;
 	cJSON *params = NULL;
 	cJSON *reattached_sessions = NULL;
-	// int err = 0;
 
 	reattached_sessions = cJSON_CreateArray();
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya11 attach_calls %s \n", jsock->name);
 
 	switch_thread_rwlock_rdlock(verto_globals.tech_rwlock);
 	for(tech_pvt = verto_globals.tech_head; tech_pvt; tech_pvt = tech_pvt->next) {
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya21 attach_calls\n");
 		if (tech_pvt->detach_time && !strcmp(tech_pvt->jsock_uuid, jsock->uuid_str)) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya22 attach_calls\n");
 			if (!switch_channel_up_nosig(tech_pvt->channel)) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya23 attach_calls\n");
 				continue;
 			}
 
 			tech_reattach(tech_pvt, jsock);
 			cJSON_AddItemToArray(reattached_sessions, cJSON_CreateString(switch_core_session_get_uuid(tech_pvt->session)));
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya24 attach_calls\n");
-		}
-		
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya12 attach_calls\n");
-		
-		if ((tech_pvt->smh = switch_core_session_get_media_handle(tech_pvt->session))) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya13 attach_calls\n");
-			if (verto_set_ip_options(tech_pvt, jsock->profile) != SWITCH_STATUS_SUCCESS) {
-				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya14 attach_calls\n");
-				// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot set ip options"));
-				// err = 1; goto cleanup;
-			}
-		} else {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya15 attach_calls\n");
-			// cJSON_AddItemToObject(obj, "message", cJSON_CreateString("Cannot create ip handle"));
-			// err = 1; goto cleanup;
 		}
 	}
 	switch_thread_rwlock_unlock(verto_globals.tech_rwlock);
 
-	// cleanup:
-	// 	if (!err) return SWITCH_TRUE;
-	// 	// cJSON_AddItemToObject(obj, "code", cJSON_CreateNumber(CODE_SESSION_ERROR));
-	// 	return SWITCH_FALSE;
-
 	msg = jrpc_new_req("verto.clientReady", NULL, &params);
-	// here clientReady
 	cJSON_AddItemToObject(params, "reattached_sessions", reattached_sessions);
 	jsock_queue_event(jsock, &msg, SWITCH_TRUE);
 }
@@ -4634,11 +4555,9 @@ static switch_bool_t verto__broadcast_func(const char *method, cJSON *params, js
 
 static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsock, cJSON **response)
 {
-	// verto_pvt_t *tech_pvt;
 	const char *var;
 	*response = cJSON_CreateObject();
 	cJSON_AddItemToObject(*response, "message", cJSON_CreateString("logged in"));
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya01 login_func\n");
 
 	if (jsock->exptime) {
 		cJSON_AddItemToObject(*response, "auth-expires", cJSON_CreateNumber(jsock->exptime));
@@ -4661,12 +4580,9 @@ static switch_bool_t login_func(const char *method, cJSON *params, jsock_t *jsoc
 
 	if (jsock->name) {
 		cJSON_AddItemToObject(*response, "client-address", cJSON_CreateString((char *)jsock->name));
-		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya02 login_func %s \n", jsock->name);
 	}
 
 	switch_mutex_unlock(jsock->flag_mutex);
-						
-	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "surya07 login_func\n");
 	login_fire_custom_event(jsock, params, 1, "Logged in");
 
 	return SWITCH_TRUE;
