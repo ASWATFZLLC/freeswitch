@@ -2416,8 +2416,8 @@ static char *load_cache_data(http_file_context_t *context, const char *url)
                             switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "context->metadata is %s\n", context->metadata);
 			}
 
-			// if (!zstr(context->metadata) && (p = strrchr(context->metadata, ':'))) {
-			if ((p = strrchr(context->metadata, ':'))) {
+			if (!zstr(context->metadata) && (p = strrchr(context->metadata, ':'))) {
+			// if ((p = strrchr(context->metadata, ':'))) {
 				p++;
 				if (!zstr(p)) {
 					ext = p;
