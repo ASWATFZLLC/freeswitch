@@ -2410,7 +2410,7 @@ static char *load_cache_data(http_file_context_t *context, const char *url)
 				context->metadata = switch_core_strdup(context->pool, p);
 			}
 
-			if ((p = strrchr(context->metadata, ':'))) {
+			if (!zstr(context->metadata) && (p = strrchr(context->metadata, ':'))) {
 				p++;
 				if (!zstr(p)) {
 					ext = p;
