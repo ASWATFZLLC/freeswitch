@@ -2410,7 +2410,14 @@ static char *load_cache_data(http_file_context_t *context, const char *url)
 				context->metadata = switch_core_strdup(context->pool, p);
 			}
 
-			if ((p = strrchr(context->metadata, ':'))) {
+			if (zstr(context->metadata)) {
+                            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "context->metadata is nil!\n");
+			} else {
+                            switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "context->metadata is %s\n", context->metadata);
+			}
+
+			if (!zstr(context->metadata) && (p = strrchr(context->metadata, ':'))) {
+			// if ((p = strrchr(context->metadata, ':'))) {
 				p++;
 				if (!zstr(p)) {
 					ext = p;
