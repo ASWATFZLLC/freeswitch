@@ -1,0 +1,113 @@
+name: CI for Freeswitch
+
+on:
+  pull_request:
+    branches:
+      - v1.10.11.3
+  workflow_dispatch:
+
+env:
+  AWS_REGION: me-central-1
+  AWS_ROLE_ARN: arn:aws:iam::997737331395:role/GithubActions_Freeswitch_CICD
+  AWS_S3_BUCKET: freeswitch-releases
+  
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Freeswitch
+    runs-on: ubuntu-latest
+    outputs:
+      on_build_branch: ${{ steps.upload-step.outputs.on_build_branch }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+
+      - name: Configure AWS credentials via OIDC
+        id: export
+        uses: aws-actions/configure-aws-credentials@v4.1.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+          output-credentials: true
+
+      - name: Build the Freeswitch artifacts
+        run: |
+          echo "Building Freeswitch application..."
+          # Add your build commands here, e.g., npm install, npm run build, etc.
+          # Example:
+          # npm install
+          # npm run build
+
+
+
+      - name: Deploy Artifact to S3
+        id: upload-step
+        run: aws s3 sync dist/apps/app/browser/ "s3://${{ env.AWS_S3_BUCKET }}/" --region ${{ env.AWS_REGION }}
+
+
+
+
+  notify-success:
+    name: Notify the team on Slack
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy]
+    if: needs.build-and-deploy.outputs.upload-step == 'true'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v2
+        with:
+          errors: true
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL }}",
+              "text": "Deployment Complete!*\n*Version:* `${{ github.ref_name }}`",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":rocket: *Deployment Complete!*\n*Version:* `${{ github.ref_name }}`"
+                  }
+                }
+              ]
+            }
+
+  notify-failure:
+    name: Notify Slack on Failure
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy]
+    if: failure()
+    steps:
+      - name: Notify Slack of Failure
+        uses: slackapi/slack-github-action@v2
+        with:
+          errors: true
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL }}",
+              "text": ":x: Build and Deploy failed on staging for version`${{ github.ref_name }}`.",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":x: *Deployment Failed!*\n*"
+                  }
+                }
+              ]
+            }
