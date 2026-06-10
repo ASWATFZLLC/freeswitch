@@ -1012,11 +1012,11 @@ static switch_bool_t client_exists(const char *id)
 	jsock_t *jsock;
 
 	switch_mutex_lock(verto_globals.mutex);
-	for(profile = verto_globals.profile_head; profile; profile = profile->next) {
+	for(profile = verto_globals.profile_head; profile && !r; profile = profile->next) {
 		switch_mutex_lock(profile->mutex);
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Dupliacte session check %s == %s.\n", jsock->id, id);
 			if (!zstr(jsock->id) && !strcmp(jsock->id, id)) {
+				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Duplicate session found for client %s\n", id);
 				r = SWITCH_TRUE;
 				break;
 			}
@@ -6375,7 +6375,7 @@ SWITCH_STANDARD_API(verto_send_function)
 		for (jsock = profile->jsock_head; jsock; jsock = jsock->next) {
 			if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 				jmsg = jrpc_new_req("verto.send", NULL, &params);
-				cJSON_AddItemToObject(params, "data", jdata);
+				cJSON_AddItemToObject(params, "data", cJSON_Duplicate(jdata, 1));
 				jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 				success = 1;
 				break;
@@ -6392,7 +6392,7 @@ SWITCH_STANDARD_API(verto_send_function)
 	}
 
   end:
-	switch_safe_free(jcmd);
+	cJSON_Delete(jcmd);
 	return SWITCH_STATUS_SUCCESS;
 }
 
@@ -6451,7 +6451,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 
 	if (!zstr(jsock->id) && !strcmp(jsock->id, position_name)) {
 		jmsg = jrpc_new_req("verto.sendToAgentOnCall", tech_pvt->call_id, &params);
-		cJSON_AddItemToObject(params, "data", jdata);
+		cJSON_AddItemToObject(params, "data", cJSON_Duplicate(jdata, 1));
 		jsock_queue_event(jsock, &jmsg, SWITCH_TRUE);
 		stream->write_function(stream, "+OK\n");
 	} else {
@@ -6462,7 +6462,7 @@ SWITCH_STANDARD_API(verto_send_to_position_on_call_function)
 	switch_core_session_rwunlock(lsession);
 
   end:
-	switch_safe_free(jcmd);
+	cJSON_Delete(jcmd);
 	return SWITCH_STATUS_SUCCESS;
 }
 
