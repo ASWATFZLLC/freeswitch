@@ -32,6 +32,8 @@ ARG LIBKS_REF=master
 ARG SIGNALWIRE_C_REF=master
 ARG SOFIA_REF=v1.13.17
 ARG SPANDSP_REF=
+# Lua is built from source (not in Ubuntu repos at 5.5).
+ARG LUA_VERSION=5.5.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
@@ -43,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libssl-dev zlib1g-dev libjpeg-dev libsqlite3-dev libcurl4-openssl-dev \
       libpcre2-dev libspeex-dev libspeexdsp-dev libldns-dev libedit-dev libtiff-dev \
       libopus-dev libsndfile1-dev libpq-dev \
-      liblua5.2-dev lua5.2 \
+      libreadline-dev \
       libmpg123-dev libshout3-dev libvorbis-dev libmp3lame-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -74,6 +76,16 @@ RUN git clone --branch packages https://github.com/freeswitch/spandsp.git \
     && ./bootstrap.sh && ./configure --prefix=/usr \
     && make ${MAKE_JOBS:+-j${MAKE_JOBS}} && make install \
     && ldconfig
+
+# Lua ${LUA_VERSION} from source (built with -fPIC so it static-links into mod_lua.so).
+# Installed to /usr; a generic 'lua.pc' is provided so FreeSWITCH's configure
+# (which probes pkg-config names luajit/lua5.3/.../lua) finds it via the 'lua' entry.
+RUN curl -fsSL "https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz" -o /usr/src/lua.tar.gz \
+    && cd /usr/src && tar xzf lua.tar.gz && cd "lua-${LUA_VERSION}" \
+    && make MYCFLAGS="-fPIC" linux \
+    && make install INSTALL_TOP=/usr \
+    && printf 'prefix=/usr\nlibdir=${prefix}/lib\nincludedir=${prefix}/include\n\nName: Lua\nDescription: Lua language engine\nVersion: %s\nLibs: -L${libdir} -llua -lm -ldl\nCflags: -I${includedir}\n' "${LUA_VERSION}" > /usr/lib/pkgconfig/lua.pc \
+    && pkg-config --modversion lua
 
 # --- FreeSWITCH (this source tree, with Ziwo custom code) ---
 COPY . /usr/src/freeswitch
@@ -118,7 +130,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libssl3 zlib1g libjpeg-turbo8 libsqlite3-0 libcurl4 \
       libpcre2-8-0 libspeex1 libspeexdsp1 libldns3 libedit2 libtiff5 \
       libopus0 libsndfile1 libpq5 \
-      liblua5.2-0 \
       libmpg123-0 libshout3 libvorbis0a libmp3lame0 \
       gosu \
     && rm -rf /var/lib/apt/lists/*
