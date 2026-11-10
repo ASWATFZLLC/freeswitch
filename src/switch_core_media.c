@@ -55,6 +55,7 @@ static void gen_ice(switch_core_session_t *session, switch_media_type_t type, co
 #define TEXT_TIMER_MS 100
 #define TEXT_TIMER_SAMPLES 10
 #define TEXT_PERIOD_TIMEOUT 3000
+#define DTLS_ANSWER_WAIT_MS 10000
 #define MAX_RED_FRAMES 25
 #define RED_PACKET_SIZE 100
 
@@ -12541,6 +12542,7 @@ SWITCH_DECLARE(switch_bool_t) switch_core_media_check_dtls(switch_core_session_t
 	switch_media_handle_t *smh;
 	switch_rtp_engine_t *engine;
 	int checking = 0;
+	switch_time_t started = switch_micro_time_now();
 
 	switch_assert(session);
 
@@ -12564,6 +12566,13 @@ SWITCH_DECLARE(switch_bool_t) switch_core_media_check_dtls(switch_core_session_t
 
 	do {
 		if (engine->rtp_session) checking = check_engine(engine);
+
+		if (checking && (switch_micro_time_now() - started) / 1000 > DTLS_ANSWER_WAIT_MS) {
+			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "%s DTLS handshake not complete after %d ms, hanging up\n",
+							  switch_channel_get_name(session->channel), DTLS_ANSWER_WAIT_MS);
+			switch_channel_hangup(session->channel, SWITCH_CAUSE_MEDIA_TIMEOUT);
+			break;
+		}
 	} while (switch_channel_ready(session->channel) && checking);
 
 	if (!checking) {
