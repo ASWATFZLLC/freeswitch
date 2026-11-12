@@ -12567,7 +12567,7 @@ SWITCH_DECLARE(switch_bool_t) switch_core_media_check_dtls(switch_core_session_t
 	do {
 		if (engine->rtp_session) checking = check_engine(engine);
 
-		if (checking && (switch_micro_time_now() - started) / 1000 > DTLS_ANSWER_WAIT_MS) {
+		if (checking && type == SWITCH_MEDIA_TYPE_AUDIO && (switch_micro_time_now() - started) / 1000 > DTLS_ANSWER_WAIT_MS) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "%s DTLS handshake not complete after %d ms, hanging up\n",
 							  switch_channel_get_name(session->channel), DTLS_ANSWER_WAIT_MS);
 			switch_channel_hangup(session->channel, SWITCH_CAUSE_MEDIA_TIMEOUT);
