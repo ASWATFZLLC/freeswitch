@@ -3828,7 +3828,15 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 		return SWITCH_STATUS_SUCCESS;
 	}
 
+	/* ENG-7459 review: this is the call that used to block forever on the agent's thread when the
+	 * customer answered and the agent's DTLS never completed. It is now capped at DTLS_ANSWER_WAIT_MS. */
 	switch_core_media_check_dtls(channel->session, SWITCH_MEDIA_TYPE_AUDIO);
+
+	/* ENG-7459 review: if the wait timed out it has already hung up this channel. Stop here so a dead
+	 * channel is not flagged ANSWERED, no answered time is stamped and no CHANNEL_ANSWER event is fired. */
+	if (channel->hangup_cause || channel->state >= CS_HANGUP) {
+		return SWITCH_STATUS_FALSE;
+	}
 
 	if (channel->caller_profile && channel->caller_profile->times) {
 		switch_mutex_lock(channel->profile_mutex);
@@ -3948,8 +3956,11 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_answer(switch_channel_t *
 
 
 	if (status == SWITCH_STATUS_SUCCESS) {
-		switch_channel_perform_mark_answered(channel, file, func, line);
-		if (!switch_channel_test_flag(channel, CF_EARLY_MEDIA)) {
+		/* ENG-7459 review: keep the result instead of ignoring it. The bridge loop (switch_ivr_bridge.c:730)
+		 * then logs "Media Establishment Failed" and leaves the loop, so both legs are cleared and CDRs written. */
+		status = switch_channel_perform_mark_answered(channel, file, func, line);
+		/* ENG-7459 review: only sync audio on a channel that really answered. */
+		if (status == SWITCH_STATUS_SUCCESS && !switch_channel_test_flag(channel, CF_EARLY_MEDIA)) {
 			switch_channel_audio_sync(channel);
 		}
 	} else {
