@@ -3830,6 +3830,10 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 
 	switch_core_media_check_dtls(channel->session, SWITCH_MEDIA_TYPE_AUDIO);
 
+	if (channel->hangup_cause || channel->state >= CS_HANGUP) {
+		return SWITCH_STATUS_FALSE;
+	}
+
 	if (channel->caller_profile && channel->caller_profile->times) {
 		switch_mutex_lock(channel->profile_mutex);
 		channel->caller_profile->times->answered = switch_micro_time_now();
@@ -3948,8 +3952,8 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_answer(switch_channel_t *
 
 
 	if (status == SWITCH_STATUS_SUCCESS) {
-		switch_channel_perform_mark_answered(channel, file, func, line);
-		if (!switch_channel_test_flag(channel, CF_EARLY_MEDIA)) {
+		status = switch_channel_perform_mark_answered(channel, file, func, line);
+		if (status == SWITCH_STATUS_SUCCESS && !switch_channel_test_flag(channel, CF_EARLY_MEDIA)) {
 			switch_channel_audio_sync(channel);
 		}
 	} else {
