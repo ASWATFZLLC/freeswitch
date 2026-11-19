@@ -55,6 +55,10 @@ static void gen_ice(switch_core_session_t *session, switch_media_type_t type, co
 #define TEXT_TIMER_MS 100
 #define TEXT_TIMER_SAMPLES 10
 #define TEXT_PERIOD_TIMEOUT 3000
+/* ENG-7459 review: longest time (ms) answer waits for the audio DTLS handshake before hanging up.
+ * Upstream waits forever. This is the default, used when the dtls_answer_wait_ms variable is unset. 15 s cut
+ * 16 healthy calls a week fleet-wide (9-15 Nov, checked call by call), against 47 at 10 s and 1 at 30 s,
+ * and still frees every stuck call. */
 #define DTLS_ANSWER_WAIT_MS 15000
 #define MAX_RED_FRAMES 25
 #define RED_PACKET_SIZE 100
@@ -12542,6 +12546,7 @@ SWITCH_DECLARE(switch_bool_t) switch_core_media_check_dtls(switch_core_session_t
 	switch_media_handle_t *smh;
 	switch_rtp_engine_t *engine;
 	int checking = 0;
+	/* ENG-7459 review: start of the wait, in microseconds, so the loop below can measure how long it has waited. */
 	switch_time_t started = switch_micro_time_now();
 	int wait_ms = DTLS_ANSWER_WAIT_MS;
 	const char *wait_var;
@@ -12566,17 +12571,29 @@ SWITCH_DECLARE(switch_bool_t) switch_core_media_check_dtls(switch_core_session_t
 		return SWITCH_TRUE;
 	}
 
+	/* ENG-7459 review: per-instance override in ms. switch_channel_get_variable falls back to the global of the same
+	 * name, so a vars.xml line (rendered from myziwo banshee.EXTRA_VARIABLES for testing) sets it for every call.
+	 * Missing, zero, negative or non-numeric values keep the 15 s default. Same read pattern as media_timeout. */
 	if ((wait_var = switch_channel_get_variable(session->channel, "dtls_answer_wait_ms")) && atoi(wait_var) > 0) {
 		wait_ms = atoi(wait_var);
 	}
 
 	do {
+		/* ENG-7459 review: unchanged upstream line. check_engine() does one RTP read (which also drives ICE/DTLS)
+		 * and returns non-zero while the handshake is still in progress; 0 on READY, FAIL or a read error. */
 		if (engine->rtp_session) checking = check_engine(engine);
 
+		/* ENG-7459 review: new time limit. Applies only while the handshake is still pending (checking),
+		 * only to audio (video and text threads call this too and keep the old unbounded wait, so a broken
+		 * video stream cannot hang up the call), and only once more than wait_ms has passed.
+		 * The RTP read inside check_engine() returns at least every few seconds, so this check is always reached. */
 		if (checking && type == SWITCH_MEDIA_TYPE_AUDIO && (switch_micro_time_now() - started) / 1000 > wait_ms) {
+			/* ENG-7459 review: WARNING level so it shows at production log levels, with the channel name to find the call. */
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "%s DTLS handshake not complete after %d ms, hanging up\n",
 							  switch_channel_get_name(session->channel), wait_ms);
+			/* ENG-7459 review: hang up this leg. MEDIA_TIMEOUT is mapped by stark, so the CDR gets a result. */
 			switch_channel_hangup(session->channel, SWITCH_CAUSE_MEDIA_TIMEOUT);
+			/* ENG-7459 review: leave the loop. checking stays non-zero, so this function returns SWITCH_FALSE. */
 			break;
 		}
 	} while (switch_channel_ready(session->channel) && checking);
